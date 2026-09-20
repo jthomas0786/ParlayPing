@@ -2,6 +2,7 @@ const { analyzeSlip: analyzeNflSlip, normalizeLeg, encodeSlip } = require('./par
 const { analyzeNcaafSlip } = require('./ncaaf-engine');
 const { analyzeMlbSlip } = require('./mlb-engine');
 const { analyzeNhlSlip } = require('./nhl-engine');
+const { applyCorrelationSafety } = require('./analysis-safety');
 const { analyzeBasketballSlip } = require('../../lib/basketball-adapter');
 const { analyzeMmaSlip } = require('../../lib/mma-adapter');
 const { analyzeTableTennisSlip } = require('../../lib/table-tennis-adapter');
@@ -80,7 +81,7 @@ async function analyzeMultiSport(rawLegs,options={}){
   const tailUrl=pending.length?`${baseUrl}/tail?slip=${encodeURIComponent(token)}`:null;
   const dataTimes=analyses.map(a=>Date.parse(a.dataGeneratedAt||'')).filter(Number.isFinite);
 
-  return {
+  return applyCorrelationSafety({
     ok:true,
     generatedAt:new Date().toISOString(),
     dataGeneratedAt:dataTimes.length?new Date(Math.max(...dataTimes)).toISOString():null,
@@ -99,7 +100,7 @@ async function analyzeMultiSport(rawLegs,options={}){
     combinedTailProbability,
     combinedTailProbabilityPct:pct(combinedTailProbability),
     tailUrl
-  };
+  });
 }
 
 module.exports={ analyzeMultiSport, normalizeSport, normalizeUniversalLeg, SUPPORTED_ANALYSIS, EXTENDED_SPORTS };
