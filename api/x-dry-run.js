@@ -50,6 +50,20 @@ function compactReply(analysis){
   return `✅ ${c.hit||0} hit · 🔴 ${c.live||0} live · ⏳ ${c.pending||0} left${c.miss?` · ❌ ${c.miss}`:''}${remaining}`;
 }
 
+async function hydrateMissingParents(mentions, includesTweets, mediaByKey){
+  const missing=[...new Set(mentions.map(replyTarget).filter(Boolean).map(String).filter(id=>!includesTweets.has(id)))];
+  if(!missing.length) return;
+  const q=new URLSearchParams({
+    ids:missing.join(','),
+    'tweet.fields':'author_id,attachments,created_at,conversation_id,possibly_sensitive,referenced_tweets,text',
+    expansions:'attachments.media_keys',
+    'media.fields':'media_key,type,url,preview_image_url'
+  });
+  const fetched=await xGet(`/tweets?${q}`);
+  for(const tweet of fetched.data||[]) includesTweets.set(String(tweet.id),tweet);
+  for(const media of fetched.includes?.media||[]) mediaByKey.set(String(media.media_key),media);
+}
+
 module.exports = async function handler(req,res){
   res.setHeader('Cache-Control','no-store');
   if(req.method!=='GET') return res.status(405).json({ok:false,error:'Use GET.'});
@@ -69,23 +83,26 @@ module.exports = async function handler(req,res){
       'user.fields':'username,name'
     });
     const mentions=await xGet(`/users/${userId}/mentions?${q}`);
+    const targetMentions=(mentions.data||[]).slice(0,5);
     const includesTweets=new Map((mentions.includes?.tweets||[]).map(t=>[String(t.id),t]));
     const mediaByKey=new Map((mentions.includes?.media||[]).map(m=>[String(m.media_key),m]));
+    await hydrateMissingParents(targetMentions,includesTweets,mediaByKey);
     const rows=[];
 
-    for(const mention of [...(mentions.data||[])].reverse().slice(-5)){
+    for(const mention of targetMentions){
       const parentId=replyTarget(mention);
       const row={mentionId:String(mention.id),createdAt:mention.created_at||null,parentId:parentId?String(parentId):null,status:'ignored'};
       if(mention.possibly_sensitive){row.reason='possibly-sensitive';rows.push(row);continue;}
       if(/\b(stop|unsubscribe|opt\s*out)\b/i.test(mention.text||'')){row.reason='opt-out';rows.push(row);continue;}
       if(!parentId){row.reason='no-parent-post';rows.push(row);continue;}
       const parent=includesTweets.get(String(parentId));
-      if(!parent){row.reason='parent-not-expanded';rows.push(row);continue;}
+      if(!parent){row.reason='parent-unavailable';rows.push(row);continue;}
       const mediaUrls=collectMediaUrls(parent,mediaByKey);
       const parsed=await parseSlip({text:parent.text||'',mediaUrls});
       row.parser=parsed.method;
       row.mediaCount=mediaUrls.length;
       row.detectedLegs=parsed.legs.length;
+      row.parentText=(parent.text||'').slice(0,240);
       if(!parsed.legs.length){row.status='unparsed';rows.push(row);continue;}
       const analysis=await analyzeSlip(parsed.legs,{baseUrl:process.env.PUBLIC_BASE_URL||'https://parlayping.net'});
       row.status='ready';
