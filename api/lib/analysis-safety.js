@@ -88,6 +88,20 @@ function replyReadiness(analysis) {
   return { ready: true, reason: null, unresolvedCount: 0, resolvedCount: resolved.length };
 }
 
+function xWeightedLength(text) {
+  const URL_WEIGHT = 23;
+  let total = 0;
+  let cursor = 0;
+  const re = /https?:\/\/\S+/g;
+  for (const match of String(text || '').matchAll(re)) {
+    total += [...String(text).slice(cursor, match.index)].length;
+    total += URL_WEIGHT;
+    cursor = match.index + match[0].length;
+  }
+  total += [...String(text || '').slice(cursor)].length;
+  return total;
+}
+
 function buildPublicReply(analysis, options = {}) {
   const readiness = replyReadiness(analysis);
   if (!readiness.ready) return null;
@@ -113,6 +127,7 @@ function buildPublicReply(analysis, options = {}) {
   };
 
   const summary = `✅ ${counts.hit || 0} hit · 🔴 ${counts.live || 0} live · ⏳ ${counts.pending || 0} left${counts.miss ? ` · ❌ ${counts.miss}` : ''}`;
+  const optOut = 'Reply STOP to opt out.';
   const lines = ['🔔 ParlayPing Live', summary];
   if (ordered.length) lines.push('', ...ordered.map(compact));
 
@@ -123,15 +138,19 @@ function buildPublicReply(analysis, options = {}) {
   }
 
   if (analysis?.tailUrl) lines.push(`Tail what's left → ${analysis.tailUrl}`);
+  lines.push(optOut);
   let text = lines.join('\n');
-  if (text.length > 280) {
+
+  if (xWeightedLength(text) > 275) {
     const shorter = ['🔔 ParlayPing Live', summary];
     if (analysis?.correlation?.hasRisk) shorter.push('🎯 Combined model withheld — correlated legs.');
     else if (Number.isFinite(analysis?.combinedTailProbability)) shorter.push(`🎯 Remaining model: ${Math.round(analysis.combinedTailProbability * 100)}%`);
     if (analysis?.tailUrl) shorter.push(`Tail what's left → ${analysis.tailUrl}`);
+    shorter.push(optOut);
     text = shorter.join('\n');
   }
-  return text.slice(0, 280);
+
+  return text;
 }
 
-module.exports = { correlationGroups, applyCorrelationSafety, replyReadiness, buildPublicReply };
+module.exports = { correlationGroups, applyCorrelationSafety, replyReadiness, buildPublicReply, xWeightedLength };
