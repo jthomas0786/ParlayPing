@@ -3,6 +3,7 @@ const { analyzeNcaafSlip } = require('./ncaaf-engine');
 const { analyzeMlbSlip } = require('./mlb-engine');
 const { analyzeNhlSlip } = require('./nhl-engine');
 const { analyzeBasketballSlip } = require('../../lib/basketball-adapter');
+const { analyzeMmaSlip } = require('../../lib/mma-adapter');
 const { analyzeExtendedSlip } = require('../../lib/extended-market-engine');
 
 const EXTENDED_SPORTS=new Set(['SOCCER','TENNIS','MMA','ESPORTS','TABLE_TENNIS']);
@@ -56,7 +57,8 @@ async function analyzeMultiSport(rawLegs,options={}){
     else if(sport==='MLB') analyses.push(await analyzeMlbSlip(sportLegs,{referenceTime:options.referenceTime}));
     else if(sport==='NHL') analyses.push(await analyzeNhlSlip(sportLegs,{referenceTime:options.referenceTime}));
     else if(['NBA','NCAAB','WNBA'].includes(sport)) analyses.push(await analyzeBasketballSlip(sport,sportLegs,{referenceTime:options.referenceTime}));
-    else if(EXTENDED_SPORTS.has(sport)) analyses.push(await analyzeExtendedSlip(sport,sportLegs,{referenceTime:options.referenceTime}));
+    else if(sport==='MMA') analyses.push(await analyzeMmaSlip(sportLegs,{referenceTime:options.referenceTime,now:options.now}));
+    else if(EXTENDED_SPORTS.has(sport)) analyses.push(await analyzeExtendedSlip(sport,sportLegs,{referenceTime:options.referenceTime,now:options.now}));
     else analyses.push({ok:true,generatedAt:new Date().toISOString(),source:`${sport} adapter pending`,results:sportLegs.map(unsupportedResult)});
   }
 
