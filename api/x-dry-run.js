@@ -1,0 +1,109 @@
+const crypto = require('crypto');
+const { parseSlip } = require('./lib/slip-parser');
+const { analyzeSlip } = require('./lib/parlay-engine');
+
+const X_API = 'https://api.x.com/2';
+
+function enc(v){return encodeURIComponent(String(v)).replace(/[!'()*]/g,c=>'%'+c.charCodeAt(0).toString(16).toUpperCase());}
+function credentials(){
+  const c={key:process.env.X_API_KEY,secret:process.env.X_API_SECRET,token:process.env.X_ACCESS_TOKEN,tokenSecret:process.env.X_ACCESS_TOKEN_SECRET};
+  if(!c.key||!c.secret||!c.token||!c.tokenSecret) throw new Error('OAuth 1.0a credentials are incomplete.');
+  return c;
+}
+function authorization(method,url){
+  const c=credentials();
+  const u=new URL(url);
+  const oauth={oauth_consumer_key:c.key,oauth_nonce:crypto.randomBytes(16).toString('hex'),oauth_signature_method:'HMAC-SHA1',oauth_timestamp:String(Math.floor(Date.now()/1000)),oauth_token:c.token,oauth_version:'1.0'};
+  const params=[];
+  for(const [k,v] of u.searchParams.entries()) params.push([k,v]);
+  for(const [k,v] of Object.entries(oauth)) params.push([k,v]);
+  params.sort((a,b)=>enc(a[0]).localeCompare(enc(b[0]))||enc(a[1]).localeCompare(enc(b[1])));
+  const paramString=params.map(([k,v])=>`${enc(k)}=${enc(v)}`).join('&');
+  const baseUrl=`${u.protocol}//${u.host}${u.pathname}`;
+  const base=`${method.toUpperCase()}&${enc(baseUrl)}&${enc(paramString)}`;
+  const signingKey=`${enc(c.secret)}&${enc(c.tokenSecret)}`;
+  oauth.oauth_signature=crypto.createHmac('sha1',signingKey).update(base).digest('base64');
+  return 'OAuth '+Object.entries(oauth).sort(([a],[b])=>a.localeCompare(b)).map(([k,v])=>`${enc(k)}="${enc(v)}"`).join(', ');
+}
+async function xGet(path){
+  const url=`${X_API}${path}`;
+  const r=await fetch(url,{headers:{authorization:authorization('GET',url)}});
+  const p=await r.json();
+  if(!r.ok) throw new Error(p?.detail||p?.title||`X API GET failed (${r.status})`);
+  return p;
+}
+function replyTarget(tweet){
+  return (tweet?.referenced_tweets||[]).find(r=>r.type==='replied_to')?.id || (tweet?.referenced_tweets||[]).find(r=>r.type==='quoted')?.id || null;
+}
+function collectMediaUrls(tweet, mediaByKey){
+  const out=[];
+  for(const key of tweet?.attachments?.media_keys||[]){
+    const media=mediaByKey.get(String(key));
+    const url=media?.url||media?.preview_image_url;
+    if(url) out.push(url);
+  }
+  return out;
+}
+function compactReply(analysis){
+  const c=analysis.counts||{};
+  const remaining=Number.isFinite(analysis.combinedTailProbability)?` · remaining ${Math.round(analysis.combinedTailProbability*100)}%`:'';
+  return `✅ ${c.hit||0} hit · 🔴 ${c.live||0} live · ⏳ ${c.pending||0} left${c.miss?` · ❌ ${c.miss}`:''}${remaining}`;
+}
+
+module.exports = async function handler(req,res){
+  res.setHeader('Cache-Control','no-store');
+  if(req.method!=='GET') return res.status(405).json({ok:false,error:'Use GET.'});
+  try{
+    const autoReplyEnabled=String(process.env.X_AUTOREPLY_ENABLED||'').toLowerCase()==='true';
+    if(autoReplyEnabled) return res.status(409).json({ok:false,error:'Dry-run endpoint disables itself when auto-replies are enabled.'});
+
+    const me=await xGet('/users/me?user.fields=id,name,username');
+    const userId=me?.data?.id;
+    if(!userId) throw new Error('Unable to resolve authenticated X user.');
+
+    const q=new URLSearchParams({
+      max_results:'10',
+      'tweet.fields':'author_id,attachments,created_at,conversation_id,possibly_sensitive,referenced_tweets,text',
+      expansions:'author_id,attachments.media_keys,referenced_tweets.id,referenced_tweets.id.attachments.media_keys',
+      'media.fields':'media_key,type,url,preview_image_url',
+      'user.fields':'username,name'
+    });
+    const mentions=await xGet(`/users/${userId}/mentions?${q}`);
+    const includesTweets=new Map((mentions.includes?.tweets||[]).map(t=>[String(t.id),t]));
+    const mediaByKey=new Map((mentions.includes?.media||[]).map(m=>[String(m.media_key),m]));
+    const rows=[];
+
+    for(const mention of [...(mentions.data||[])].reverse().slice(-5)){
+      const parentId=replyTarget(mention);
+      const row={mentionId:String(mention.id),createdAt:mention.created_at||null,parentId:parentId?String(parentId):null,status:'ignored'};
+      if(mention.possibly_sensitive){row.reason='possibly-sensitive';rows.push(row);continue;}
+      if(/\b(stop|unsubscribe|opt\s*out)\b/i.test(mention.text||'')){row.reason='opt-out';rows.push(row);continue;}
+      if(!parentId){row.reason='no-parent-post';rows.push(row);continue;}
+      const parent=includesTweets.get(String(parentId));
+      if(!parent){row.reason='parent-not-expanded';rows.push(row);continue;}
+      const mediaUrls=collectMediaUrls(parent,mediaByKey);
+      const parsed=await parseSlip({text:parent.text||'',mediaUrls});
+      row.parser=parsed.method;
+      row.mediaCount=mediaUrls.length;
+      row.detectedLegs=parsed.legs.length;
+      if(!parsed.legs.length){row.status='unparsed';rows.push(row);continue;}
+      const analysis=await analyzeSlip(parsed.legs,{baseUrl:process.env.PUBLIC_BASE_URL||'https://parlayping.net'});
+      row.status='ready';
+      row.counts=analysis.counts;
+      row.tailUrl=analysis.tailUrl||null;
+      row.replyPreview=compactReply(analysis);
+      rows.push(row);
+    }
+
+    return res.status(200).json({
+      ok:true,
+      dryRun:true,
+      authenticatedAs:{id:String(me.data.id),username:me.data.username,name:me.data.name},
+      postingSafety:{approvalRecorded:String(process.env.X_AI_REPLY_APPROVED||'').toLowerCase()==='true',autoReplyEnabled:false},
+      mentionsSeen:(mentions.data||[]).length,
+      candidates:rows
+    });
+  }catch(e){
+    return res.status(500).json({ok:false,dryRun:true,error:e?.message||'Dry run failed.'});
+  }
+};
