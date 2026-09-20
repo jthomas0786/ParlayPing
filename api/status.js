@@ -23,12 +23,12 @@ module.exports = async function handler(req, res) {
       ready: true,
       sports: ['NFL','NCAAF','MLB','NHL','NBA','NCAAB','WNBA','SOCCER','TENNIS','MMA','ESPORTS','TABLE_TENNIS'],
       gradingModes: {
-        fullOrLiveConnected: ['NFL','NCAAF','MLB','NHL','SOCCER','TENNIS','MMA'],
+        fullOrLiveConnected: ['NFL','NCAAF','MLB','NHL','SOCCER','TENNIS','MMA','TABLE_TENNIS'],
         basketball: ['NBA','NCAAB','WNBA'],
-        pregameSportsbookOnly: ['ESPORTS','TABLE_TENNIS']
+        pregameSportsbookOnly: ['ESPORTS']
       },
       source: 'The Sports Outpost simulations, sportsbook snapshots, and connected live/final stat feeds',
-      note: 'Soccer, Tennis and MMA have connected live/final grading. Esports and Table Tennis use real sportsbook pricing before start and remain unresolved after start until trustworthy grading feeds are connected.'
+      note: 'Soccer, Tennis, MMA and supported Table Tennis matches have connected live/final grading. Table Tennis uses official World Table Tennis data and fails closed when the official match cannot be identified unambiguously or the result is void-like. Esports remains sportsbook-pregame only until a trustworthy live player-stat feed is connected.'
     },
     parser: {
       textFallbackReady: true,
