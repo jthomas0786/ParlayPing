@@ -8,6 +8,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: parlayping-x-mentions
+  cancel-in-progress: false
+
 jobs:
   check-mentions:
     runs-on: ubuntu-latest
