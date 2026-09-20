@@ -3,7 +3,8 @@ const assert = require('node:assert/strict');
 const { heuristicParse, dedupeLegs, sanitizeLeg, normalizeMediaUrls, parseSlip } = require('../api/lib/slip-parser');
 const { normalizeLeg, encodeSlip } = require('../api/lib/parlay-engine');
 const { fairProbability, desiredBookLine } = require('../api/lib/ncaaf-engine');
-const { normalizeUniversalLeg } = require('../api/lib/sport-router');
+const { modelProbability, settleStatus, targetForLeg } = require('../api/lib/mlb-engine');
+const { normalizeUniversalLeg, normalizeSport, SUPPORTED_ANALYSIS } = require('../api/lib/sport-router');
 
 test('parses common NFL alt receiving yard leg', () => {
   const [leg] = heuristicParse('Jordan Addison 50+ receiving yards');
@@ -59,6 +60,28 @@ test('heuristic marks explicit college football text as NCAAF', () => {
   assert.equal(leg.line, 40);
 });
 
+test('heuristic parses MLB hits, total bases, HR and HRR markets', () => {
+  const legs = heuristicParse('MLB\nBryce Harper 1+ Hits\nPete Alonso 2+ Total Bases\nAaron Judge to hit a home run\nShohei Ohtani 2+ Hits + Runs + RBI');
+  assert.equal(legs.length, 4);
+  assert.deepEqual(legs.map(l=>l.sport), ['MLB','MLB','MLB','MLB']);
+  assert.equal(legs[0].market, 'hits');
+  assert.equal(legs[0].line, 1);
+  assert.equal(legs[0].inclusive, true);
+  assert.equal(legs[1].market, 'totalBases');
+  assert.equal(legs[1].line, 2);
+  assert.equal(legs[2].market, 'homeRun');
+  assert.equal(legs[2].side, 'yes');
+  assert.equal(legs[2].line, null);
+  assert.equal(legs[3].market, 'hrr');
+});
+
+test('MLB market itself is enough for heuristic sport detection', () => {
+  const [leg] = heuristicParse('Bryce Harper Over 0.5 Hits');
+  assert.equal(leg.sport, 'MLB');
+  assert.equal(leg.market, 'hits');
+  assert.equal(leg.line, 0.5);
+});
+
 test('normalizer converts market alias and team', () => {
   const leg = normalizeLeg({ sport:'nfl', player:'Bijan Robinson', team:'atl', market:'receiving yards', side:'OVER', line:49.5 }, 0);
   assert.equal(leg.sport, 'NFL');
@@ -71,6 +94,13 @@ test('universal router normalizes college football aliases', () => {
   const leg = normalizeUniversalLeg({ sport:'CFB', player:'Jaleel Skinner', market:'recYds', side:'over', line:40, inclusive:true }, 0);
   assert.equal(leg.sport, 'NCAAF');
   assert.equal(leg.player, 'Jaleel Skinner');
+});
+
+test('universal router recognizes MLB/baseball aliases', () => {
+  assert.equal(normalizeSport('baseball'), 'MLB');
+  assert.ok(SUPPORTED_ANALYSIS.has('MLB'));
+  const leg=normalizeUniversalLeg({sport:'MLB',player:'Bryce Harper',market:'hits',side:'over',line:1,inclusive:true},0);
+  assert.equal(leg.sport,'MLB');
 });
 
 test('encoded slip contains versioned legs payload', () => {
@@ -110,6 +140,25 @@ test('NCAAF milestone lines map to conventional half-yard sportsbook lines', () 
 test('NCAAF two-way market price is de-vigged', () => {
   const row = { overPrice:-110, underPrice:-110 };
   assert.equal(Math.round(fairProbability(row,'over') * 1000) / 1000, 0.5);
+});
+
+test('MLB model probability is used only for the modeled threshold', () => {
+  const file={props:{hits:{over:0.5}},model:{simRuns:10000}};
+  const player={props:{hits:{p:0.70}}};
+  assert.equal(modelProbability({market:'hits',side:'over',line:1,inclusive:true},file,player),0.70);
+  assert.equal(modelProbability({market:'hits',side:'over',line:0.5,inclusive:false},file,player),0.70);
+  assert.equal(modelProbability({market:'hits',side:'under',line:0.5,inclusive:false},file,player),0.30);
+  assert.equal(modelProbability({market:'hits',side:'over',line:1.5,inclusive:false},file,player),null);
+});
+
+test('MLB live count props lock over hits and failed unders without waiting for final', () => {
+  const over={market:'hits',side:'over',line:1,inclusive:true};
+  const under={market:'hits',side:'under',line:0.5,inclusive:false};
+  assert.equal(targetForLeg(over),1);
+  assert.equal(settleStatus(over,1,'in'),'HIT');
+  assert.equal(settleStatus(under,1,'in'),'MISS');
+  assert.equal(settleStatus(over,0,'in'),'LIVE');
+  assert.equal(settleStatus(over,0,'post'),'MISS');
 });
 
 test('only accepts safe screenshot image inputs and caps at four', () => {
