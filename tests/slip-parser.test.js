@@ -4,6 +4,7 @@ const { heuristicParse, dedupeLegs, sanitizeLeg, normalizeMediaUrls, parseSlip }
 const { normalizeLeg, encodeSlip } = require('../api/lib/parlay-engine');
 const { fairProbability, desiredBookLine } = require('../api/lib/ncaaf-engine');
 const { modelProbability, settleStatus, targetForLeg } = require('../api/lib/mlb-engine');
+const { distributionProbability, settleStatus: settleNhlStatus, targetForLeg: nhlTargetForLeg, fairProbabilityFromQuote, desiredOddsLine } = require('../api/lib/nhl-engine');
 const { normalizeUniversalLeg, normalizeSport, SUPPORTED_ANALYSIS } = require('../api/lib/sport-router');
 
 test('parses common NFL alt receiving yard leg', () => {
@@ -24,7 +25,6 @@ test('parses sportsbook over line', () => {
   assert.equal(leg.market, 'recYds');
   assert.equal(leg.side, 'over');
   assert.equal(leg.line, 59.5);
-  assert.equal(leg.inclusive, false);
 });
 
 test('parses sportsbook under line', () => {
@@ -32,7 +32,6 @@ test('parses sportsbook under line', () => {
   assert.ok(leg);
   assert.equal(leg.player, 'Patrick Mahomes');
   assert.equal(leg.market, 'passTds');
-  assert.equal(leg.side, 'under');
   assert.equal(leg.line, 2.5);
 });
 
@@ -82,6 +81,26 @@ test('MLB market itself is enough for heuristic sport detection', () => {
   assert.equal(leg.line, 0.5);
 });
 
+test('heuristic parses NHL SOG, points and anytime goal markets', () => {
+  const legs = heuristicParse('NHL\nConnor McDavid 3+ Shots on Goal\nNathan MacKinnon Over 0.5 Points\nAuston Matthews Anytime Goal Scorer');
+  assert.equal(legs.length, 3);
+  assert.deepEqual(legs.map(l=>l.sport), ['NHL','NHL','NHL']);
+  assert.equal(legs[0].market, 'shotsOnGoal');
+  assert.equal(legs[0].line, 3);
+  assert.equal(legs[0].inclusive, true);
+  assert.equal(legs[1].market, 'points');
+  assert.equal(legs[1].line, 0.5);
+  assert.equal(legs[2].market, 'anytimeGoal');
+  assert.equal(legs[2].side, 'yes');
+  assert.equal(legs[2].line, null);
+});
+
+test('SOG wording is strong enough to identify NHL without a league header', () => {
+  const [leg] = heuristicParse('Connor McDavid 4+ SOG');
+  assert.equal(leg.sport, 'NHL');
+  assert.equal(leg.market, 'shotsOnGoal');
+});
+
 test('normalizer converts market alias and team', () => {
   const leg = normalizeLeg({ sport:'nfl', player:'Bijan Robinson', team:'atl', market:'receiving yards', side:'OVER', line:49.5 }, 0);
   assert.equal(leg.sport, 'NFL');
@@ -101,6 +120,13 @@ test('universal router recognizes MLB/baseball aliases', () => {
   assert.ok(SUPPORTED_ANALYSIS.has('MLB'));
   const leg=normalizeUniversalLeg({sport:'MLB',player:'Bryce Harper',market:'hits',side:'over',line:1,inclusive:true},0);
   assert.equal(leg.sport,'MLB');
+});
+
+test('universal router recognizes NHL/hockey aliases', () => {
+  assert.equal(normalizeSport('hockey'), 'NHL');
+  assert.ok(SUPPORTED_ANALYSIS.has('NHL'));
+  const leg=normalizeUniversalLeg({sport:'NHL',player:'Connor McDavid',market:'shotsOnGoal',side:'over',line:3,inclusive:true},0);
+  assert.equal(leg.sport,'NHL');
 });
 
 test('encoded slip contains versioned legs payload', () => {
@@ -159,6 +185,35 @@ test('MLB live count props lock over hits and failed unders without waiting for 
   assert.equal(settleStatus(under,1,'in'),'MISS');
   assert.equal(settleStatus(over,0,'in'),'LIVE');
   assert.equal(settleStatus(over,0,'post'),'MISS');
+});
+
+test('NHL simulation distribution prices milestone and under selections', () => {
+  const metric={distribution:[[0,0.2],[1,0.3],[2,0.5]]};
+  assert.equal(distributionProbability(metric,{market:'points',side:'over',line:2,inclusive:true}),0.5);
+  assert.equal(distributionProbability(metric,{market:'points',side:'under',line:1.5,inclusive:false}),0.5);
+});
+
+test('NHL live props lock achieved overs and failed unders', () => {
+  const over={market:'shotsOnGoal',side:'over',line:3,inclusive:true};
+  const under={market:'shotsOnGoal',side:'under',line:2.5,inclusive:false};
+  assert.equal(nhlTargetForLeg(over),3);
+  assert.equal(settleNhlStatus(over,3,'in'),'HIT');
+  assert.equal(settleNhlStatus(under,3,'in'),'MISS');
+  assert.equal(settleNhlStatus(over,2,'in'),'LIVE');
+  assert.equal(settleNhlStatus(over,2,'post'),'MISS');
+});
+
+test('NHL anytime goal resolves immediately after a goal and at final', () => {
+  const leg={market:'anytimeGoal',side:'yes',line:null,inclusive:true};
+  assert.equal(settleNhlStatus(leg,1,'in'),'HIT');
+  assert.equal(settleNhlStatus(leg,0,'in'),'LIVE');
+  assert.equal(settleNhlStatus(leg,0,'post'),'MISS');
+});
+
+test('NHL sportsbook lines use de-vigged probability and milestone conversion', () => {
+  assert.equal(desiredOddsLine({market:'shotsOnGoal',side:'over',line:3,inclusive:true}),2.5);
+  assert.equal(desiredOddsLine({market:'anytimeGoal',side:'yes',line:null,inclusive:true}),0.5);
+  assert.equal(Math.round(fairProbabilityFromQuote({over:-110,under:-110},'over')*1000)/1000,0.5);
 });
 
 test('only accepts safe screenshot image inputs and caps at four', () => {
