@@ -2,6 +2,7 @@ const { parseSlip } = require('./lib/slip-parser');
 const { analyzeSlip } = require('./lib/parlay-engine');
 
 const X_API = 'https://api.x.com/2';
+const X_USERNAME = process.env.X_USERNAME || 'ParlayPing';
 
 function authHeaders() {
   const token = process.env.X_USER_ACCESS_TOKEN;
@@ -25,6 +26,14 @@ async function xPost(path, body) {
   const payload = await response.json();
   if (!response.ok) throw new Error(payload?.detail || payload?.title || `X API POST failed (${response.status})`);
   return payload;
+}
+
+async function resolveBotUserId() {
+  if (process.env.X_USER_ID) return String(process.env.X_USER_ID);
+  const user = await xGet(`/users/by/username/${encodeURIComponent(X_USERNAME)}?user.fields=id,username`);
+  const id = user?.data?.id;
+  if (!id) throw new Error(`Unable to resolve @${X_USERNAME} user ID from X.`);
+  return String(id);
 }
 
 function replyTarget(tweet) {
@@ -65,9 +74,7 @@ function buildXReply(analysis) {
   let text = `🔔 PARLAYPING LIVE\n${summary}`;
   if (featured.length) text += `\n\n${featured.map(compactLine).join('\n')}`;
   text += remaining + link;
-  if (text.length > 278) {
-    text = `🔔 PARLAYPING LIVE\n${summary}${remaining}${link}`;
-  }
+  if (text.length > 278) text = `🔔 PARLAYPING LIVE\n${summary}${remaining}${link}`;
   return text.slice(0, 280);
 }
 
@@ -89,8 +96,7 @@ async function getContext(userId) {
 }
 
 async function processMentions({ dryRun }) {
-  const userId = process.env.X_USER_ID;
-  if (!userId) throw new Error('X_USER_ID is not configured.');
+  const userId = await resolveBotUserId();
   const { mentions, replied } = await getContext(userId);
   const includesTweets = new Map((mentions.includes?.tweets || []).map(t => [String(t.id), t]));
   const mediaByKey = new Map((mentions.includes?.media || []).map(m => [String(m.media_key), m]));
@@ -134,7 +140,7 @@ module.exports = async function handler(req, res) {
     const enabled = String(process.env.X_AUTOREPLY_ENABLED || '').toLowerCase() === 'true';
     const dryRun = !(approved && enabled);
     const candidates = await processMentions({ dryRun });
-    return res.status(200).json({ ok:true, dryRun, xApprovalRecorded:approved, autoReplyEnabled:enabled, processed:candidates.length, candidates });
+    return res.status(200).json({ ok:true, dryRun, username:X_USERNAME, xApprovalRecorded:approved, autoReplyEnabled:enabled, processed:candidates.length, candidates });
   } catch (error) {
     console.error('ParlayPing X worker', error);
     return res.status(500).json({ ok:false, error:error?.message || 'X worker failed.' });
