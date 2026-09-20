@@ -2,7 +2,10 @@ name: ParlayPing X Mention Check
 
 on:
   schedule:
-    - cron: '*/5 * * * *'
+    # GitHub documents that scheduled workflows may be delayed/dropped under load,
+    # especially around the start of the hour. Keep this as a serialized fallback,
+    # offset from the common :00/:05 boundaries.
+    - cron: '2-57/5 * * * *'
   workflow_dispatch:
 
 permissions:
