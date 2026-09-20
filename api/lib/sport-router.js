@@ -3,13 +3,15 @@ const { analyzeNcaafSlip } = require('./ncaaf-engine');
 const { analyzeMlbSlip } = require('./mlb-engine');
 const { analyzeNhlSlip } = require('./nhl-engine');
 const { analyzeBasketballSlip } = require('../../lib/basketball-adapter');
+const { analyzeExtendedSlip } = require('../../lib/extended-market-engine');
 
-const SUPPORTED_ANALYSIS = new Set(['NFL','NCAAF','MLB','NHL','NBA','NCAAB','WNBA']);
+const EXTENDED_SPORTS=new Set(['SOCCER','TENNIS','MMA','ESPORTS','TABLE_TENNIS']);
+const SUPPORTED_ANALYSIS = new Set(['NFL','NCAAF','MLB','NHL','NBA','NCAAB','WNBA',...EXTENDED_SPORTS]);
 
 function pct(v){ return Number.isFinite(v) ? Math.round(v*1000)/10 : null; }
 function normalizeSport(value){
   const raw=String(value||'NFL').toUpperCase().replace(/[^A-Z0-9]/g,'');
-  const aliases={CFB:'NCAAF',COLLEGEFOOTBALL:'NCAAF',NCAAFOOTBALL:'NCAAF',PROFOOTBALL:'NFL',BASEBALL:'MLB',PROBASEBALL:'MLB',MAJORLEAGUEBASEBALL:'MLB',HOCKEY:'NHL',PROHOCKEY:'NHL',NATIONALHOCKEYLEAGUE:'NHL',BASKETBALL:'NBA',PROBASKBALL:'NBA',PROBASKETBALL:'NBA',COLLEGEBASKETBALL:'NCAAB',NCAAM:'NCAAB',NCAAMBB:'NCAAB',WOMENSNBA:'WNBA'};
+  const aliases={CFB:'NCAAF',COLLEGEFOOTBALL:'NCAAF',NCAAFOOTBALL:'NCAAF',PROFOOTBALL:'NFL',BASEBALL:'MLB',PROBASEBALL:'MLB',MAJORLEAGUEBASEBALL:'MLB',HOCKEY:'NHL',PROHOCKEY:'NHL',NATIONALHOCKEYLEAGUE:'NHL',BASKETBALL:'NBA',PROBASKBALL:'NBA',PROBASKETBALL:'NBA',COLLEGEBASKETBALL:'NCAAB',NCAAM:'NCAAB',NCAAMBB:'NCAAB',WOMENSNBA:'WNBA',UFC:'MMA',MIXEDMARTIALARTS:'MMA',TABLETENNIS:'TABLE_TENNIS',PINGPONG:'TABLE_TENNIS',EPL:'SOCCER',PREMIERLEAGUE:'SOCCER',MLS:'SOCCER'};
   return aliases[raw]||raw||'NFL';
 }
 function normalizeUniversalLeg(input,index){
@@ -54,6 +56,7 @@ async function analyzeMultiSport(rawLegs,options={}){
     else if(sport==='MLB') analyses.push(await analyzeMlbSlip(sportLegs,{referenceTime:options.referenceTime}));
     else if(sport==='NHL') analyses.push(await analyzeNhlSlip(sportLegs,{referenceTime:options.referenceTime}));
     else if(['NBA','NCAAB','WNBA'].includes(sport)) analyses.push(await analyzeBasketballSlip(sport,sportLegs,{referenceTime:options.referenceTime}));
+    else if(EXTENDED_SPORTS.has(sport)) analyses.push(await analyzeExtendedSlip(sport,sportLegs,{referenceTime:options.referenceTime}));
     else analyses.push({ok:true,generatedAt:new Date().toISOString(),source:`${sport} adapter pending`,results:sportLegs.map(unsupportedResult)});
   }
 
@@ -89,4 +92,4 @@ async function analyzeMultiSport(rawLegs,options={}){
   };
 }
 
-module.exports={ analyzeMultiSport, normalizeSport, normalizeUniversalLeg, SUPPORTED_ANALYSIS };
+module.exports={ analyzeMultiSport, normalizeSport, normalizeUniversalLeg, SUPPORTED_ANALYSIS, EXTENDED_SPORTS };
