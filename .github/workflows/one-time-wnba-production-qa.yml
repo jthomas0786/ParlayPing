@@ -1,0 +1,75 @@
+name: One-time WNBA production QA
+
+on:
+  push:
+    paths:
+      - '.github/workflows/one-time-wnba-production-qa.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Select a real WNBA market and verify production
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --location \
+            'https://raw.githubusercontent.com/jthomas0786/The-Sports-Outpost/main/slates/wnba-odds.json' \
+            -o /tmp/wnba.json
+
+          node - <<'NODE'
+          const fs=require('fs');
+          const d=JSON.parse(fs.readFileSync('/tmp/wnba.json','utf8'));
+          const allowed=new Set(['points','rebounds','assists','threes']);
+          const now=Date.now();
+          const rows=(d.rows||[]).filter(r=>
+            allowed.has(r.market) &&
+            !String(r.marketKey||'').endsWith('_alt') &&
+            Number.isFinite(Number(r.line)) && Number(r.line)>0 &&
+            Number.isFinite(Number(r.overPrice)) && Number.isFinite(Number(r.underPrice)) &&
+            /[A-Za-z].*\s+[A-Za-z]/.test(String(r.player||'')) &&
+            Date.parse(r.commenceTime||'') > now-3*60*60*1000
+          );
+          if(!rows.length) throw new Error('No current two-sided WNBA player prop found for production QA.');
+          rows.sort((a,b)=>Date.parse(a.commenceTime)-Date.parse(b.commenceTime));
+          const r=rows[0];
+          const payload={referenceTime:new Date().toISOString(),legs:[{
+            sport:'WNBA',player:r.player,team:r.team||null,market:r.market,side:'over',line:Number(r.line),inclusive:false,
+            originalText:`${r.player} Over ${r.line} ${r.market}`
+          }]};
+          fs.writeFileSync('/tmp/payload.json',JSON.stringify(payload));
+          fs.writeFileSync('/tmp/selected.json',JSON.stringify({player:r.player,market:r.market,line:r.line,book:r.book,commenceTime:r.commenceTime,eventId:r.eventId},null,2));
+          console.log('Selected live sportsbook row:',fs.readFileSync('/tmp/selected.json','utf8'));
+          NODE
+
+          curl --fail --silent --show-error --location --post301 --post302 --post303 \
+            -X POST 'https://parlayping.net/api/analyze' \
+            -H 'content-type: application/json' \
+            --data-binary @/tmp/payload.json \
+            -o /tmp/result.json
+          cat /tmp/result.json
+
+          node - <<'NODE'
+          const fs=require('fs');
+          const result=JSON.parse(fs.readFileSync('/tmp/result.json','utf8'));
+          const selected=JSON.parse(fs.readFileSync('/tmp/selected.json','utf8'));
+          if(result.ok!==true) throw new Error(`analysis not ok: ${JSON.stringify(result)}`);
+          if(!(result.sports||[]).includes('WNBA')) throw new Error('WNBA missing from sports');
+          if(!(result.supportedSports||[]).includes('WNBA')) throw new Error('WNBA missing from supportedSports');
+          if((result.unsupportedSports||[]).includes('WNBA')) throw new Error('WNBA incorrectly unsupported');
+          if(Number(result.counts?.unresolved)!==0) throw new Error(`WNBA unresolved: ${JSON.stringify(result.counts)}`);
+          if((result.results||[]).length!==1) throw new Error('Expected exactly one result');
+          const row=result.results[0];
+          if(row.player!==selected.player||row.market!==selected.market) throw new Error(`Wrong matched leg: ${JSON.stringify(row)}`);
+          if(row.status==='UNRESOLVED') throw new Error(`WNBA leg unresolved: ${JSON.stringify(row)}`);
+          if(['PENDING','LIVE'].includes(row.status)){
+            if(!Number.isFinite(Number(row.probability))) throw new Error(`Missing WNBA sportsbook probability: ${JSON.stringify(row)}`);
+            if(!/^sportsbook-(devig|implied)-median$/.test(String(row.probabilityMethod||''))) throw new Error(`Wrong probability method: ${row.probabilityMethod}`);
+          }
+          if(!String(result.replyText||'').startsWith('🔔 ParlayPing Live')) throw new Error(`Wrong reply title: ${result.replyText}`);
+          console.log('WNBA production verified:',{player:row.player,market:row.market,line:row.line,status:row.status,probability:row.probability,probabilityMethod:row.probabilityMethod,gameId:row.gameId,matchup:row.matchup});
+          NODE
