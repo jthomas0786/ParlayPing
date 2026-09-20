@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { heuristicParse, sanitizeLeg, BASKETBALL_MARKETS } = require('../api/lib/slip-parser');
-const { parseSummaryPlayers, settleStatus, targetForLeg, quoteProbability } = require('../api/lib/basketball-engine');
+const { parseSummaryPlayers, settleStatus, targetForLeg, quoteProbability } = require('../lib/basketball-engine');
 const { normalizeSport, SUPPORTED_ANALYSIS } = require('../api/lib/sport-router');
 
 test('heuristic parses WNBA points rebounds and steals without MLB/NHL collisions', () => {
