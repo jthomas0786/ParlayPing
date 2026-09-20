@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { applyCorrelationSafety, buildPublicReply } = require('../api/lib/analysis-safety');
+const { applyCorrelationSafety, replyReadiness, buildPublicReply } = require('../api/lib/analysis-safety');
 
 test('withholds naive combined probability for same-game pending legs', () => {
   const analysis = applyCorrelationSafety({
@@ -38,4 +38,36 @@ test('keeps independence product when all pending legs are in distinct games', (
   assert.equal(analysis.combinedTailProbability, 0.24);
   assert.equal(analysis.combinedTailProbabilityMethod, 'independence-product-distinct-games');
   assert.match(buildPublicReply(analysis), /Remaining model: 24%/);
+});
+
+test('blocks public reply whenever any extracted leg is unresolved', () => {
+  const analysis = applyCorrelationSafety({
+    counts: { hit: 0, miss: 0, live: 0, pending: 1, unresolved: 1 },
+    combinedTailProbability: 0.55,
+    results: [
+      { id: 'a', player: 'Known Player', gameId: 'G1', status: 'PENDING', displayMarket: 'ATD', probability: 0.55 },
+      { id: 'b', player: 'Unknown Player', status: 'UNRESOLVED', displayMarket: 'O50.5 REC YDS', probability: null }
+    ]
+  });
+
+  const readiness = replyReadiness(analysis);
+  assert.equal(readiness.ready, false);
+  assert.equal(readiness.reason, 'unresolved-legs');
+  assert.equal(readiness.unresolvedCount, 1);
+  assert.equal(buildPublicReply(analysis), null);
+});
+
+test('allows public reply only when all analyzed legs resolve', () => {
+  const analysis = applyCorrelationSafety({
+    counts: { hit: 0, miss: 0, live: 0, pending: 1, unresolved: 0 },
+    combinedTailProbability: 0.55,
+    results: [
+      { id: 'a', player: 'Known Player', gameId: 'G1', status: 'PENDING', displayMarket: 'ATD', probability: 0.55 }
+    ]
+  });
+
+  const readiness = replyReadiness(analysis);
+  assert.equal(readiness.ready, true);
+  assert.equal(readiness.unresolvedCount, 0);
+  assert.match(buildPublicReply(analysis), /PARLAYPING LIVE/);
 });
