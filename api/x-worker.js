@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 const { parseSlip } = require('./lib/slip-parser');
 const { analyzeSlip } = require('./lib/parlay-engine');
-const { applyCorrelationSafety, buildPublicReply } = require('./lib/analysis-safety');
+const { applyCorrelationSafety, replyReadiness, buildPublicReply } = require('./lib/analysis-safety');
 
 const X_API = 'https://api.x.com/2';
 const X_USERNAME = process.env.X_USERNAME || 'ParlayPing';
@@ -170,21 +170,32 @@ async function processMentions({ dryRun }) {
     }
     const raw = await analyzeSlip(parsed.legs, { baseUrl: process.env.PUBLIC_BASE_URL || 'https://parlayping.net' });
     const analysis = applyCorrelationSafety(raw);
-    const replyText = buildPublicReply(analysis, { maxLegs: 3 });
+    const readiness = replyReadiness(analysis);
     const row = {
       mentionId: mention.id,
       parentId,
-      status: 'ready',
+      status: readiness.ready ? 'ready' : 'needs-match',
       parser: parsed.method,
-      replyText,
+      mediaCount: mediaUrls.length,
       counts: analysis.counts,
+      readiness,
+      unresolvedLegs: (analysis.results || []).filter(r => r?.status === 'UNRESOLVED').map(r => ({
+        player:r.player||null,
+        team:r.team||null,
+        market:r.market||null,
+        side:r.side||null,
+        line:r.line??null,
+        originalText:r.originalText||null
+      })),
       correlation: analysis.correlation,
       combinedTailProbability: analysis.combinedTailProbability,
       combinedTailProbabilityMethod: analysis.combinedTailProbabilityMethod,
-      tailUrl: analysis.tailUrl
+      tailUrl: analysis.tailUrl,
+      replyText: readiness.ready ? buildPublicReply(analysis, { maxLegs: 3 }) : null
     };
-    if (!dryRun) {
-      const posted = await xPost('/tweets', { text: replyText, reply: { in_reply_to_tweet_id: String(mention.id) } });
+
+    if (!dryRun && readiness.ready && row.replyText) {
+      const posted = await xPost('/tweets', { text: row.replyText, reply: { in_reply_to_tweet_id: String(mention.id) } });
       row.status = 'replied';
       row.replyId = posted?.data?.id || null;
     }
