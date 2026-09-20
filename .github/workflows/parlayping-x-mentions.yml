@@ -1,11 +1,6 @@
-name: ParlayPing X Mention Check
+name: ParlayPing X Mention Manual Fallback
 
 on:
-  schedule:
-    # GitHub documents that scheduled workflows may be delayed/dropped under load,
-    # especially around the start of the hour. Keep this as a serialized fallback,
-    # offset from the common :00/:05 boundaries.
-    - cron: '2-57/5 * * * *'
   workflow_dispatch:
 
 permissions:
@@ -32,7 +27,7 @@ jobs:
             echo "configured=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Poll @ParlayPing mentions
+      - name: Poll @ParlayPing mentions manually
         if: steps.config.outputs.configured == 'true'
         env:
           WORKER_SECRET: ${{ secrets.PARLAYPING_WORKER_SECRET }}
