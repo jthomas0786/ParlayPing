@@ -76,8 +76,8 @@ function planPrice(plans,id){
 function renderBilling(data,plans){
   ensureBillingCard();
   const usage=data.usage||{};const sub=data.subscription||null;
-  const plan=String(sub?.plan_id||usage.plan||'free').toLowerCase();
   const paid=sub?.provider==='stripe'&&Boolean(sub?.provider_subscription_id)&&['active','trialing','past_due','unpaid'].includes(String(sub?.status||''));
+  const plan=String(paid?(sub?.plan_id||usage.plan||'free'):(usage.plan||'free')).toLowerCase();
   $('billingBadge').textContent=plan.toUpperCase();
   if(paid){
     $('billingFreeActions').classList.add('hidden');$('billingPaidActions').classList.remove('hidden');
