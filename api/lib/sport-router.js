@@ -1,12 +1,13 @@
 const { analyzeSlip: analyzeNflSlip, normalizeLeg, encodeSlip } = require('./parlay-engine');
 const { analyzeNcaafSlip } = require('./ncaaf-engine');
+const { analyzeMlbSlip } = require('./mlb-engine');
 
-const SUPPORTED_ANALYSIS = new Set(['NFL','NCAAF']);
+const SUPPORTED_ANALYSIS = new Set(['NFL','NCAAF','MLB']);
 
 function pct(v){ return Number.isFinite(v) ? Math.round(v*1000)/10 : null; }
 function normalizeSport(value){
   const raw=String(value||'NFL').toUpperCase().replace(/[^A-Z0-9]/g,'');
-  const aliases={CFB:'NCAAF',COLLEGEFOOTBALL:'NCAAF',NCAAFOOTBALL:'NCAAF',PROFOOTBALL:'NFL'};
+  const aliases={CFB:'NCAAF',COLLEGEFOOTBALL:'NCAAF',NCAAFOOTBALL:'NCAAF',PROFOOTBALL:'NFL',BASEBALL:'MLB',PROBASEBALL:'MLB',MAJORLEAGUEBASEBALL:'MLB'};
   return aliases[raw]||raw||'NFL';
 }
 function normalizeUniversalLeg(input,index){
@@ -48,6 +49,7 @@ async function analyzeMultiSport(rawLegs,options={}){
   for(const [sport,sportLegs] of grouped){
     if(sport==='NFL') analyses.push(await analyzeNflSlip(sportLegs,{baseUrl:options.baseUrl}));
     else if(sport==='NCAAF') analyses.push(await analyzeNcaafSlip(sportLegs));
+    else if(sport==='MLB') analyses.push(await analyzeMlbSlip(sportLegs,{referenceTime:options.referenceTime}));
     else analyses.push({ok:true,generatedAt:new Date().toISOString(),source:`${sport} adapter pending`,results:sportLegs.map(unsupportedResult)});
   }
 
