@@ -7,9 +7,10 @@ const odds={schemaVersion:1,meta:{source:'parlayapi-pinnacle',fetchedAt:'2099-09
   {eventId:'cs2-1',sportKey:'esports_cs2',game:'CS2',commenceTime:start,homeTeam:'Team Alpha',awayTeam:'Team Bravo',selection:'Team Alpha',market:'matchWinner',book:'Pinnacle',bookKey:'pinnacle',price:-125,fairProbability:0.54,snapshotTime:'2099-09-20T18:00:00.000Z'},
   {eventId:'cs2-1',sportKey:'esports_cs2',game:'CS2',commenceTime:start,homeTeam:'Team Alpha',awayTeam:'Team Bravo',selection:'Team Bravo',market:'matchWinner',book:'Pinnacle',bookKey:'pinnacle',price:105,fairProbability:0.46,snapshotTime:'2099-09-20T18:00:00.000Z'}
 ]};
-const final={schemaVersion:1,source:'parlayapi-results-archive',sport:'ESPORTS',generatedAt:'2099-09-20T22:00:00.000Z',finalOnly:true,liveCoverage:false,matches:{
+const final={schemaVersion:1,source:'trusted-esports-final-source',sport:'ESPORTS',generatedAt:'2099-09-20T22:00:00.000Z',settlementConnected:true,finalOnly:true,liveCoverage:false,matches:{
   'cs2-1':{id:'cs2-1',sport:'ESPORTS',sportKey:'esports_cs2',game:'CS2',commenceTime:start,homeTeam:'Team Alpha',awayTeam:'Team Bravo',homeScore:2,awayScore:1,status:'FINAL',final:true,voidLike:false,winner:'Team Alpha'}
 }};
+const untrustedFinal={...final,source:'unvalidated-archive',settlementConnected:false};
 const voidFinal={...final,matches:{'cs2-1':{...final.matches['cs2-1'],voidLike:true,winner:null,resultStatus:'VOID'}}};
 
 function response(data,status=200){return {ok:status>=200&&status<300,status,json:async()=>data};}
@@ -34,25 +35,31 @@ test('pregame esports match winner uses de-vigged Pinnacle h2h probability',asyn
   assert.equal(row.gameId,'cs2-1');
 }));
 
-test('started esports match stays unresolved until archived final exists',async()=>withSnapshots({resultSnapshot:null},async()=>{
+test('started esports match stays unresolved when no trustworthy final source is connected',async()=>withSnapshots({resultSnapshot:null},async()=>{
   const result=await analyzeEsportsSlip([leg('Team Alpha')],{referenceTime:start,now:Date.parse('2099-09-20T20:30:00.000Z')});
   assert.equal(result.results[0].status,'UNRESOLVED');
-  assert.equal(result.results[0].resolutionReason,'esports-final-result-not-yet-available');
+  assert.equal(result.results[0].resolutionReason,'esports-trustworthy-live-final-source-not-connected');
 }));
 
-test('archived clean esports winner grades HIT',async()=>withSnapshots({},async()=>{
+test('untrusted archive rows cannot settle a started esports match',async()=>withSnapshots({resultSnapshot:untrustedFinal},async()=>{
+  const result=await analyzeEsportsSlip([leg('Team Alpha')],{referenceTime:start,now:Date.parse('2099-09-20T22:00:00.000Z')});
+  assert.equal(result.results[0].status,'UNRESOLVED');
+  assert.equal(result.results[0].resolutionReason,'esports-trustworthy-live-final-source-not-connected');
+}));
+
+test('explicitly trusted clean esports winner grades HIT',async()=>withSnapshots({},async()=>{
   const result=await analyzeEsportsSlip([leg('Team Alpha')],{referenceTime:start,now:Date.parse('2099-09-20T22:00:00.000Z')});
   assert.equal(result.results[0].status,'HIT');
   assert.equal(result.results[0].current,1);
 }));
 
-test('archived clean esports loser grades MISS',async()=>withSnapshots({},async()=>{
+test('explicitly trusted clean esports loser grades MISS',async()=>withSnapshots({},async()=>{
   const result=await analyzeEsportsSlip([leg('Team Bravo')],{referenceTime:start,now:Date.parse('2099-09-20T22:00:00.000Z')});
   assert.equal(result.results[0].status,'MISS');
   assert.equal(result.results[0].current,0);
 }));
 
-test('void-like esports final fails closed',async()=>withSnapshots({resultSnapshot:voidFinal},async()=>{
+test('void-like trusted esports final fails closed',async()=>withSnapshots({resultSnapshot:voidFinal},async()=>{
   const result=await analyzeEsportsSlip([leg('Team Alpha')],{referenceTime:start,now:Date.parse('2099-09-20T22:00:00.000Z')});
   assert.equal(result.results[0].status,'UNRESOLVED');
   assert.equal(result.results[0].resolutionReason,'esports-final-void-like');
