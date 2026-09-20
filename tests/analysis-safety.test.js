@@ -69,5 +69,5 @@ test('allows public reply only when all analyzed legs resolve', () => {
   const readiness = replyReadiness(analysis);
   assert.equal(readiness.ready, true);
   assert.equal(readiness.unresolvedCount, 0);
-  assert.match(buildPublicReply(analysis), /PARLAYPING LIVE/);
+  assert.match(buildPublicReply(analysis), /ParlayPing Live/);
 });
