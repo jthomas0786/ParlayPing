@@ -41,8 +41,10 @@ jobs:
           for (const sport of requiredSports) if (!sports.has(sport)) throw new Error(`Production is missing staged sport ${sport}`);
           if (payload.parser?.visionConfigured !== true) throw new Error('OPENAI_API_KEY / screenshot vision is not configured in production.');
           if (payload.x?.configured !== true) throw new Error('X OAuth credentials are incomplete in production.');
-          if (payload.x?.postingReady === true) throw new Error('X posting is already enabled; readiness must be verified before activation.');
-          console.log(`✓ Production reports ${requiredSports.length} staged sports, screenshot vision configured, and X posting still disabled.`);
+          if (payload.x?.approvalRecorded !== false || payload.x?.autoReplyEnabled !== false || payload.x?.postingReady !== false) {
+            throw new Error(`Both X activation gates must be explicitly off before readiness: ${JSON.stringify(payload.x || {})}`);
+          }
+          console.log(`✓ Production reports ${requiredSports.length} staged sports, screenshot vision configured, and both X activation gates disabled.`);
           NODE
 
       - name: Verify X OAuth user context without posting
@@ -60,12 +62,13 @@ jobs:
           if (payload.ok !== true || payload.probe !== 'auth' || payload.probeOnly !== true || payload.xAuthReady !== true) {
             throw new Error(`X readiness probe failed: ${JSON.stringify(payload)}`);
           }
-          if (payload.postingActive !== false) throw new Error('Readiness probe must never activate posting.');
+          if (payload.postingActive !== false || payload.xApprovalRecorded !== false || payload.autoReplyEnabled !== false) {
+            throw new Error(`X readiness probe requires both activation gates off: ${JSON.stringify(payload)}`);
+          }
           if (String(payload.username || '').toLowerCase() !== 'parlayping') {
             throw new Error(`X credentials resolved to unexpected account: @${payload.username || 'unknown'}`);
           }
-          console.log(`✓ X OAuth user context is valid for @${payload.username}; probe performed no posting.`);
-          console.log(`Approval gate: ${Boolean(payload.xApprovalRecorded)}; autoreply gate: ${Boolean(payload.autoReplyEnabled)}.`);
+          console.log(`✓ X OAuth user context is valid for @${payload.username}; probe performed no posting and both activation gates are off.`);
           NODE
 
       - name: Launch gate summary
@@ -73,5 +76,5 @@ jobs:
           echo '✓ ParlayPing production code/data metadata is current.'
           echo '✓ Screenshot vision is configured.'
           echo '✓ X OAuth resolves to @ParlayPing.'
-          echo '✓ X posting remains disabled.'
+          echo '✓ Both X activation gates remain disabled.'
           echo 'Ready for controlled gate activation only after explicit X approval and explicit user authorization.'
