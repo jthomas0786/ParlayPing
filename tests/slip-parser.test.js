@@ -2,6 +2,8 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { heuristicParse, dedupeLegs, sanitizeLeg, normalizeMediaUrls, parseSlip } = require('../api/lib/slip-parser');
 const { normalizeLeg, encodeSlip } = require('../api/lib/parlay-engine');
+const { fairProbability, desiredBookLine } = require('../api/lib/ncaaf-engine');
+const { normalizeUniversalLeg } = require('../api/lib/sport-router');
 
 test('parses common NFL alt receiving yard leg', () => {
   const [leg] = heuristicParse('Jordan Addison 50+ receiving yards');
@@ -11,6 +13,7 @@ test('parses common NFL alt receiving yard leg', () => {
   assert.equal(leg.side, 'over');
   assert.equal(leg.line, 50);
   assert.equal(leg.inclusive, true);
+  assert.equal(leg.sport, 'NFL');
 });
 
 test('parses sportsbook over line', () => {
@@ -48,12 +51,26 @@ test('parses multiple newline-separated legs', () => {
   assert.equal(legs[2].line, 249.5);
 });
 
+test('heuristic marks explicit college football text as NCAAF', () => {
+  const [leg] = heuristicParse('NCAAF\nJaleel Skinner 40+ receiving yards');
+  assert.ok(leg);
+  assert.equal(leg.sport, 'NCAAF');
+  assert.equal(leg.player, 'Jaleel Skinner');
+  assert.equal(leg.line, 40);
+});
+
 test('normalizer converts market alias and team', () => {
   const leg = normalizeLeg({ sport:'nfl', player:'Bijan Robinson', team:'atl', market:'receiving yards', side:'OVER', line:49.5 }, 0);
   assert.equal(leg.sport, 'NFL');
   assert.equal(leg.team, 'ATL');
   assert.equal(leg.market, 'recYds');
   assert.equal(leg.side, 'over');
+});
+
+test('universal router normalizes college football aliases', () => {
+  const leg = normalizeUniversalLeg({ sport:'CFB', player:'Jaleel Skinner', market:'recYds', side:'over', line:40, inclusive:true }, 0);
+  assert.equal(leg.sport, 'NCAAF');
+  assert.equal(leg.player, 'Jaleel Skinner');
 });
 
 test('encoded slip contains versioned legs payload', () => {
@@ -65,16 +82,34 @@ test('encoded slip contains versioned legs payload', () => {
 
 test('dedupes repeated sportsbook UI copies of the same leg', () => {
   const legs = dedupeLegs([
-    { player:'Bijan Robinson', market:'receptions', side:'over', line:4.5, inclusive:false, originalText:'Bijan Robinson Over 4.5 Receptions' },
-    { player:'Bijan Robinson', market:'receptions', side:'over', line:4.5, inclusive:false, originalText:'Bijan Robinson Over 4.5 Receptions' }
+    { sport:'NFL', player:'Bijan Robinson', market:'receptions', side:'over', line:4.5, inclusive:false, originalText:'Bijan Robinson Over 4.5 Receptions' },
+    { sport:'NFL', player:'Bijan Robinson', market:'receptions', side:'over', line:4.5, inclusive:false, originalText:'Bijan Robinson Over 4.5 Receptions' }
   ]);
   assert.equal(legs.length, 1);
 });
 
+test('same selection in different sports is not deduped together', () => {
+  const legs = dedupeLegs([
+    { sport:'NFL', player:'Alex Smith', market:'passYds', side:'over', line:200.5, inclusive:false },
+    { sport:'NCAAF', player:'Alex Smith', market:'passYds', side:'over', line:200.5, inclusive:false }
+  ]);
+  assert.equal(legs.length, 2);
+});
+
 test('rejects unsupported or malformed extracted screenshot legs', () => {
-  assert.equal(sanitizeLeg({ player:'Bijan Robinson', market:'moneyline', side:'yes', line:null }), null);
-  assert.equal(sanitizeLeg({ player:'', market:'atd', side:'yes', line:null }), null);
-  assert.equal(sanitizeLeg({ player:'Bijan Robinson', market:'recYds', side:'over', line:'not-a-number' }), null);
+  assert.equal(sanitizeLeg({ sport:'NFL', player:'Bijan Robinson', market:'moneyline', side:'yes', line:null }), null);
+  assert.equal(sanitizeLeg({ sport:'NFL', player:'', market:'atd', side:'yes', line:null }), null);
+  assert.equal(sanitizeLeg({ sport:'NFL', player:'Bijan Robinson', market:'recYds', side:'over', line:'not-a-number' }), null);
+});
+
+test('NCAAF milestone lines map to conventional half-yard sportsbook lines', () => {
+  assert.equal(desiredBookLine({ market:'recYds', side:'over', line:40, inclusive:true }), 39.5);
+  assert.equal(desiredBookLine({ market:'recYds', side:'over', line:40.5, inclusive:false }), 40.5);
+});
+
+test('NCAAF two-way market price is de-vigged', () => {
+  const row = { overPrice:-110, underPrice:-110 };
+  assert.equal(Math.round(fairProbability(row,'over') * 1000) / 1000, 0.5);
 });
 
 test('only accepts safe screenshot image inputs and caps at four', () => {
