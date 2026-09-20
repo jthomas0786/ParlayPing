@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 const { parseSlip } = require('./lib/slip-parser');
 const { analyzeSlip } = require('./lib/parlay-engine');
-const { applyCorrelationSafety, buildPublicReply } = require('./lib/analysis-safety');
+const { applyCorrelationSafety, replyReadiness, buildPublicReply } = require('./lib/analysis-safety');
 
 const X_API = 'https://api.x.com/2';
 
@@ -44,6 +44,28 @@ function collectMediaUrls(tweet, mediaByKey){
     if(url) out.push(url);
   }
   return out;
+}
+function legSummary(leg){
+  return {
+    player:leg?.player||null,
+    team:leg?.team||null,
+    market:leg?.market||null,
+    side:leg?.side||null,
+    line:leg?.line??null,
+    inclusive:Boolean(leg?.inclusive),
+    originalText:leg?.originalText||null
+  };
+}
+function unresolvedSummary(row){
+  return {
+    player:row?.player||null,
+    team:row?.team||null,
+    market:row?.market||null,
+    side:row?.side||null,
+    line:row?.line??null,
+    originalText:row?.originalText||null,
+    reason:'player-not-found-in-current-sports-outpost-nfl-snapshot'
+  };
 }
 
 async function hydrateMissingParents(mentions, includesTweets, mediaByKey){
@@ -100,17 +122,21 @@ module.exports = async function handler(req,res){
       row.visionConfigured=parsed.visionConfigured;
       if(parsed.visionError) row.visionError=parsed.visionError;
       row.detectedLegs=parsed.legs.length;
+      row.parsedLegs=parsed.legs.map(legSummary);
       row.parentText=(parent.text||'').slice(0,240);
       if(!parsed.legs.length){row.status='unparsed';rows.push(row);continue;}
       const raw=await analyzeSlip(parsed.legs,{baseUrl:process.env.PUBLIC_BASE_URL||'https://parlayping.net'});
       const analysis=applyCorrelationSafety(raw);
-      row.status='ready';
+      const readiness=replyReadiness(analysis);
+      row.readiness=readiness;
       row.counts=analysis.counts;
       row.correlation=analysis.correlation;
       row.combinedTailProbability=analysis.combinedTailProbability;
       row.combinedTailProbabilityMethod=analysis.combinedTailProbabilityMethod;
       row.tailUrl=analysis.tailUrl||null;
-      row.replyPreview=buildPublicReply(analysis,{maxLegs:3});
+      row.unresolvedLegs=(analysis.results||[]).filter(r=>r?.status==='UNRESOLVED').map(unresolvedSummary);
+      row.status=readiness.ready?'ready':'needs-match';
+      row.replyPreview=readiness.ready?buildPublicReply(analysis,{maxLegs:3}):null;
       rows.push(row);
     }
 
