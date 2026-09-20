@@ -46,12 +46,19 @@ jobs:
           console.log('Selected live sportsbook row:',fs.readFileSync('/tmp/selected.json','utf8'));
           NODE
 
-          curl --fail --silent --show-error --location --post301 --post302 --post303 \
+          status=$(curl --silent --show-error --location --post301 --post302 --post303 \
             -X POST 'https://parlayping.net/api/analyze' \
             -H 'content-type: application/json' \
             --data-binary @/tmp/payload.json \
-            -o /tmp/result.json
+            -o /tmp/result.json \
+            -w '%{http_code}')
+          echo "Analyze HTTP status: $status"
           cat /tmp/result.json
+          echo
+          if [ "$status" != "200" ]; then
+            echo "::error::Production /api/analyze returned HTTP $status"
+            exit 1
+          fi
 
           node - <<'NODE'
           const fs=require('fs');
