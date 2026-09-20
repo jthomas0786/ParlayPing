@@ -1,6 +1,7 @@
-const DATA_URL = 'https://raw.githubusercontent.com/jthomas0786/The-Sports-Outpost/main/slates/ncaaf-odds.json';
+const ODDS_URL = 'https://raw.githubusercontent.com/jthomas0786/The-Sports-Outpost/main/slates/ncaaf-odds.json';
+const LIVE_URL = 'https://raw.githubusercontent.com/jthomas0786/The-Sports-Outpost/main/slates/ncaaf-live.json';
 const CACHE_MS = 60_000;
-let cache = null;
+const caches = new Map();
 
 const LABELS = {
   recYds:'REC YDS', rushYds:'RUSH YDS', passYds:'PASS YDS', receptions:'REC',
@@ -30,6 +31,14 @@ function fairProbability(row,side){
   }
   const one=side==='under'?under:over;
   return Number.isFinite(one)?clamp(one):null;
+}
+function probabilityMethod(rows,side){
+  const hasTwoSided=(rows||[]).some(row=>{
+    const over=Number.isFinite(Number(row.overImplied))||Number.isFinite(Number(row.overPrice));
+    const under=Number.isFinite(Number(row.underImplied))||Number.isFinite(Number(row.underPrice));
+    return over&&under;
+  });
+  return hasTwoSided?'market-implied-devig':'market-implied-single-sided';
 }
 function formatLine(leg){
   if(leg.market==='atd')return 'ATD';
@@ -64,22 +73,27 @@ function buildOptions(rows,leg){
     const probability=median(group.rows.map(r=>fairProbability(r,side)));
     const price=b?Number(side==='under'?b.underPrice:b.overPrice):null;
     return {
-      line: leg.market==='atd'?null:group.line,
-      side: leg.side,
+      line:leg.market==='atd'?null:group.line,
+      side:leg.side,
       probability,
-      impliedProbability: price==null?null:americanImplied(price),
-      probabilityMethod:'market-implied-devig',
+      impliedProbability:price==null?null:americanImplied(price),
+      probabilityMethod:probabilityMethod(group.rows,side),
       book:b?.book||null,
       price,
       link:b?.deepLink||null
     };
   }).filter(o=>o.price!=null||Number.isFinite(o.probability)).sort((a,b)=>Number(a.line??0)-Number(b.line??0));
 }
-async function loadSnapshot(){
-  if(cache&&Date.now()-cache.ts<CACHE_MS)return cache.value;
-  const response=await fetch(DATA_URL,{headers:{'user-agent':'ParlayPing/0.4'}});
-  if(!response.ok)throw new Error(`Unable to load NCAAF odds snapshot: ${response.status}`);
-  const value=await response.json(); cache={ts:Date.now(),value}; return value;
+async function fetchCached(name,url,optional=false){
+  const hit=caches.get(name); if(hit&&Date.now()-hit.ts<CACHE_MS)return hit.value;
+  try{
+    const response=await fetch(url,{headers:{'user-agent':'ParlayPing/0.5'}});
+    if(!response.ok)throw new Error(`${response.status}`);
+    const value=await response.json(); caches.set(name,{ts:Date.now(),value}); return value;
+  }catch(e){
+    if(optional)return null;
+    throw new Error(`Unable to load NCAAF ${name} snapshot: ${e?.message||e}`);
+  }
 }
 function chooseEventRows(rows,now){
   const byEvent=new Map();
@@ -87,10 +101,7 @@ function chooseEventRows(rows,now){
     const key=String(row.eventId||`${row.awayTeam||''}@${row.homeTeam||''}`);
     if(!byEvent.has(key))byEvent.set(key,[]); byEvent.get(key).push(row);
   }
-  const events=[...byEvent.values()].map(group=>({
-    rows:group,
-    start:Date.parse(group.find(r=>r.commenceTime)?.commenceTime||'')
-  }));
+  const events=[...byEvent.values()].map(group=>({rows:group,start:Date.parse(group.find(r=>r.commenceTime)?.commenceTime||'')}));
   events.sort((a,b)=>{
     const aa=Number.isFinite(a.start)?Math.abs(a.start-now):Infinity;
     const bb=Number.isFinite(b.start)?Math.abs(b.start-now):Infinity;
@@ -105,20 +116,71 @@ function nearestLineGroup(rows,leg){
   if(!best||Math.abs(best.line-target)>0.51)return null;
   return best;
 }
+function currentValue(player,market){
+  if(market==='atd')return Number(player?.rushTds||0)+Number(player?.recTds||0);
+  const map={recYds:'recYds',rushYds:'rushYds',passYds:'passYds',receptions:'receptions',passTds:'passTds',completions:'completions'};
+  const v=Number(player?.[map[market]]); return Number.isFinite(v)?v:0;
+}
+function gradeLeg(leg,current,state){
+  if(leg.market==='atd'){
+    if(current>=1)return 'HIT';
+    return state==='post'?'MISS':'LIVE';
+  }
+  if(leg.side==='under'){
+    if(current>=Number(leg.line))return 'MISS';
+    return state==='post'?'HIT':'LIVE';
+  }
+  const hit=leg.inclusive?current>=Number(leg.line):current>Number(leg.line);
+  if(hit)return 'HIT';
+  return state==='post'?'MISS':'LIVE';
+}
+function findLivePlayer(live,leg,now){
+  const wanted=normName(leg.player); if(!wanted)return null;
+  const matches=[];
+  for(const game of Object.values(live?.games||{})){
+    const start=Date.parse(game?.startTime||'');
+    if(Number.isFinite(start)&&start>now+2*3600_000)continue;
+    for(const player of game?.playerStats||[]){
+      if(normName(player?.name)!==wanted)continue;
+      if(leg.team&&String(player?.team||'').toUpperCase()!==String(leg.team).toUpperCase())continue;
+      matches.push({game,player,start:Number.isFinite(start)?start:0});
+    }
+  }
+  matches.sort((a,b)=>b.start-a.start);
+  return matches[0]||null;
+}
 
 async function analyzeNcaafSlip(rawLegs){
   const legs=(Array.isArray(rawLegs)?rawLegs:[]).filter(l=>String(l.sport||'').toUpperCase()==='NCAAF');
   if(!legs.length)throw new Error('No NCAAF legs were provided.');
-  const snapshot=await loadSnapshot();
+  const [snapshot,live]=await Promise.all([
+    fetchCached('odds',ODDS_URL),
+    fetchCached('live',LIVE_URL,true)
+  ]);
   const rows=Array.isArray(snapshot?.rows)?snapshot.rows:[];
   const now=Date.now();
   const results=[];
 
   for(let i=0;i<legs.length;i++){
     const leg={...legs[i],id:legs[i].id||`ncaaf-${i+1}`,sport:'NCAAF'};
+    const liveMatch=findLivePlayer(live,leg,now);
+    if(liveMatch&&['in','post'].includes(String(liveMatch.game?.state||''))){
+      const state=String(liveMatch.game.state);
+      const current=currentValue(liveMatch.player,leg.market);
+      const status=gradeLeg(leg,current,state);
+      const matchup=[liveMatch.game?.away?.abbr||liveMatch.game?.away?.name,liveMatch.game?.home?.abbr||liveMatch.game?.home?.name].filter(Boolean).join(' @ ');
+      results.push({
+        ...leg,gameId:liveMatch.game?.id||null,matchup,startTimeUTC:liveMatch.game?.startTime||null,
+        gameState:state,status,displayMarket:formatLine(leg),current,target:leg.market==='atd'?1:leg.line,
+        probability:status==='HIT'?1:status==='MISS'?0:null,probabilityPct:status==='HIT'?100:status==='MISS'?0:null,
+        probabilityMethod:status==='LIVE'?'live-progress-no-ncaaf-model':'settled-result',marketOptions:[]
+      });
+      continue;
+    }
+
     const named=rows.filter(r=>normName(r.player)===normName(leg.player)&&String(r.market)===String(leg.market));
     if(!named.length){
-      results.push({...leg,status:'UNRESOLVED',resolutionReason:'player-market-not-found-in-current-ncaaf-snapshot',displayMarket:formatLine(leg),probability:null,current:null,target:leg.line,marketOptions:[]});
+      results.push({...leg,status:'UNRESOLVED',resolutionReason:snapshot?.meta?.noCurrentProps?'no-current-ncaaf-props-and-no-live-stat-match':'player-market-not-found-in-current-ncaaf-snapshot',displayMarket:formatLine(leg),probability:null,current:null,target:leg.line,marketOptions:[]});
       continue;
     }
     const eventRows=chooseEventRows(named,now);
@@ -132,26 +194,29 @@ async function analyzeNcaafSlip(rawLegs){
     const started=Number.isFinite(start)&&start<=now-120_000;
     const side=leg.side==='yes'?'over':leg.side;
     const probability=median(lineGroup.rows.map(r=>fairProbability(r,side)));
+    const method=probabilityMethod(lineGroup.rows,side);
     const matchup=[sample?.awayTeam,sample?.homeTeam].filter(Boolean).join(' @ ');
     if(started){
-      results.push({...leg,gameId:sample?.eventId||null,matchup,startTimeUTC:sample?.commenceTime||null,gameState:'in-or-post',status:'UNRESOLVED',resolutionReason:'ncaaf-live-player-stat-grading-not-yet-connected',displayMarket:formatLine(leg),probability:null,current:null,target:leg.line,marketOptions:[]});
+      results.push({...leg,gameId:sample?.eventId||null,matchup,startTimeUTC:sample?.commenceTime||null,gameState:'in-or-post',status:'UNRESOLVED',resolutionReason:'ncaaf-live-stat-match-not-yet-available',displayMarket:formatLine(leg),probability:null,current:null,target:leg.line,marketOptions:[]});
       continue;
     }
-    results.push({...leg,gameId:sample?.eventId||null,matchup,startTimeUTC:sample?.commenceTime||null,gameState:'pre',status:'PENDING',displayMarket:formatLine(leg),current:0,target:leg.market==='atd'?1:leg.line,probability,probabilityPct:pct(probability),probabilityMethod:'market-implied-devig',marketOptions:buildOptions(eventRows,leg)});
+    results.push({...leg,gameId:sample?.eventId||null,matchup,startTimeUTC:sample?.commenceTime||null,gameState:'pre',status:'PENDING',displayMarket:formatLine(leg),current:0,target:leg.market==='atd'?1:leg.line,probability,probabilityPct:pct(probability),probabilityMethod:method,marketOptions:buildOptions(eventRows,leg)});
   }
 
   return {
     ok:true,
     generatedAt:new Date().toISOString(),
-    dataGeneratedAt:snapshot?.meta?.fetchedAt||null,
-    source:'ParlayAPI NCAAF sportsbook snapshot via The Sports Outpost',
+    dataGeneratedAt:[snapshot?.meta?.fetchedAt,live?.generatedAt].filter(Boolean).sort().at(-1)||null,
+    source:'ParlayAPI NCAAF sportsbook snapshot + ESPN NCAAF player stats via The Sports Outpost',
     results,
     counts:{
-      hit:0,miss:0,live:0,
+      hit:results.filter(r=>r.status==='HIT').length,
+      miss:results.filter(r=>r.status==='MISS').length,
+      live:results.filter(r=>r.status==='LIVE').length,
       pending:results.filter(r=>r.status==='PENDING').length,
       unresolved:results.filter(r=>r.status==='UNRESOLVED').length
     }
   };
 }
 
-module.exports={ analyzeNcaafSlip, americanImplied, fairProbability, desiredBookLine };
+module.exports={ analyzeNcaafSlip, americanImplied, fairProbability, desiredBookLine, gradeLeg, currentValue };
