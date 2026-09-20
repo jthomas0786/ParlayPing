@@ -51,10 +51,11 @@ Copy the names from `.env.example` into the ParlayPing Vercel project's Environm
 
 Required for X dry-run ingestion:
 
-- `X_USER_ID`
 - `X_USER_ACCESS_TOKEN`
 - `X_WORKER_SECRET`
 - `PUBLIC_BASE_URL=https://parlayping.net`
+
+The worker defaults to `X_USERNAME=ParlayPing` and resolves the numeric X user ID automatically. `X_USER_ID` remains available only as an optional override.
 
 Optional but recommended for screenshot/vision parsing:
 
@@ -73,6 +74,10 @@ Keep both gates false during QA. `api/x-worker.js` will remain dry-run unless **
 `.github/workflows/parlayping-x-mentions.yml` checks every five minutes. It intentionally does nothing until the GitHub repository secret `PARLAYPING_WORKER_SECRET` is configured.
 
 The GitHub secret must match the Vercel environment variable `X_WORKER_SECRET`.
+
+## Testing
+
+`npm test` runs the zero-dependency Node regression suite for common betting-post formats, market normalization, and Tail link encoding. `.github/workflows/ci.yml` runs it on every push to `main`.
 
 ## Brand
 
