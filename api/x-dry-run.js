@@ -96,7 +96,9 @@ module.exports = async function handler(req,res){
       const mediaUrls=collectMediaUrls(parent,mediaByKey);
       const parsed=await parseSlip({text:parent.text||'',mediaUrls});
       row.parser=parsed.method;
-      row.mediaCount=mediaUrls.length;
+      row.mediaCount=parsed.mediaCount;
+      row.visionConfigured=parsed.visionConfigured;
+      if(parsed.visionError) row.visionError=parsed.visionError;
       row.detectedLegs=parsed.legs.length;
       row.parentText=(parent.text||'').slice(0,240);
       if(!parsed.legs.length){row.status='unparsed';rows.push(row);continue;}
@@ -117,6 +119,7 @@ module.exports = async function handler(req,res){
       dryRun:true,
       authenticatedAs:{id:String(me.data.id),username:me.data.username,name:me.data.name},
       postingSafety:{approvalRecorded:String(process.env.X_AI_REPLY_APPROVED||'').toLowerCase()==='true',autoReplyEnabled:false},
+      vision:{configured:Boolean(process.env.OPENAI_API_KEY),model:process.env.OPENAI_MODEL||'gpt-5.6-luna'},
       mentionsSeen:(mentions.data||[]).length,
       candidates:rows
     });
