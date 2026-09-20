@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const { parseSlip } = require('./lib/slip-parser');
 const { analyzeSlip } = require('./lib/parlay-engine');
+const { applyCorrelationSafety, buildPublicReply } = require('./lib/analysis-safety');
 
 const X_API = 'https://api.x.com/2';
 
@@ -43,11 +44,6 @@ function collectMediaUrls(tweet, mediaByKey){
     if(url) out.push(url);
   }
   return out;
-}
-function compactReply(analysis){
-  const c=analysis.counts||{};
-  const remaining=Number.isFinite(analysis.combinedTailProbability)?` · remaining ${Math.round(analysis.combinedTailProbability*100)}%`:'';
-  return `✅ ${c.hit||0} hit · 🔴 ${c.live||0} live · ⏳ ${c.pending||0} left${c.miss?` · ❌ ${c.miss}`:''}${remaining}`;
 }
 
 async function hydrateMissingParents(mentions, includesTweets, mediaByKey){
@@ -104,11 +100,15 @@ module.exports = async function handler(req,res){
       row.detectedLegs=parsed.legs.length;
       row.parentText=(parent.text||'').slice(0,240);
       if(!parsed.legs.length){row.status='unparsed';rows.push(row);continue;}
-      const analysis=await analyzeSlip(parsed.legs,{baseUrl:process.env.PUBLIC_BASE_URL||'https://parlayping.net'});
+      const raw=await analyzeSlip(parsed.legs,{baseUrl:process.env.PUBLIC_BASE_URL||'https://parlayping.net'});
+      const analysis=applyCorrelationSafety(raw);
       row.status='ready';
       row.counts=analysis.counts;
+      row.correlation=analysis.correlation;
+      row.combinedTailProbability=analysis.combinedTailProbability;
+      row.combinedTailProbabilityMethod=analysis.combinedTailProbabilityMethod;
       row.tailUrl=analysis.tailUrl||null;
-      row.replyPreview=compactReply(analysis);
+      row.replyPreview=buildPublicReply(analysis,{maxLegs:3});
       rows.push(row);
     }
 
