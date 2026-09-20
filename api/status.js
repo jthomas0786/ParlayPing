@@ -17,15 +17,22 @@ module.exports = async function handler(req, res) {
   return res.status(200).json({
     ok: true,
     service: 'ParlayPing',
-    version: '0.7.0',
+    version: '0.9.0',
     timestamp: new Date().toISOString(),
     engine: {
       ready: true,
-      sports: ['NFL','NCAAF','MLB','NHL','NBA','NCAAB','WNBA'],
-      source: 'The Sports Outpost simulations, sportsbook snapshots, and authoritative live/final stat feeds'
+      sports: ['NFL','NCAAF','MLB','NHL','NBA','NCAAB','WNBA','SOCCER','TENNIS','MMA','ESPORTS','TABLE_TENNIS'],
+      gradingModes: {
+        fullOrLiveConnected: ['NFL','NCAAF','MLB','NHL'],
+        basketball: ['NBA','NCAAB','WNBA'],
+        pregameSportsbookOnly: ['SOCCER','TENNIS','MMA','ESPORTS','TABLE_TENNIS']
+      },
+      source: 'The Sports Outpost simulations, sportsbook snapshots, and connected live/final stat feeds',
+      note: 'Extended sports use real sportsbook pricing before start. Started events remain unresolved until a trustworthy live grading feed is connected.'
     },
     parser: {
       textFallbackReady: true,
+      extendedSportsReady: true,
       visionConfigured: parserVisionConfigured
     },
     x: {
