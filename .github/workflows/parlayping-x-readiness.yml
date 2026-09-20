@@ -1,0 +1,50 @@
+name: ParlayPing X Readiness
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: parlayping-x-readiness
+  cancel-in-progress: false
+
+jobs:
+  verify-x-auth:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Require worker secret
+        env:
+          WORKER_SECRET: ${{ secrets.PARLAYPING_WORKER_SECRET }}
+        run: |
+          set -euo pipefail
+          if [ -z "$WORKER_SECRET" ]; then
+            echo '::error::PARLAYPING_WORKER_SECRET is not configured.'
+            exit 1
+          fi
+      - name: Verify X OAuth user context without posting
+        env:
+          WORKER_SECRET: ${{ secrets.PARLAYPING_WORKER_SECRET }}
+          PROBE_URL: https://parlayping.net/api/x-worker?probe=auth
+        run: |
+          set -euo pipefail
+          response="$(curl --fail --silent --show-error --location \
+            --max-time 60 \
+            -H "x-parlayping-secret: $WORKER_SECRET" \
+            "$PROBE_URL")"
+          RESPONSE="$response" node - <<'NODE'
+          const payload = JSON.parse(process.env.RESPONSE || '{}');
+          if (payload.ok !== true || payload.probe !== 'auth' || payload.probeOnly !== true || payload.xAuthReady !== true) {
+            throw new Error(`X readiness probe failed: ${JSON.stringify(payload)}`);
+          }
+          if (payload.postingActive !== false) {
+            throw new Error('Readiness probe must never activate posting.');
+          }
+          if (String(payload.username || '').toLowerCase() !== 'parlayping') {
+            throw new Error(`X credentials resolved to unexpected account: @${payload.username || 'unknown'}`);
+          }
+          console.log(`✓ X OAuth user context is valid for @${payload.username}; probe performed no posting.`);
+          console.log(`Approval gate: ${Boolean(payload.xApprovalRecorded)}; autoreply gate: ${Boolean(payload.autoReplyEnabled)}.`);
+          NODE
