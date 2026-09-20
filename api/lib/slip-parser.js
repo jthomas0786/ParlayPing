@@ -96,7 +96,8 @@ function heuristicSport(text) {
   if (/\b(mlb|major league baseball|baseball)\b/i.test(text)) return 'MLB';
   if (/\b(nhl|national hockey league|hockey)\b/i.test(text)) return 'NHL';
   if (/\b(ncaaf|cfb|college football|ncaa football)\b/i.test(text)) return 'NCAAF';
-  if (/\b(rebounds?|\bpra\b|3pm|three[-\s]?pointers?|double[-\s]?double|triple[-\s]?double|turnovers?)\b/i.test(text)) return 'NBA';
+  if (/\b(total\s+bases?|stolen\s+bases?|rbi(?:s)?|hits?\s*\+\s*runs?\s*\+\s*rbi(?:s)?|hits?)\b/i.test(text)) return 'MLB';
+  if (/\b(rebounds?|pra|3pm|three[-\s]?pointers?|double[-\s]?double|triple[-\s]?double|turnovers?)\b/i.test(text)) return 'NBA';
   return 'NFL';
 }
 function numericLegFromLine(line, word, sport) {
@@ -166,7 +167,7 @@ function heuristicParse(text) {
     }
     for (const word of FOOTBALL_MARKET_WORDS) {
       if (!word.re.test(line)) continue;
-      const leg=numericLegFromLine(line,word:['MLB','NHL','NBA','NCAAB','WNBA'].includes(contextSport)?'NFL':contextSport);
+      const leg=numericLegFromLine(line,word,['MLB','NHL','NBA','NCAAB','WNBA'].includes(contextSport)?'NFL':contextSport);
       if(leg) legs.push(leg);
       break;
     }
