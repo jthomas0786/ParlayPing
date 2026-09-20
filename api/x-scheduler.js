@@ -13,9 +13,9 @@ function safeHashEqual(left,right){
   return a.length===b.length&&crypto.timingSafeEqual(a,b);
 }
 
-function schedulerAuthorized(req){
+function schedulerAuthorized(req,expectedHash=SCHEDULER_SECRET_SHA256){
   const supplied=req?.headers?.['x-parlayping-scheduler-secret'];
-  return Boolean(supplied)&&safeHashEqual(hashSecret(supplied),SCHEDULER_SECRET_SHA256);
+  return Boolean(supplied)&&safeHashEqual(hashSecret(supplied),expectedHash);
 }
 
 module.exports=async function handler(req,res){
