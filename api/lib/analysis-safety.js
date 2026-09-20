@@ -127,7 +127,6 @@ function buildPublicReply(analysis, options = {}) {
   };
 
   const summary = `✅ ${counts.hit || 0} hit · 🔴 ${counts.live || 0} live · ⏳ ${counts.pending || 0} left${counts.miss ? ` · ❌ ${counts.miss}` : ''}`;
-  const optOut = 'Reply STOP to opt out.';
   const lines = ['🔔 ParlayPing Live', summary];
   if (ordered.length) lines.push('', ...ordered.map(compact));
 
@@ -138,7 +137,6 @@ function buildPublicReply(analysis, options = {}) {
   }
 
   if (analysis?.tailUrl) lines.push(`Tail what's left → ${analysis.tailUrl}`);
-  lines.push(optOut);
   let text = lines.join('\n');
 
   if (xWeightedLength(text) > 275) {
@@ -146,7 +144,6 @@ function buildPublicReply(analysis, options = {}) {
     if (analysis?.correlation?.hasRisk) shorter.push('🎯 Combined model withheld — correlated legs.');
     else if (Number.isFinite(analysis?.combinedTailProbability)) shorter.push(`🎯 Remaining model: ${Math.round(analysis.combinedTailProbability * 100)}%`);
     if (analysis?.tailUrl) shorter.push(`Tail what's left → ${analysis.tailUrl}`);
-    shorter.push(optOut);
     text = shorter.join('\n');
   }
 
