@@ -1,4 +1,4 @@
-name: ParlayPing X Readiness
+name: ParlayPing Launch Readiness
 
 on:
   workflow_dispatch:
@@ -7,11 +7,11 @@ permissions:
   contents: read
 
 concurrency:
-  group: parlayping-x-readiness
+  group: parlayping-launch-readiness
   cancel-in-progress: false
 
 jobs:
-  verify-x-auth:
+  verify-launch-readiness:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
@@ -24,6 +24,27 @@ jobs:
             echo '::error::PARLAYPING_WORKER_SECRET is not configured.'
             exit 1
           fi
+
+      - name: Verify production service and screenshot parser
+        env:
+          STATUS_URL: https://parlayping.net/api/status
+        run: |
+          set -euo pipefail
+          response="$(curl --fail --silent --show-error --location --max-time 60 "$STATUS_URL")"
+          RESPONSE="$response" node - <<'NODE'
+          const payload = JSON.parse(process.env.RESPONSE || '{}');
+          const requiredSports = ['NFL','NCAAF','MLB','NHL','NBA','NCAAB','WNBA','SOCCER','TENNIS','MMA','ESPORTS','TABLE_TENNIS','VOLLEYBALL','CRICKET','RUGBY_LEAGUE','AFL','BOXING','GOLF'];
+          if (payload.ok !== true || payload.service !== 'ParlayPing' || payload.engine?.ready !== true) {
+            throw new Error(`Production status is not ready: ${JSON.stringify(payload)}`);
+          }
+          const sports = new Set(payload.engine?.sports || []);
+          for (const sport of requiredSports) if (!sports.has(sport)) throw new Error(`Production is missing staged sport ${sport}`);
+          if (payload.parser?.visionConfigured !== true) throw new Error('OPENAI_API_KEY / screenshot vision is not configured in production.');
+          if (payload.x?.configured !== true) throw new Error('X OAuth credentials are incomplete in production.');
+          if (payload.x?.postingReady === true) throw new Error('X posting is already enabled; readiness must be verified before activation.');
+          console.log(`✓ Production reports ${requiredSports.length} staged sports, screenshot vision configured, and X posting still disabled.`);
+          NODE
+
       - name: Verify X OAuth user context without posting
         env:
           WORKER_SECRET: ${{ secrets.PARLAYPING_WORKER_SECRET }}
@@ -39,12 +60,18 @@ jobs:
           if (payload.ok !== true || payload.probe !== 'auth' || payload.probeOnly !== true || payload.xAuthReady !== true) {
             throw new Error(`X readiness probe failed: ${JSON.stringify(payload)}`);
           }
-          if (payload.postingActive !== false) {
-            throw new Error('Readiness probe must never activate posting.');
-          }
+          if (payload.postingActive !== false) throw new Error('Readiness probe must never activate posting.');
           if (String(payload.username || '').toLowerCase() !== 'parlayping') {
             throw new Error(`X credentials resolved to unexpected account: @${payload.username || 'unknown'}`);
           }
           console.log(`✓ X OAuth user context is valid for @${payload.username}; probe performed no posting.`);
           console.log(`Approval gate: ${Boolean(payload.xApprovalRecorded)}; autoreply gate: ${Boolean(payload.autoReplyEnabled)}.`);
           NODE
+
+      - name: Launch gate summary
+        run: |
+          echo '✓ ParlayPing production code/data metadata is current.'
+          echo '✓ Screenshot vision is configured.'
+          echo '✓ X OAuth resolves to @ParlayPing.'
+          echo '✓ X posting remains disabled.'
+          echo 'Ready for controlled gate activation only after explicit X approval and explicit user authorization.'
