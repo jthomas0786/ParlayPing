@@ -66,7 +66,32 @@ function applyCorrelationSafety(analysis) {
   return next;
 }
 
+function replyReadiness(analysis) {
+  const results = Array.isArray(analysis?.results) ? analysis.results : [];
+  const unresolved = results.filter(r => r?.status === 'UNRESOLVED');
+  const resolved = results.filter(r => r && r.status !== 'UNRESOLVED');
+
+  if (!results.length) {
+    return { ready: false, reason: 'no-analysis-results', unresolvedCount: 0, resolvedCount: 0 };
+  }
+  if (unresolved.length) {
+    return {
+      ready: false,
+      reason: 'unresolved-legs',
+      unresolvedCount: unresolved.length,
+      resolvedCount: resolved.length
+    };
+  }
+  if (!resolved.length) {
+    return { ready: false, reason: 'no-resolved-legs', unresolvedCount: 0, resolvedCount: 0 };
+  }
+  return { ready: true, reason: null, unresolvedCount: 0, resolvedCount: resolved.length };
+}
+
 function buildPublicReply(analysis, options = {}) {
+  const readiness = replyReadiness(analysis);
+  if (!readiness.ready) return null;
+
   const rows = (analysis?.results || []).filter(r => r?.status !== 'UNRESOLVED');
   const counts = analysis?.counts || {};
   const maxLegs = Math.max(1, Number(options.maxLegs) || 3);
@@ -109,4 +134,4 @@ function buildPublicReply(analysis, options = {}) {
   return text.slice(0, 280);
 }
 
-module.exports = { correlationGroups, applyCorrelationSafety, buildPublicReply };
+module.exports = { correlationGroups, applyCorrelationSafety, replyReadiness, buildPublicReply };
