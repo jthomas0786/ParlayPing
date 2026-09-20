@@ -2,14 +2,14 @@ const { analyzeSlip: analyzeNflSlip, normalizeLeg, encodeSlip } = require('./par
 const { analyzeNcaafSlip } = require('./ncaaf-engine');
 const { analyzeMlbSlip } = require('./mlb-engine');
 const { analyzeNhlSlip } = require('./nhl-engine');
-const { analyzeBasketballSlip } = require('./basketball-engine');
+const { analyzeBasketballSlip } = require('../../lib/basketball-engine');
 
 const SUPPORTED_ANALYSIS = new Set(['NFL','NCAAF','MLB','NHL','NBA','NCAAB','WNBA']);
 
 function pct(v){ return Number.isFinite(v) ? Math.round(v*1000)/10 : null; }
 function normalizeSport(value){
   const raw=String(value||'NFL').toUpperCase().replace(/[^A-Z0-9]/g,'');
-  const aliases={CFB:'NCAAF',COLLEGEFOOTBALL:'NCAAF',NCAAFOOTBALL:'NCAAF',PROFOOTBALL:'NFL',BASEBALL:'MLB',PROBASEBALL:'MLB',MAJORLEAGUEBASEBALL:'MLB',HOCKEY:'NHL',PROHOCKEY:'NHL',NATIONALHOCKEYLEAGUE:'NHL',BASKETBALL:'NBA',PROBASKETBALL:'NBA',COLLEGEBASKETBALL:'NCAAB',NCAAM:'NCAAB',NCAAMBB:'NCAAB',WOMENSNBA:'WNBA'};
+  const aliases={CFB:'NCAAF',COLLEGEFOOTBALL:'NCAAF',NCAAFOOTBALL:'NCAAF',PROFOOTBALL:'NFL',BASEBALL:'MLB',PROBASEBALL:'MLB',MAJORLEAGUEBASEBALL:'MLB',HOCKEY:'NHL',PROHOCKEY:'NHL',NATIONALHOCKEYLEAGUE:'NHL',BASKETBALL:'NBA',PROBASKBALL:'NBA',PROBASKETBALL:'NBA',COLLEGEBASKETBALL:'NCAAB',NCAAM:'NCAAB',NCAAMBB:'NCAAB',WOMENSNBA:'WNBA'};
   return aliases[raw]||raw||'NFL';
 }
 function normalizeUniversalLeg(input,index){
