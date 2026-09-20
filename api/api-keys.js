@@ -1,4 +1,4 @@
-const {requireUser,rpc}=require('./lib/supabase-account');
+const {requireUser,accountEdge}=require('./lib/supabase-account');
 
 function parseBody(req){
   if(req.body&&typeof req.body==='object')return req.body;
@@ -12,20 +12,20 @@ module.exports=async function handler(req,res){
   try{
     const{token}=await requireUser(req);
     if(req.method==='GET'){
-      const keys=await rpc(token,'parlayping_list_api_keys');
-      return res.status(200).json({ok:true,keys:Array.isArray(keys)?keys:[]});
+      const data=await accountEdge(token,{action:'listKeys'});
+      return res.status(200).json({ok:true,keys:Array.isArray(data?.keys)?data.keys:[]});
     }
     if(req.method==='POST'){
       const body=parseBody(req);const name=String(body.name||'').trim();
       if(!name)return res.status(400).json({ok:false,error:'name is required.'});
-      const created=await rpc(token,'parlayping_create_api_key',{p_name:name,p_expires_at:body.expiresAt||null});
-      return res.status(201).json({ok:true,key:created,note:'Copy the full API key now. ParlayPing stores only its hash and cannot show it again.'});
+      const data=await accountEdge(token,{action:'createKey',name,expiresAt:body.expiresAt||null});
+      return res.status(201).json(data);
     }
     if(req.method==='DELETE'){
       const body=parseBody(req);const id=String(body.id||'');
       if(!/^[0-9a-f-]{36}$/i.test(id))return res.status(400).json({ok:false,error:'Valid key id is required.'});
-      const revoked=await rpc(token,'parlayping_revoke_api_key',{p_key_id:id});
-      return res.status(revoked===true?200:404).json({ok:revoked===true,revoked:revoked===true});
+      const data=await accountEdge(token,{action:'revokeKey',id});
+      return res.status(data?.revoked===true?200:404).json(data||{ok:false,revoked:false});
     }
     return res.status(405).json({ok:false,error:'Use GET, POST, or DELETE.'});
   }catch(error){
