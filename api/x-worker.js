@@ -95,11 +95,32 @@ function replyTarget(tweet) {
 function collectMediaUrls(tweet, mediaByKey) {
   const out = [];
   for (const key of tweet?.attachments?.media_keys || []) {
-    const media = mediaByKey.get(key);
+    const media = mediaByKey.get(String(key));
     const url = media?.url || media?.preview_image_url;
     if (url) out.push(url);
   }
   return out;
+}
+
+async function hydrateMissingParents(mentions, includesTweets, mediaByKey) {
+  const missing = [...new Set(
+    mentions
+      .map(replyTarget)
+      .filter(Boolean)
+      .map(String)
+      .filter(id => !includesTweets.has(id))
+  )];
+  if (!missing.length) return;
+
+  const q = new URLSearchParams({
+    ids: missing.join(','),
+    'tweet.fields': 'author_id,attachments,created_at,conversation_id,possibly_sensitive,referenced_tweets,text',
+    expansions: 'attachments.media_keys',
+    'media.fields': 'media_key,type,url,preview_image_url'
+  });
+  const fetched = await xGet(`/tweets?${q}`);
+  for (const tweet of fetched.data || []) includesTweets.set(String(tweet.id), tweet);
+  for (const media of fetched.includes?.media || []) mediaByKey.set(String(media.media_key), media);
 }
 
 function compactLine(result) {
@@ -151,16 +172,22 @@ async function processMentions({ dryRun }) {
   const { mentions, replied } = await getContext(userId);
   const includesTweets = new Map((mentions.includes?.tweets || []).map(t => [String(t.id), t]));
   const mediaByKey = new Map((mentions.includes?.media || []).map(m => [String(m.media_key), m]));
-  const candidates = [];
+  const actionableMentions = (mentions.data || []).filter(mention => {
+    if (replied.has(String(mention.id))) return false;
+    if (mention.possibly_sensitive) return false;
+    if (/\b(stop|unsubscribe|opt\s*out)\b/i.test(mention.text || '')) return false;
+    return Boolean(replyTarget(mention));
+  });
+  await hydrateMissingParents(actionableMentions, includesTweets, mediaByKey);
 
-  for (const mention of [...(mentions.data || [])].reverse()) {
-    if (replied.has(String(mention.id))) continue;
-    if (mention.possibly_sensitive) continue;
-    if (/\b(stop|unsubscribe|opt\s*out)\b/i.test(mention.text || '')) continue;
+  const candidates = [];
+  for (const mention of [...actionableMentions].reverse()) {
     const parentId = replyTarget(mention);
-    if (!parentId) continue;
     const parent = includesTweets.get(String(parentId));
-    if (!parent) continue;
+    if (!parent) {
+      candidates.push({ mentionId: mention.id, parentId, status: 'unavailable-parent' });
+      continue;
+    }
     const mediaUrls = collectMediaUrls(parent, mediaByKey);
     const parsed = await parseSlip({ text: parent.text || '', mediaUrls });
     if (!parsed.legs.length) {
