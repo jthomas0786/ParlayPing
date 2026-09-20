@@ -1,0 +1,37 @@
+name: ParlayPing X Mention Check
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check-mentions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Check configuration
+        id: config
+        env:
+          WORKER_SECRET: ${{ secrets.PARLAYPING_WORKER_SECRET }}
+        run: |
+          if [ -z "$WORKER_SECRET" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "PARLAYPING_WORKER_SECRET is not configured. Mention worker remains inactive."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Poll @ParlayPing mentions
+        if: steps.config.outputs.configured == 'true'
+        env:
+          WORKER_SECRET: ${{ secrets.PARLAYPING_WORKER_SECRET }}
+          WORKER_URL: https://parlayping.net/api/x-worker
+        run: |
+          curl --fail --silent --show-error \
+            --max-time 60 \
+            -H "x-parlayping-secret: $WORKER_SECRET" \
+            "$WORKER_URL"
