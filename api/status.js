@@ -17,12 +17,12 @@ module.exports = async function handler(req, res) {
   return res.status(200).json({
     ok: true,
     service: 'ParlayPing',
-    version: '0.4.0',
+    version: '0.6.0',
     timestamp: new Date().toISOString(),
     engine: {
       ready: true,
-      sport: 'NFL',
-      source: 'The Sports Outpost NFL simulation + sportsbook snapshots'
+      sports: ['NFL','NCAAF','MLB','NHL'],
+      source: 'The Sports Outpost simulations, sportsbook snapshots, and authoritative live/final stat feeds'
     },
     parser: {
       textFallbackReady: true,
