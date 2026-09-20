@@ -28,6 +28,16 @@ test('account console contains signup, signin, API keys, usage, and versioned qu
   for(const needle of ['Create account','Sign in','API Keys','Usage','/api/v1/analyze'])assert.match(html,new RegExp(needle.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
 });
 
+test('account console exposes upgrade and Stripe billing management flows',()=>{
+  const js=fs.readFileSync(path.join(__dirname,'..','account.js'),'utf8');
+  assert.match(js,/\/api\/billing-checkout/);
+  assert.match(js,/\/api\/billing-portal/);
+  assert.match(js,/Upgrade to Pro/);
+  assert.match(js,/Upgrade to Business/);
+  assert.match(js,/Manage billing/);
+  assert.match(js,/price_monthly_cents/);
+});
+
 test('Vercel account/API source never requires or embeds Supabase service-role credentials',()=>{
   const files=['api/lib/supabase-account.js','api/account.js','api/api-keys.js','api/lib/api-key-auth.js','api/v1/analyze.js','account.js'];
   for(const rel of files){
