@@ -31,7 +31,20 @@ jobs:
           WORKER_SECRET: ${{ secrets.PARLAYPING_WORKER_SECRET }}
           WORKER_URL: https://parlayping.net/api/x-worker
         run: |
-          curl --fail --silent --show-error \
+          set -euo pipefail
+          response="$(curl --fail --silent --show-error --location \
             --max-time 60 \
             -H "x-parlayping-secret: $WORKER_SECRET" \
-            "$WORKER_URL"
+            "$WORKER_URL")"
+          echo "$response"
+          RESPONSE="$response" node - <<'NODE'
+          const payload = JSON.parse(process.env.RESPONSE || '{}');
+          if (payload.ok !== true) {
+            throw new Error(`ParlayPing worker returned non-ok response: ${JSON.stringify(payload)}`);
+          }
+          if (payload.active === false) {
+            console.log(`Worker reachable and safely idle: ${payload.reason || 'inactive'}`);
+          } else {
+            console.log(`Worker reachable and active; processed ${Number(payload.processed || 0)} candidate(s).`);
+          }
+          NODE
