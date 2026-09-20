@@ -1,4 +1,4 @@
-const { parseSlip } = require('./lib/slip-parser');
+const { parseSlip } = require('../lib/slip-parser-wrapper');
 
 module.exports = async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
