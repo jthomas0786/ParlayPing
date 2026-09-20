@@ -74,6 +74,21 @@ test('allows public reply only when all analyzed legs resolve', () => {
   assert.doesNotMatch(reply, /Reply STOP to opt out/);
 });
 
+test('live result without numeric progress does not render null/target', () => {
+  const analysis = applyCorrelationSafety({
+    counts: { hit: 0, miss: 0, live: 1, pending: 0, unresolved: 0 },
+    combinedTailProbability: null,
+    results: [
+      { id:'tennis-1', player:'Clara Burel', gameId:'T1', status:'LIVE', displayMarket:'MATCH WINNER', current:null, target:1, probability:null }
+    ]
+  });
+  const reply=buildPublicReply(analysis);
+  assert.match(reply,/🔔 ParlayPing Live/);
+  assert.match(reply,/🔴 Burel MATCH WINNER/);
+  assert.doesNotMatch(reply,/null\/1/);
+  assert.doesNotMatch(reply,/Reply STOP to opt out/);
+});
+
 test('never truncates the Tail URL when compacting an X reply', () => {
   const tailUrl = `https://parlayping.net/tail?slip=${'x'.repeat(900)}`;
   const analysis = applyCorrelationSafety({
