@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const { parseSlip } = require('./lib/slip-parser');
 const { analyzeSlip } = require('./lib/parlay-engine');
+const { applyCorrelationSafety, buildPublicReply } = require('./lib/analysis-safety');
 
 const X_API = 'https://api.x.com/2';
 const X_USERNAME = process.env.X_USERNAME || 'ParlayPing';
@@ -123,33 +124,6 @@ async function hydrateMissingParents(mentions, includesTweets, mediaByKey) {
   for (const media of fetched.includes?.media || []) mediaByKey.set(String(media.media_key), media);
 }
 
-function compactLine(result) {
-  const icon = result.status === 'HIT' ? '✅' : result.status === 'MISS' ? '❌' : result.status === 'LIVE' ? '🔴' : '⏳';
-  const name = String(result.player || '').split(/\s+/).slice(-1)[0] || result.player;
-  const progress = result.status === 'LIVE' ? ` ${result.current}/${result.target}` : '';
-  const prob = ['LIVE','PENDING'].includes(result.status) && Number.isFinite(result.probability) ? ` · ${Math.round(result.probability * 100)}%` : '';
-  return `${icon} ${name} ${result.displayMarket}${progress}${prob}`;
-}
-
-function buildXReply(analysis) {
-  const c = analysis.counts || {};
-  const rows = analysis.results.filter(r => r.status !== 'UNRESOLVED');
-  const featured = [
-    ...rows.filter(r => r.status === 'LIVE'),
-    ...rows.filter(r => r.status === 'PENDING'),
-    ...rows.filter(r => r.status === 'HIT'),
-    ...rows.filter(r => r.status === 'MISS')
-  ].slice(0, 3);
-  const summary = `✅ ${c.hit || 0} hit · 🔴 ${c.live || 0} live · ⏳ ${c.pending || 0} left${c.miss ? ` · ❌ ${c.miss}` : ''}`;
-  const remaining = Number.isFinite(analysis.combinedTailProbability) ? `\n🎯 Remaining model: ${Math.round(analysis.combinedTailProbability * 100)}%` : '';
-  const link = analysis.tailUrl ? `\nTail what's left → ${analysis.tailUrl}` : '';
-  let text = `🔔 PARLAYPING LIVE\n${summary}`;
-  if (featured.length) text += `\n\n${featured.map(compactLine).join('\n')}`;
-  text += remaining + link;
-  if (text.length > 278) text = `🔔 PARLAYPING LIVE\n${summary}${remaining}${link}`;
-  return text.slice(0, 280);
-}
-
 async function getContext(userId) {
   const q = new URLSearchParams({
     max_results: '20',
@@ -194,9 +168,21 @@ async function processMentions({ dryRun }) {
       candidates.push({ mentionId:mention.id, parentId, status:'unparsed', parser:parsed.method, mediaCount:mediaUrls.length });
       continue;
     }
-    const analysis = await analyzeSlip(parsed.legs, { baseUrl: process.env.PUBLIC_BASE_URL || 'https://parlayping.net' });
-    const replyText = buildXReply(analysis);
-    const row = { mentionId:mention.id, parentId, status:'ready', parser:parsed.method, replyText, counts:analysis.counts, tailUrl:analysis.tailUrl };
+    const raw = await analyzeSlip(parsed.legs, { baseUrl: process.env.PUBLIC_BASE_URL || 'https://parlayping.net' });
+    const analysis = applyCorrelationSafety(raw);
+    const replyText = buildPublicReply(analysis, { maxLegs: 3 });
+    const row = {
+      mentionId: mention.id,
+      parentId,
+      status: 'ready',
+      parser: parsed.method,
+      replyText,
+      counts: analysis.counts,
+      correlation: analysis.correlation,
+      combinedTailProbability: analysis.combinedTailProbability,
+      combinedTailProbabilityMethod: analysis.combinedTailProbabilityMethod,
+      tailUrl: analysis.tailUrl
+    };
     if (!dryRun) {
       const posted = await xPost('/tweets', { text: replyText, reply: { in_reply_to_tweet_id: String(mention.id) } });
       row.status = 'replied';
