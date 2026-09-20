@@ -7,12 +7,63 @@ const MARKET_WORDS = [
   { re: /completions?/i, market: 'completions' }
 ];
 
+const SUPPORTED_MARKETS = new Set(['recYds','rushYds','passYds','receptions','passTds','completions','atd']);
+
 function cleanPlayer(value) {
   return String(value || '')
     .replace(/^[-•✅☑️🔥🔒\s]+/, '')
     .replace(/\b(over|under|o|u)\s*$/i, '')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+function normalizePlayerKey(value) {
+  return String(value || '')
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[.'’]/g, '')
+    .replace(/\b(jr|sr|ii|iii|iv)\b/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+function sanitizeLeg(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const player = cleanPlayer(raw.player);
+  const market = String(raw.market || '').trim();
+  if (!player || player.length < 2 || !SUPPORTED_MARKETS.has(market)) return null;
+
+  const side = market === 'atd' ? 'yes' : String(raw.side || 'over').toLowerCase();
+  if (!['over','under','yes'].includes(side)) return null;
+
+  let line = market === 'atd' ? null : Number(raw.line);
+  if (market !== 'atd' && !Number.isFinite(line)) return null;
+  if (Number.isFinite(line) && (line < 0 || line > 1000)) return null;
+
+  return {
+    player,
+    team: raw.team ? String(raw.team).trim().toUpperCase() : null,
+    market,
+    side,
+    line,
+    inclusive: market === 'atd' ? true : Boolean(raw.inclusive),
+    originalText: String(raw.originalText || '').trim().slice(0, 240)
+  };
+}
+
+function dedupeLegs(rawLegs) {
+  const out = [];
+  const seen = new Set();
+  for (const raw of Array.isArray(rawLegs) ? rawLegs : []) {
+    const leg = sanitizeLeg(raw);
+    if (!leg) continue;
+    const key = [normalizePlayerKey(leg.player), leg.market, leg.side, leg.line ?? 'null', leg.inclusive ? '1' : '0'].join('|');
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(leg);
+    if (out.length >= 20) break;
+  }
+  return out;
 }
 
 function heuristicParse(text) {
@@ -43,7 +94,7 @@ function heuristicParse(text) {
       break;
     }
   }
-  return legs.slice(0, 20);
+  return dedupeLegs(legs);
 }
 
 function responseText(payload) {
@@ -56,14 +107,38 @@ function responseText(payload) {
   return '';
 }
 
+function normalizeMediaUrls(mediaUrls) {
+  const out = [];
+  for (const raw of Array.isArray(mediaUrls) ? mediaUrls : []) {
+    const value = String(raw || '').trim();
+    if (!value) continue;
+    if (/^https:\/\//i.test(value) || /^data:image\/(png|jpe?g|webp);base64,/i.test(value)) out.push(value);
+    if (out.length >= 4) break;
+  }
+  return out;
+}
+
 async function aiParse({ text, mediaUrls = [] }) {
   const key = process.env.OPENAI_API_KEY;
   if (!key) return null;
+
+  const images = normalizeMediaUrls(mediaUrls);
+  const instructions = [
+    'Extract explicit NFL player-prop wagers from the supplied social post and/or sportsbook bet-slip screenshots.',
+    'Never infer, repair, or invent a player, line, team, market, or side that is not visibly present in the supplied content.',
+    'Treat each visible wager selection as one leg. Ignore odds, stake, payout, parlay boost, sportsbook branding, game totals, spreads, moneylines, settled-result icons, cash-out text, and promotional copy.',
+    'If the same leg appears more than once because of repeated UI elements, output it only once.',
+    'Supported markets only: receiving yards=recYds, rushing yards=rushYds, passing yards=passYds, receptions=receptions, passing touchdowns=passTds, completions=completions, anytime touchdown=atd.',
+    'Examples: 50+ Receiving Yards => market recYds, side over, line 50, inclusive true. Over 49.5 Receiving Yards => recYds, over, 49.5, inclusive false. Anytime TD => atd, side yes, line null.',
+    'For originalText, copy a short visible phrase from the source that supports the extracted leg. If a leg cannot be read confidently enough to identify player + supported market + line/ATD, omit it.',
+    'This release supports NFL player props only. Do not convert unsupported wager types into supported ones.'
+  ].join(' ');
+
   const content = [{
     type: 'input_text',
-    text: `Extract the sports-betting legs from this social post or bet slip. Only extract explicit wagers; never invent a player, line, team, or market. This first release supports NFL player props only. Convert market names to: recYds, rushYds, passYds, receptions, passTds, completions, atd. For alt lines written like 50+, set inclusive=true and line=50. For sportsbook O/U lines such as over 49.5, inclusive=false. For anytime touchdown set side=yes and line=null. Ignore payout, stake, boosts, and already-settled result annotations. Post text:\n${String(text || '').slice(0, 6000)}`
+    text: `${instructions}\n\nPost text (may be empty or just @ParlayPing):\n${String(text || '').slice(0, 6000)}`
   }];
-  for (const url of mediaUrls.slice(0, 4)) content.push({ type: 'input_image', image_url: url, detail: 'high' });
+  for (const url of images) content.push({ type: 'input_image', image_url: url, detail: 'high' });
 
   const schema = {
     type: 'object', additionalProperties: false,
@@ -92,6 +167,8 @@ async function aiParse({ text, mediaUrls = [] }) {
     body: JSON.stringify({
       model: process.env.OPENAI_MODEL || 'gpt-5.6-luna',
       store: false,
+      reasoning: { effort: 'none' },
+      max_output_tokens: 1800,
       input: [{ role: 'user', content }],
       text: { format: { type: 'json_schema', name: 'parlayping_slip', strict: true, schema } }
     })
@@ -101,22 +178,38 @@ async function aiParse({ text, mediaUrls = [] }) {
   const raw = responseText(payload);
   if (!raw) throw new Error('Vision parser returned no structured output.');
   const parsed = JSON.parse(raw);
-  return Array.isArray(parsed?.legs) ? parsed.legs : [];
+  return dedupeLegs(parsed?.legs);
 }
 
 async function parseSlip({ text = '', mediaUrls = [] } = {}) {
+  const images = normalizeMediaUrls(mediaUrls);
   let method = 'heuristic';
   let legs = [];
+  let visionError = null;
+
   if (process.env.OPENAI_API_KEY) {
     try {
-      legs = await aiParse({ text, mediaUrls });
-      method = mediaUrls.length ? 'vision' : 'ai-text';
+      legs = await aiParse({ text, mediaUrls: images });
+      method = images.length ? 'vision' : 'ai-text';
     } catch (error) {
-      console.error('ParlayPing AI parser fallback', error?.message || error);
+      visionError = error?.message || String(error);
+      console.error('ParlayPing AI parser fallback', visionError);
     }
   }
-  if (!legs?.length) legs = heuristicParse(text);
-  return { legs: (legs || []).slice(0, 20), method };
+
+  if (!legs?.length) {
+    legs = heuristicParse(text);
+    if (images.length && !process.env.OPENAI_API_KEY) method = 'vision-unconfigured';
+    else if (images.length && visionError) method = 'vision-fallback';
+  }
+
+  return {
+    legs: dedupeLegs(legs),
+    method,
+    mediaCount: images.length,
+    visionConfigured: Boolean(process.env.OPENAI_API_KEY),
+    ...(visionError ? { visionError } : {})
+  };
 }
 
-module.exports = { parseSlip, heuristicParse };
+module.exports = { parseSlip, heuristicParse, dedupeLegs, sanitizeLeg, normalizeMediaUrls };
