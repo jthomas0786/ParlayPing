@@ -17,7 +17,7 @@ module.exports = async function handler(req, res) {
   return res.status(200).json({
     ok: true,
     service: 'ParlayPing',
-    version: '0.11.0',
+    version: '0.12.0',
     timestamp: new Date().toISOString(),
     engine: {
       ready: true,
@@ -36,6 +36,16 @@ module.exports = async function handler(req, res) {
       textFallbackReady: true,
       extendedSportsReady: true,
       visionConfigured: parserVisionConfigured
+    },
+    developerApi: {
+      accountFoundationReady: true,
+      version: 'v1',
+      analyzeEndpoint: '/api/v1/analyze',
+      accountPath: '/account',
+      apiKeyPrefix: 'pp_live_',
+      durableUsageAndQuotaTracking: true,
+      serviceRoleStoredInVercel: false,
+      supabaseProjectRef: 'avwqjgiitxqphvmitolw'
     },
     x: {
       username: process.env.X_USERNAME || 'ParlayPing',
