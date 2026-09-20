@@ -45,7 +45,7 @@ Run the **ParlayPing Launch Readiness** workflow manually. It must prove:
 
 Also verify the Supabase **parlayping-x-scheduler** probe is healthy. Before launch it must remain probe-only and return `secretConfigured: true` without calling the X worker.
 
-The GitHub **ParlayPing X Mention Manual Fallback** workflow must remain `workflow_dispatch` only. It is not a second scheduler and must never run on a recurring cron while Supabase is the primary scheduler.
+The GitHub **ParlayPing X Mention Manual Fallback** workflow must remain `workflow_dispatch` only and `probe=auth` only. It is not a second scheduler and must never post.
 
 ## 5. Launch behavior and safety invariants
 
@@ -54,6 +54,11 @@ These are non-negotiable:
 - `X_AI_REPLY_APPROVED=false` until external X approval is confirmed and launch is authorized.
 - `X_AUTOREPLY_ENABLED=false` until launch is explicitly authorized.
 - Both flags must be true before the worker may post.
+- Every ready X mention must obtain a durable mention claim in Supabase immediately before the X POST.
+- A mention with an existing durable claim must not be posted again automatically.
+- Unknown or ambiguous post failures must keep the durable mention claim blocked rather than risk a duplicate reply.
+- A confirmed X `429` may release its claim for a later scheduler retry; the worker must not retry inside the same run.
+- Active posting requires the Supabase scheduler secret so direct/manual worker calls cannot bypass durable idempotency.
 - A direct `@ParlayPing` mention with its own attached slip image is actionable; a reply/quote mention may use parent and mention text/media together.
 - Attached media is deduplicated and capped at four images per analysis.
 - Any `UNRESOLVED` leg blocks the public reply.
@@ -71,7 +76,7 @@ These are non-negotiable:
 - X API requests default to a 12-second timeout (`X_REQUEST_TIMEOUT_MS`, bounded 3–30 seconds).
 - X `429` responses are surfaced with `Retry-After`; the worker must not retry the X request inside the same run.
 - Supabase is the single recurring mention scheduler. Its database lease prevents overlapping runs.
-- GitHub remains manual-only so independent schedulers cannot race and double-post.
+- GitHub remains manual auth-probe only so independent schedulers cannot race and double-post.
 - The Supabase scheduler bearer secret is stored only in Supabase Vault; the ParlayPing app contains only its SHA-256 digest.
 
 ## 6. Controlled activation after approval
@@ -81,20 +86,22 @@ Only after Sections 1–5 are green and the user explicitly authorizes activatio
 1. Confirm the latest production deployment and `/api/status` again.
 2. Run **ParlayPing Launch Readiness** again while **both** X activation flags are still false.
 3. Deploy/verify `/api/x-scheduler` and make one authenticated Supabase scheduler call while both X gates are false; it must return `posting-gates-disabled`.
-4. Change the Supabase `parlayping-x-scheduler` cron body from probe mode to active scheduler mode, while both X gates are still false.
-5. Confirm the next Supabase scheduled run reaches the worker and remains safely idle.
-6. Set `X_AI_REPLY_APPROVED=true`.
-7. Keep `X_AUTOREPLY_ENABLED=false` and verify the worker is still safely idle.
-8. Set `X_AUTOREPLY_ENABLED=true` only after the one-gate safety check is confirmed.
-9. Observe the first Supabase scheduled worker run and confirm it processes the expected number of candidates.
-10. Verify the first actual reply is attached to the correct mention and contains no unresolved leg, internal diagnostic, truncated Tail URL, or naive correlated probability.
+4. Verify the Supabase durable mention-claim endpoint with a disposable test claim/release.
+5. Change the Supabase `parlayping-x-scheduler` cron body from probe mode to active scheduler mode, while both X gates are still false.
+6. Confirm the next Supabase scheduled run reaches the worker and remains safely idle.
+7. Set `X_AI_REPLY_APPROVED=true`.
+8. Keep `X_AUTOREPLY_ENABLED=false` and verify the worker is still safely idle.
+9. Set `X_AUTOREPLY_ENABLED=true` only after the one-gate safety check is confirmed.
+10. Observe the first Supabase scheduled worker run and confirm it processes the expected number of candidates.
+11. Verify the first actual reply is attached to the correct mention, has a durable Supabase claim recorded as `replied`, and contains no unresolved leg, internal diagnostic, truncated Tail URL, or naive correlated probability.
 
 ## 7. Rollback / stop condition
 
-If any unexpected posting, parsing, authentication, data-quality, correlation, rate-limit, or deployment issue appears:
+If any unexpected posting, parsing, authentication, data-quality, correlation, idempotency, rate-limit, or deployment issue appears:
 
 1. Set `X_AUTOREPLY_ENABLED=false` immediately.
 2. Leave `X_AI_REPLY_APPROVED` unchanged unless approval itself is in question.
 3. Return the Supabase scheduler to probe mode if scheduler behavior itself is suspect.
 4. Confirm the next worker call reports `posting-gates-disabled` before any reactivation.
-5. Diagnose and rerun CI/readiness before reactivation.
+5. Inspect the affected durable mention claim before any retry or manual intervention.
+6. Diagnose and rerun CI/readiness before reactivation.
