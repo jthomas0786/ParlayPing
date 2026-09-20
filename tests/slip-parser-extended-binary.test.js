@@ -31,4 +31,4 @@ test('plain Table Tennis text can parse a match-winner selection without AI',()=
   assert.equal(legs[0].player,'Alexis Lebrun');
   assert.equal(legs[0].market,'matchWinner');
   assert.equal(legs[0].side,'yes');
-}));
+});
