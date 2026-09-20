@@ -2,7 +2,7 @@ const { analyzeSlip: analyzeNflSlip, normalizeLeg, encodeSlip } = require('./par
 const { analyzeNcaafSlip } = require('./ncaaf-engine');
 const { analyzeMlbSlip } = require('./mlb-engine');
 const { analyzeNhlSlip } = require('./nhl-engine');
-const { analyzeBasketballSlip } = require('../../lib/basketball-engine');
+const { analyzeBasketballSlip } = require('../../lib/basketball-adapter');
 
 const SUPPORTED_ANALYSIS = new Set(['NFL','NCAAF','MLB','NHL','NBA','NCAAB','WNBA']);
 
