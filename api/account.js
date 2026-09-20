@@ -1,4 +1,4 @@
-const {requireUser,supabaseFetch,rpc}=require('./lib/supabase-account');
+const {requireUser,supabaseFetch,accountEdge}=require('./lib/supabase-account');
 
 function parseBody(req){
   if(req.body&&typeof req.body==='object')return req.body;
@@ -12,13 +12,12 @@ module.exports=async function handler(req,res){
   try{
     const{token,user}=await requireUser(req);
     if(req.method==='GET'){
-      const [profiles,subscriptions,usage,keys]=await Promise.all([
+      const [profiles,subscriptions,privateData]=await Promise.all([
         supabaseFetch(`/rest/v1/profiles?select=*&id=eq.${encodeURIComponent(user.id)}`,{token}),
         supabaseFetch(`/rest/v1/subscriptions?select=*,plans(*)&user_id=eq.${encodeURIComponent(user.id)}`,{token}),
-        rpc(token,'parlayping_usage_summary'),
-        rpc(token,'parlayping_list_api_keys'),
+        accountEdge(token,{action:'bootstrap'}),
       ]);
-      return res.status(200).json({ok:true,user:{id:user.id,email:user.email||null,createdAt:user.created_at||null},profile:profiles?.[0]||null,subscription:subscriptions?.[0]||null,usage,apiKeys:Array.isArray(keys)?keys:[]});
+      return res.status(200).json({ok:true,user:{id:user.id,email:user.email||null,createdAt:user.created_at||null},profile:profiles?.[0]||null,subscription:subscriptions?.[0]||null,usage:privateData?.usage||null,apiKeys:Array.isArray(privateData?.keys)?privateData.keys:[]});
     }
     if(req.method==='PATCH'){
       const body=parseBody(req);
