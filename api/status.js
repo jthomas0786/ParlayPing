@@ -3,7 +3,7 @@ module.exports = async function handler(req, res) {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   if (req.method !== 'GET') return res.status(405).json({ ok: false, error: 'Use GET.' });
 
-  const xConfigured = Boolean(process.env.X_USER_ACCESS_TOKEN && process.env.X_USER_ID);
+  const xConfigured = Boolean(process.env.X_USER_ACCESS_TOKEN);
   const parserVisionConfigured = Boolean(process.env.OPENAI_API_KEY);
   const xApprovalRecorded = String(process.env.X_AI_REPLY_APPROVED || '').toLowerCase() === 'true';
   const autoReplyEnabled = String(process.env.X_AUTOREPLY_ENABLED || '').toLowerCase() === 'true';
@@ -12,7 +12,7 @@ module.exports = async function handler(req, res) {
   return res.status(200).json({
     ok: true,
     service: 'ParlayPing',
-    version: '0.3.0',
+    version: '0.3.1',
     timestamp: new Date().toISOString(),
     engine: {
       ready: true,
@@ -24,6 +24,7 @@ module.exports = async function handler(req, res) {
       visionConfigured: parserVisionConfigured
     },
     x: {
+      username: process.env.X_USERNAME || 'ParlayPing',
       configured: xConfigured,
       approvalRecorded: xApprovalRecorded,
       autoReplyEnabled,
