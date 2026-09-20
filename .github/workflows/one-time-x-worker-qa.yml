@@ -1,0 +1,37 @@
+name: One-time X worker QA
+
+on:
+  push:
+    paths:
+      - '.github/workflows/one-time-x-worker-qa.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Verify protected ParlayPing worker
+        env:
+          WORKER_SECRET: ${{ secrets.PARLAYPING_WORKER_SECRET }}
+          WORKER_URL: https://parlayping.net/api/x-worker
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$WORKER_SECRET"
+          response="$(curl --fail --silent --show-error --location \
+            --max-time 60 \
+            -H "x-parlayping-secret: $WORKER_SECRET" \
+            "$WORKER_URL")"
+          echo "$response"
+          RESPONSE="$response" node - <<'NODE'
+          const payload = JSON.parse(process.env.RESPONSE || '{}');
+          if (payload.ok !== true) throw new Error(`worker not ok: ${JSON.stringify(payload)}`);
+          if (payload.active !== false) throw new Error(`worker should be safely idle before X approval: ${JSON.stringify(payload)}`);
+          if (payload.reason !== 'posting-gates-disabled') throw new Error(`unexpected idle reason: ${payload.reason}`);
+          if (payload.xApprovalRecorded !== false) throw new Error('X approval gate unexpectedly open');
+          if (payload.autoReplyEnabled !== false) throw new Error('auto-reply gate unexpectedly open');
+          console.log('Protected worker verified and safely idle.');
+          NODE
