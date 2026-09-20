@@ -71,7 +71,7 @@ test('allows public reply only when all analyzed legs resolve', () => {
   assert.equal(readiness.ready, true);
   assert.equal(readiness.unresolvedCount, 0);
   assert.match(reply, /ParlayPing Live/);
-  assert.match(reply, /Reply STOP to opt out\.$/);
+  assert.doesNotMatch(reply, /Reply STOP to opt out/);
 });
 
 test('never truncates the Tail URL when compacting an X reply', () => {
@@ -88,6 +88,6 @@ test('never truncates the Tail URL when compacting an X reply', () => {
   });
   const reply = buildPublicReply(analysis, {maxLegs:3});
   assert.ok(reply.includes(tailUrl));
-  assert.match(reply, /Reply STOP to opt out\.$/);
+  assert.doesNotMatch(reply, /Reply STOP to opt out/);
   assert.ok(xWeightedLength(reply) <= 275);
 });
