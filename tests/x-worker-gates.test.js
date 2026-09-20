@@ -57,6 +57,19 @@ test('one X approval gate alone is never enough to activate posting',async()=>{
   }
 });
 
+test('active X posting refuses to run without durable idempotency secret',async()=>{
+  await withEnv({X_WORKER_SECRET:'test-secret',X_AI_REPLY_APPROVED:'true',X_AUTOREPLY_ENABLED:'true'},async()=>{
+    const req={headers:{'x-parlayping-secret':'test-secret'}};
+    const res=makeRes();
+    await handler(req,res);
+    assert.equal(res.statusCode,409);
+    assert.equal(res.payload.ok,false);
+    assert.equal(res.payload.active,false);
+    assert.equal(res.payload.reason,'idempotency-secret-missing');
+    assert.match(res.payload.error,/Durable idempotency/);
+  });
+});
+
 test('X worker launch metadata advertises every staged analysis adapter while gates are off',async()=>{
   await withEnv({X_WORKER_SECRET:'test-secret',X_AI_REPLY_APPROVED:'false',X_AUTOREPLY_ENABLED:'false'},async()=>{
     const req={headers:{'x-parlayping-secret':'test-secret'}};
