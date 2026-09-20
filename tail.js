@@ -48,7 +48,7 @@ function statusDetail(result) {
   if (result.status === 'MISS') return `${result.matchup || ''} · MISSED`;
   if (result.status === 'LIVE') return `${result.matchup || ''} · ${result.current}/${result.target} · LIVE`;
   if (result.status === 'PENDING') return `${result.matchup || ''} · HAS NOT STARTED`;
-  return 'Could not match this leg to the current NFL slate';
+  return 'Could not match this leg to a supported live data source';
 }
 
 function renderStatus() {
@@ -92,6 +92,7 @@ function selectedOption(result) {
 
 function optionLabel(result, opt) {
   if (result.market === 'atd') return 'Anytime TD';
+  if (result.market === 'anytimeGoal') return 'Anytime Goal';
   const prefix = result.side === 'under' ? 'Under ' : '';
   const suffix = result.side === 'under' ? '' : '+';
   return `${prefix}${opt.line}${suffix} ${String(result.displayMarket || '').replace(/^O?U?\d+(\.\d+)?\+?\s*/,'')}`.trim();
