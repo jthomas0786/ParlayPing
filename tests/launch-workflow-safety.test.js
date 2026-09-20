@@ -20,7 +20,7 @@ test('launch readiness is manual-only, no-post, and requires both X gates explic
   assert.match(yaml,/String\(payload\.username \|\| ''\)\.toLowerCase\(\) !== 'parlayping'/);
 });
 
-test('GitHub mention workflow is manual-only, serialized, and never becomes a second active scheduler',()=>{
+test('GitHub mention workflow is manual-only, probe-only, serialized, and never becomes a second posting scheduler',()=>{
   const yaml=read('.github/workflows/parlayping-x-mentions.yml');
   const triggerBlock=yaml.match(/\non:\s*\n([\s\S]*?)\npermissions:/)?.[1]||'';
   assert.match(triggerBlock,/workflow_dispatch:/);
@@ -30,6 +30,9 @@ test('GitHub mention workflow is manual-only, serialized, and never becomes a se
   assert.doesNotMatch(yaml,/--retry(?:-|\s|$)/);
   assert.doesNotMatch(yaml,/(?:-X|--request)\s+POST\b/i);
   assert.match(yaml,/x-parlayping-secret/);
+  assert.match(yaml,/probe=auth/);
+  assert.match(yaml,/payload\.probeOnly !== true/);
+  assert.match(yaml,/payload\.postingActive !== false/);
 });
 
 test('launch checklist preserves two-gate activation and rollback order',()=>{
@@ -41,4 +44,5 @@ test('launch checklist preserves two-gate activation and rollback order',()=>{
   const autoreply=checklist.indexOf('Set `X_AUTOREPLY_ENABLED=true`');
   assert.ok(approval>=0&&autoreply>approval,'approval gate must be enabled before autoreply gate');
   assert.match(checklist,/Set `X_AUTOREPLY_ENABLED=false` immediately/);
+  assert.match(checklist,/durable mention claim/i);
 });
