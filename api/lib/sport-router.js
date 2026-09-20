@@ -6,16 +6,17 @@ const { analyzeBasketballSlip } = require('../../lib/basketball-adapter');
 const { analyzeMmaSlip } = require('../../lib/mma-adapter');
 const { analyzeTableTennisSlip } = require('../../lib/table-tennis-adapter');
 const { analyzeEsportsSlip } = require('../../lib/esports-adapter');
+const { analyzeGolfSlip } = require('../../lib/golf-adapter');
 const { analyzeGenericMatchSlip, GENERIC_SPORTS } = require('../../lib/generic-match-adapter');
 const { analyzeExtendedSlip } = require('../../lib/extended-market-engine');
 
-const EXTENDED_SPORTS=new Set(['SOCCER','TENNIS','MMA','ESPORTS','TABLE_TENNIS',...GENERIC_SPORTS]);
+const EXTENDED_SPORTS=new Set(['SOCCER','TENNIS','MMA','ESPORTS','TABLE_TENNIS','GOLF',...GENERIC_SPORTS]);
 const SUPPORTED_ANALYSIS = new Set(['NFL','NCAAF','MLB','NHL','NBA','NCAAB','WNBA',...EXTENDED_SPORTS]);
 
 function pct(v){ return Number.isFinite(v) ? Math.round(v*1000)/10 : null; }
 function normalizeSport(value){
   const raw=String(value||'NFL').toUpperCase().replace(/[^A-Z0-9]/g,'');
-  const aliases={CFB:'NCAAF',COLLEGEFOOTBALL:'NCAAF',NCAAFOOTBALL:'NCAAF',PROFOOTBALL:'NFL',BASEBALL:'MLB',PROBASEBALL:'MLB',MAJORLEAGUEBASEBALL:'MLB',HOCKEY:'NHL',PROHOCKEY:'NHL',NATIONALHOCKEYLEAGUE:'NHL',BASKETBALL:'NBA',PROBASKBALL:'NBA',PROBASKETBALL:'NBA',COLLEGEBASKETBALL:'NCAAB',NCAAM:'NCAAB',NCAAMBB:'NCAAB',WOMENSNBA:'WNBA',UFC:'MMA',MIXEDMARTIALARTS:'MMA',TABLETENNIS:'TABLE_TENNIS',PINGPONG:'TABLE_TENNIS',EPL:'SOCCER',PREMIERLEAGUE:'SOCCER',MLS:'SOCCER',CS2:'ESPORTS',COUNTERSTRIKE:'ESPORTS',COUNTERSTRIKE2:'ESPORTS',VALORANT:'ESPORTS',LEAGUEOFLEGENDS:'ESPORTS',LOL:'ESPORTS',DOTA:'ESPORTS',DOTA2:'ESPORTS',VOLLEYBALL:'VOLLEYBALL',CRICKET:'CRICKET',NRL:'RUGBY_LEAGUE',RUGBYLEAGUE:'RUGBY_LEAGUE',AFL:'AFL',AUSSIERULES:'AFL',AUSTRALIANRULES:'AFL',BOXING:'BOXING'};
+  const aliases={CFB:'NCAAF',COLLEGEFOOTBALL:'NCAAF',NCAAFOOTBALL:'NCAAF',PROFOOTBALL:'NFL',BASEBALL:'MLB',PROBASEBALL:'MLB',MAJORLEAGUEBASEBALL:'MLB',HOCKEY:'NHL',PROHOCKEY:'NHL',NATIONALHOCKEYLEAGUE:'NHL',BASKETBALL:'NBA',PROBASKBALL:'NBA',PROBASKETBALL:'NBA',COLLEGEBASKETBALL:'NCAAB',NCAAM:'NCAAB',NCAAMBB:'NCAAB',WOMENSNBA:'WNBA',UFC:'MMA',MIXEDMARTIALARTS:'MMA',TABLETENNIS:'TABLE_TENNIS',PINGPONG:'TABLE_TENNIS',EPL:'SOCCER',PREMIERLEAGUE:'SOCCER',MLS:'SOCCER',CS2:'ESPORTS',COUNTERSTRIKE:'ESPORTS',COUNTERSTRIKE2:'ESPORTS',VALORANT:'ESPORTS',LEAGUEOFLEGENDS:'ESPORTS',LOL:'ESPORTS',DOTA:'ESPORTS',DOTA2:'ESPORTS',VOLLEYBALL:'VOLLEYBALL',CRICKET:'CRICKET',NRL:'RUGBY_LEAGUE',RUGBYLEAGUE:'RUGBY_LEAGUE',AFL:'AFL',AUSSIERULES:'AFL',AUSTRALIANRULES:'AFL',BOXING:'BOXING',GOLF:'GOLF',PGA:'GOLF',DPWORLD:'GOLF',LIVGOLF:'GOLF'};
   return aliases[raw]||raw||'NFL';
 }
 function normalizeUniversalLeg(input,index){
@@ -63,6 +64,7 @@ async function analyzeMultiSport(rawLegs,options={}){
     else if(sport==='MMA') analyses.push(await analyzeMmaSlip(sportLegs,{referenceTime:options.referenceTime,now:options.now}));
     else if(sport==='TABLE_TENNIS') analyses.push(await analyzeTableTennisSlip(sportLegs,{referenceTime:options.referenceTime,now:options.now}));
     else if(sport==='ESPORTS') analyses.push(await analyzeEsportsSlip(sportLegs,{referenceTime:options.referenceTime,now:options.now}));
+    else if(sport==='GOLF') analyses.push(await analyzeGolfSlip(sportLegs,{referenceTime:options.referenceTime,now:options.now,snapshot:options.golfSnapshot}));
     else if(GENERIC_SPORTS.has(sport)) analyses.push(await analyzeGenericMatchSlip(sport,sportLegs,{referenceTime:options.referenceTime,now:options.now}));
     else if(EXTENDED_SPORTS.has(sport)) analyses.push(await analyzeExtendedSlip(sport,sportLegs,{referenceTime:options.referenceTime,now:options.now}));
     else analyses.push({ok:true,generatedAt:new Date().toISOString(),source:`${sport} adapter pending`,results:sportLegs.map(unsupportedResult)});
