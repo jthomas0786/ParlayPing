@@ -88,17 +88,32 @@ function replyReadiness(analysis) {
   return { ready: true, reason: null, unresolvedCount: 0, resolvedCount: resolved.length };
 }
 
+function xCodePointWeight(codePoint) {
+  if (codePoint >= 0 && codePoint <= 4351) return 1;
+  if (codePoint >= 8192 && codePoint <= 8205) return 1;
+  if (codePoint >= 8208 && codePoint <= 8223) return 1;
+  if (codePoint >= 8242 && codePoint <= 8247) return 1;
+  return 2;
+}
+
+function xWeightedSegmentLength(value) {
+  let total = 0;
+  for (const char of String(value || '')) total += xCodePointWeight(char.codePointAt(0));
+  return total;
+}
+
 function xWeightedLength(text) {
   const URL_WEIGHT = 23;
+  const value = String(text || '');
   let total = 0;
   let cursor = 0;
   const re = /https?:\/\/\S+/g;
-  for (const match of String(text || '').matchAll(re)) {
-    total += [...String(text).slice(cursor, match.index)].length;
+  for (const match of value.matchAll(re)) {
+    total += xWeightedSegmentLength(value.slice(cursor, match.index));
     total += URL_WEIGHT;
     cursor = match.index + match[0].length;
   }
-  total += [...String(text || '').slice(cursor)].length;
+  total += xWeightedSegmentLength(value.slice(cursor));
   return total;
 }
 
@@ -151,4 +166,4 @@ function buildPublicReply(analysis, options = {}) {
   return text;
 }
 
-module.exports = { correlationGroups, applyCorrelationSafety, replyReadiness, buildPublicReply, xWeightedLength };
+module.exports = { correlationGroups, applyCorrelationSafety, replyReadiness, buildPublicReply, xWeightedLength, xCodePointWeight };
