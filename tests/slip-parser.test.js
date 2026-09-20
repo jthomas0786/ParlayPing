@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { heuristicParse } = require('../api/lib/slip-parser');
+const { heuristicParse, dedupeLegs, sanitizeLeg, normalizeMediaUrls, parseSlip } = require('../api/lib/slip-parser');
 const { normalizeLeg, encodeSlip } = require('../api/lib/parlay-engine');
 
 test('parses common NFL alt receiving yard leg', () => {
@@ -61,4 +61,47 @@ test('encoded slip contains versioned legs payload', () => {
   const decoded = JSON.parse(Buffer.from(token, 'base64url').toString('utf8'));
   assert.equal(decoded.v, 1);
   assert.equal(decoded.legs[0].player, 'Bijan Robinson');
+});
+
+test('dedupes repeated sportsbook UI copies of the same leg', () => {
+  const legs = dedupeLegs([
+    { player:'Bijan Robinson', market:'receptions', side:'over', line:4.5, inclusive:false, originalText:'Bijan Robinson Over 4.5 Receptions' },
+    { player:'Bijan Robinson', market:'receptions', side:'over', line:4.5, inclusive:false, originalText:'Bijan Robinson Over 4.5 Receptions' }
+  ]);
+  assert.equal(legs.length, 1);
+});
+
+test('rejects unsupported or malformed extracted screenshot legs', () => {
+  assert.equal(sanitizeLeg({ player:'Bijan Robinson', market:'moneyline', side:'yes', line:null }), null);
+  assert.equal(sanitizeLeg({ player:'', market:'atd', side:'yes', line:null }), null);
+  assert.equal(sanitizeLeg({ player:'Bijan Robinson', market:'recYds', side:'over', line:'not-a-number' }), null);
+});
+
+test('only accepts safe screenshot image inputs and caps at four', () => {
+  const urls = normalizeMediaUrls([
+    'https://pbs.twimg.com/media/one.jpg',
+    'http://example.com/nope.jpg',
+    'javascript:alert(1)',
+    'data:image/png;base64,AAAA',
+    'https://pbs.twimg.com/media/two.jpg',
+    'https://pbs.twimg.com/media/three.jpg',
+    'https://pbs.twimg.com/media/four.jpg'
+  ]);
+  assert.equal(urls.length, 4);
+  assert.equal(urls[0], 'https://pbs.twimg.com/media/one.jpg');
+  assert.match(urls[1], /^data:image\/png;base64,/);
+});
+
+test('marks image parsing as unconfigured when no OpenAI key is present', async () => {
+  const previous = process.env.OPENAI_API_KEY;
+  delete process.env.OPENAI_API_KEY;
+  try {
+    const result = await parseSlip({ text:'', mediaUrls:['https://pbs.twimg.com/media/slip.jpg'] });
+    assert.equal(result.method, 'vision-unconfigured');
+    assert.equal(result.mediaCount, 1);
+    assert.equal(result.visionConfigured, false);
+    assert.equal(result.legs.length, 0);
+  } finally {
+    if (previous !== undefined) process.env.OPENAI_API_KEY = previous;
+  }
 });
