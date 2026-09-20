@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { applyCorrelationSafety, replyReadiness, buildPublicReply } = require('../api/lib/analysis-safety');
+const { applyCorrelationSafety, replyReadiness, buildPublicReply, xWeightedLength } = require('../api/lib/analysis-safety');
 
 test('withholds naive combined probability for same-game pending legs', () => {
   const analysis = applyCorrelationSafety({
@@ -67,7 +67,27 @@ test('allows public reply only when all analyzed legs resolve', () => {
   });
 
   const readiness = replyReadiness(analysis);
+  const reply = buildPublicReply(analysis);
   assert.equal(readiness.ready, true);
   assert.equal(readiness.unresolvedCount, 0);
-  assert.match(buildPublicReply(analysis), /ParlayPing Live/);
+  assert.match(reply, /ParlayPing Live/);
+  assert.match(reply, /Reply STOP to opt out\.$/);
+});
+
+test('never truncates the Tail URL when compacting an X reply', () => {
+  const tailUrl = `https://parlayping.net/tail?slip=${'x'.repeat(900)}`;
+  const analysis = applyCorrelationSafety({
+    counts: { hit: 0, miss: 0, live: 0, pending: 3, unresolved: 0 },
+    combinedTailProbability: 0.123,
+    tailUrl,
+    results: [
+      { id:'1', player:'A Very Long Player Name One', gameId:'G1', status:'PENDING', displayMarket:'O123.5 RECEIVING YARDS', probability:0.51 },
+      { id:'2', player:'A Very Long Player Name Two', gameId:'G2', status:'PENDING', displayMarket:'O234.5 PASSING YARDS', probability:0.52 },
+      { id:'3', player:'A Very Long Player Name Three', gameId:'G3', status:'PENDING', displayMarket:'O45.5 RUSHING YARDS', probability:0.53 }
+    ]
+  });
+  const reply = buildPublicReply(analysis, {maxLegs:3});
+  assert.ok(reply.includes(tailUrl));
+  assert.match(reply, /Reply STOP to opt out\.$/);
+  assert.ok(xWeightedLength(reply) <= 275);
 });
