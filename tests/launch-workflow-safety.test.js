@@ -20,9 +20,10 @@ test('launch readiness is manual-only, no-post, and requires both X gates explic
   assert.match(yaml,/String\(payload\.username \|\| ''\)\.toLowerCase\(\) !== 'parlayping'/);
 });
 
-test('scheduled mention poll is serialized and does not retry X calls inside a workflow run',()=>{
+test('scheduled mention fallback is off the common cron boundary, serialized, and does not retry X calls',()=>{
   const yaml=read('.github/workflows/parlayping-x-mentions.yml');
-  assert.match(yaml,/cron:\s*['"]\*\/5 \* \* \* \*['"]/);
+  assert.match(yaml,/cron:\s*['"]2-57\/5 \* \* \* \*['"]/);
+  assert.doesNotMatch(yaml,/cron:\s*['"]\*\/5 \* \* \* \*['"]/);
   assert.match(yaml,/group:\s*parlayping-x-mentions/);
   assert.match(yaml,/cancel-in-progress:\s*false/);
   assert.doesNotMatch(yaml,/--retry(?:-|\s|$)/);
