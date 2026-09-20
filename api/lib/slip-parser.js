@@ -1,4 +1,4 @@
-const MARKET_WORDS = [
+const FOOTBALL_MARKET_WORDS = [
   { re: /receiv(?:ing)?\s*(?:yards?|yds?)|rec\s*(?:yards?|yds?)/i, market: 'recYds' },
   { re: /rush(?:ing)?\s*(?:yards?|yds?)/i, market: 'rushYds' },
   { re: /pass(?:ing)?\s*(?:yards?|yds?)/i, market: 'passYds' },
@@ -7,8 +7,17 @@ const MARKET_WORDS = [
   { re: /completions?/i, market: 'completions' }
 ];
 
+const MLB_MARKET_WORDS = [
+  { re: /hits?\s*\+\s*runs?\s*\+\s*rbi(?:s)?|hits?\s+runs?\s+rbi(?:s)?/i, market:'hrr' },
+  { re: /total\s+bases?/i, market:'totalBases' },
+  { re: /stolen\s+bases?|\bsteals?\b/i, market:'stolenBases' },
+  { re: /runs?\s+batted\s+in|\brbi(?:s)?\b/i, market:'rbi' },
+  { re: /\bhits?\b/i, market:'hits' }
+];
+
 const SPORT_ENUM = ['NFL','NCAAF','NBA','NCAAB','WNBA','MLB','NHL','SOCCER','TENNIS','MMA','GOLF','CRICKET','ESPORTS','RUGBY','VOLLEYBALL','MOTORSPORTS','OTHER'];
 const FOOTBALL_MARKETS = new Set(['recYds','rushYds','passYds','receptions','passTds','completions','atd']);
+const MLB_MARKETS = new Set(['homeRun','hits','totalBases','rbi','hrr','stolenBases']);
 
 function cleanPlayer(value) {
   return String(value || '').replace(/^[-•✅☑️🔥🔒\s]+/, '').replace(/\b(over|under|o|u)\s*$/i, '').replace(/\s+/g, ' ').trim();
@@ -18,7 +27,7 @@ function normalizePlayerKey(value) {
 }
 function normalizeSport(value) {
   const raw = String(value || 'OTHER').toUpperCase().replace(/[^A-Z0-9]/g, '');
-  const aliases = { CFB:'NCAAF', NCAAFOOTBALL:'NCAAF', COLLEGEFOOTBALL:'NCAAF', COLLEGEBASKETBALL:'NCAAB', UFC:'MMA' };
+  const aliases = { CFB:'NCAAF', NCAAFOOTBALL:'NCAAF', COLLEGEFOOTBALL:'NCAAF', COLLEGEBASKETBALL:'NCAAB', UFC:'MMA', BASEBALL:'MLB', PROBASEBALL:'MLB', MAJORLEAGUEBASEBALL:'MLB' };
   const sport = aliases[raw] || raw;
   return SPORT_ENUM.includes(sport) ? sport : 'OTHER';
 }
@@ -56,34 +65,53 @@ function dedupeLegs(rawLegs) {
   return out;
 }
 function heuristicSport(text) {
+  if (/\b(mlb|major league baseball|baseball)\b/i.test(text)) return 'MLB';
   if (/\b(ncaaf|cfb|college football|ncaa football)\b/i.test(text)) return 'NCAAF';
   return 'NFL';
 }
+function numericLegFromLine(line, word, sport) {
+  const number = line.match(/(?:over|under|o|u)?\s*(\d+(?:\.\d+)?)\s*\+?/i);
+  if (!number) return null;
+  const value = Number(number[1]);
+  const marketMatch = line.match(word.re);
+  const numberIndex = line.indexOf(number[0]);
+  let player = cleanPlayer(line.slice(0, numberIndex));
+  if (marketMatch && word.re.test(player)) player = cleanPlayer(line.slice(0, marketMatch.index || 0));
+  if (!player || player.length < 2) player = cleanPlayer(line.slice(0, marketMatch?.index || 0));
+  if (!player) return null;
+  const under = /\bunder\b|\bU\s*\d/i.test(line);
+  const inclusive = /\d+(?:\.\d+)?\s*\+/.test(line);
+  return { sport, player, team:null, market:word.market, side:under?'under':'over', line:value, inclusive, originalText:line };
+}
 function heuristicParse(text) {
-  const sport = heuristicSport(text);
+  const contextSport = heuristicSport(text);
   const lines = String(text || '').split(/\n|\r|;|\s+[|]\s+/).map(s => s.trim()).filter(Boolean);
   const legs = [];
   for (const line of lines) {
+    const homeRun = line.match(/^(.{2,70}?)(?:\s+[-–—:]?\s*)(?:to\s+(?:hit|record)\s+(?:a\s+)?home\s+run|(?:anytime\s+)?home\s+run|to\s+homer|homer)\b/i);
+    if (homeRun) {
+      const player=cleanPlayer(homeRun[1]);
+      if(player) legs.push({sport:'MLB',player,team:null,market:'homeRun',side:'yes',line:null,inclusive:true,originalText:line});
+      continue;
+    }
+    let matched=false;
+    for(const word of MLB_MARKET_WORDS){
+      if(!word.re.test(line)) continue;
+      const leg=numericLegFromLine(line,word,'MLB');
+      if(leg){legs.push(leg);matched=true;break;}
+    }
+    if(matched) continue;
+
     const atd = line.match(/^(.{2,50}?)(?:\s+[-–—:]?\s*)(?:anytime\s+(?:touchdown|td)|to\s+score(?:\s+a\s+touchdown)?|atd)\b/i);
     if (atd) {
       const player = cleanPlayer(atd[1]);
-      if (player) legs.push({ sport, player, team:null, market:'atd', side:'yes', line:null, inclusive:true, originalText:line });
+      if (player) legs.push({ sport:contextSport==='MLB'?'NFL':contextSport, player, team:null, market:'atd', side:'yes', line:null, inclusive:true, originalText:line });
       continue;
     }
-    for (const word of MARKET_WORDS) {
+    for (const word of FOOTBALL_MARKET_WORDS) {
       if (!word.re.test(line)) continue;
-      const number = line.match(/(?:over|under|o|u)?\s*(\d+(?:\.\d+)?)\s*\+?/i);
-      if (!number) continue;
-      const value = Number(number[1]);
-      const numberIndex = line.indexOf(number[0]);
-      let player = cleanPlayer(line.slice(0, numberIndex));
-      if (!player || player.length < 2) {
-        const marketMatch = line.match(word.re); player = cleanPlayer(line.slice(0, marketMatch?.index || 0));
-      }
-      if (!player) continue;
-      const under = /\bunder\b|\bU\s*\d/i.test(line);
-      const inclusive = /\d+(?:\.\d+)?\s*\+/.test(line);
-      legs.push({ sport, player, team:null, market:word.market, side:under?'under':'over', line:value, inclusive, originalText:line });
+      const leg=numericLegFromLine(line,word,contextSport==='MLB'?'NFL':contextSport);
+      if(leg) legs.push(leg);
       break;
     }
   }
@@ -108,14 +136,15 @@ async function aiParse({ text, mediaUrls = [] }) {
   const images = normalizeMediaUrls(mediaUrls);
   const instructions = [
     'Extract explicit player-prop wagers from the supplied social post and/or sportsbook bet-slip screenshots.',
-    'Classify EACH leg by sport/league. Do not force a college player into NFL. Use NCAAF for NCAA/college football and NCAAB for NCAA/college basketball. A mixed-sport slip may contain different sports on different legs.',
-    'If the league is visibly shown, use it. If it is not shown, use player/team context only when confident; otherwise use OTHER.',
+    'Classify EACH leg by sport/league. Do not force a college player into NFL. Use NCAAF for NCAA/college football, NCAAB for NCAA/college basketball, and MLB for Major League Baseball. A mixed-sport slip may contain different sports on different legs.',
+    'If the league is visibly shown, use it. If it is not shown, use player/team/market context only when confident; otherwise use OTHER.',
     'Never invent or repair a player, line, team, market, or side that is not supported by the visible content.',
     'Treat each visible wager selection as one leg. Ignore odds, stake, payout, boosts, sportsbook branding, game totals, spreads, moneylines, settled icons, cash-out text, and promotional copy.',
     'If the same leg appears more than once because of repeated UI elements, output it only once.',
-    'Use these canonical football markets: receiving yards=recYds, rushing yards=rushYds, passing yards=passYds, receptions=receptions, passing touchdowns=passTds, completions=completions, anytime touchdown=atd.',
-    'For other sports use concise canonical camelCase keys such as points, rebounds, assists, threes, homeRuns, hits, totalBases, pitcherStrikeouts, goals, shotsOnGoal, saves, anytimeGoal, aces, or significantStrikes. Do not convert one market into another.',
-    'Examples: 50+ Receiving Yards => recYds, over, line 50, inclusive true. Over 49.5 Receiving Yards => recYds, over, 49.5, inclusive false. Anytime TD => atd, yes, line null.',
+    'Canonical football markets: receiving yards=recYds, rushing yards=rushYds, passing yards=passYds, receptions=receptions, passing touchdowns=passTds, completions=completions, anytime touchdown=atd.',
+    'Canonical MLB markets currently supported by ParlayPing: to hit a home run/home run=homeRun (yes/no binary), hits=hits, total bases=totalBases, RBI=rbi, hits+runs+RBI=hrr, stolen bases=stolenBases. Do not rename MLB home run to homeRuns.',
+    'For other sports use concise canonical camelCase keys such as points, rebounds, assists, threes, goals, shotsOnGoal, saves, anytimeGoal, aces, or significantStrikes. Do not convert one market into another.',
+    'Examples: 50+ Receiving Yards => recYds, over, line 50, inclusive true. Over 49.5 Receiving Yards => recYds, over, 49.5, inclusive false. Anytime TD => atd, yes, line null. 1+ Hits => MLB hits, over, line 1, inclusive true. Over 0.5 Hits => MLB hits, over, 0.5, inclusive false. 2+ Total Bases => MLB totalBases, over, 2, inclusive true. To Hit a Home Run => MLB homeRun, yes, line null.',
     'For originalText, copy a short visible phrase supporting the leg. If player + market + line/binary selection cannot be read confidently, omit the leg.'
   ].join(' ');
   const content = [{ type:'input_text', text:`${instructions}\n\nPost text (may be empty):\n${String(text || '').slice(0,6000)}` }];
@@ -159,4 +188,4 @@ async function parseSlip({ text = '', mediaUrls = [] } = {}) {
   return { legs, sports, sport:sports.length===1?sports[0]:sports.length?'MIXED':null, method, mediaCount:images.length, visionConfigured:Boolean(process.env.OPENAI_API_KEY), ...(visionError?{visionError}:{}) };
 }
 
-module.exports = { parseSlip, heuristicParse, dedupeLegs, sanitizeLeg, normalizeMediaUrls, normalizeSport, SPORT_ENUM, FOOTBALL_MARKETS };
+module.exports = { parseSlip, heuristicParse, dedupeLegs, sanitizeLeg, normalizeMediaUrls, normalizeSport, SPORT_ENUM, FOOTBALL_MARKETS, MLB_MARKETS };
