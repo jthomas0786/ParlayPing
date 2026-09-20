@@ -119,7 +119,8 @@ function buildPublicReply(analysis, options = {}) {
   const compact = row => {
     const icon = row.status === 'HIT' ? '✅' : row.status === 'MISS' ? '❌' : row.status === 'LIVE' ? '🔴' : '⏳';
     const lastName = String(row.player || '').trim().split(/\s+/).slice(-1)[0] || row.player || 'Leg';
-    const progress = row.status === 'LIVE' ? ` ${row.current}/${row.target}` : '';
+    const hasProgress = row.current !== null && row.current !== undefined && row.target !== null && row.target !== undefined;
+    const progress = row.status === 'LIVE' && hasProgress ? ` ${row.current}/${row.target}` : '';
     const prob = ['LIVE', 'PENDING'].includes(row.status) && Number.isFinite(row.probability)
       ? ` · ${Math.round(row.probability * 100)}%`
       : '';
