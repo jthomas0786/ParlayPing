@@ -110,3 +110,39 @@ test('X auth probe refuses credentials for the wrong account',async()=>{
     assert.match(res.payload.error,/not @ParlayPing/);
   }));
 });
+
+test('direct X mention with no parent is actionable unless it is sensitive, already replied, or opted out',()=>{
+  const mention={id:'m1',text:'@ParlayPing check this slip',possibly_sensitive:false};
+  assert.equal(handler.isActionableMention(mention,new Set()),true);
+  assert.equal(handler.isActionableMention({...mention,possibly_sensitive:true},new Set()),false);
+  assert.equal(handler.isActionableMention({...mention,text:'@ParlayPing STOP'},new Set()),false);
+  assert.equal(handler.isActionableMention(mention,new Set(['m1'])),false);
+});
+
+test('direct X mention input carries its own screenshot and timestamp into parsing',()=>{
+  const mention={id:'m1',text:'@ParlayPing check this slip',created_at:'2026-09-20T20:00:00Z',attachments:{media_keys:['a']}};
+  const media=new Map([['a',{media_key:'a',url:'https://pbs.twimg.com/media/direct.jpg'}]]);
+  const input=handler.buildMentionInput(mention,null,media);
+  assert.equal(input.sourceMode,'direct-mention');
+  assert.equal(input.referenceTime,'2026-09-20T20:00:00Z');
+  assert.equal(input.text,'@ParlayPing check this slip');
+  assert.deepEqual(input.mediaUrls,['https://pbs.twimg.com/media/direct.jpg']);
+});
+
+test('reply mention input merges parent and mention screenshots without duplicate media',()=>{
+  const parent={id:'p1',text:'NFL slip',created_at:'2026-09-20T19:55:00Z',attachments:{media_keys:['a','b','c']}};
+  const mention={id:'m1',text:'@ParlayPing how is this looking?',created_at:'2026-09-20T20:00:00Z',attachments:{media_keys:['c','d','e']}};
+  const media=new Map([
+    ['a',{url:'https://pbs.twimg.com/media/a.jpg'}],['b',{url:'https://pbs.twimg.com/media/b.jpg'}],
+    ['c',{url:'https://pbs.twimg.com/media/c.jpg'}],['d',{url:'https://pbs.twimg.com/media/d.jpg'}],
+    ['e',{url:'https://pbs.twimg.com/media/e.jpg'}]
+  ]);
+  const input=handler.buildMentionInput(mention,parent,media);
+  assert.equal(input.sourceMode,'parent-plus-mention');
+  assert.equal(input.referenceTime,'2026-09-20T19:55:00Z');
+  assert.equal(input.text,'NFL slip\n@ParlayPing how is this looking?');
+  assert.deepEqual(input.mediaUrls,[
+    'https://pbs.twimg.com/media/a.jpg','https://pbs.twimg.com/media/b.jpg',
+    'https://pbs.twimg.com/media/c.jpg','https://pbs.twimg.com/media/d.jpg'
+  ]);
+});
