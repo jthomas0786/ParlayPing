@@ -38,8 +38,8 @@ async function requireUser(req){
   return{token,user};
 }
 
-async function rpc(token,name,body={}){
-  return supabaseFetch(`/rest/v1/rpc/${name}`,{method:'POST',token,body});
+async function accountEdge(token,body={}){
+  return supabaseFetch('/functions/v1/parlayping-account-api',{method:'POST',token,body});
 }
 
-module.exports={SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,bearer,supabaseFetch,requireUser,rpc};
+module.exports={SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,bearer,supabaseFetch,requireUser,accountEdge};
