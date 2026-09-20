@@ -147,7 +147,7 @@ test('MLB model probability is used only for the modeled threshold', () => {
   const player={props:{hits:{p:0.70}}};
   assert.equal(modelProbability({market:'hits',side:'over',line:1,inclusive:true},file,player),0.70);
   assert.equal(modelProbability({market:'hits',side:'over',line:0.5,inclusive:false},file,player),0.70);
-  assert.equal(modelProbability({market:'hits',side:'under',line:0.5,inclusive:false},file,player),0.30);
+  assert.ok(Math.abs(modelProbability({market:'hits',side:'under',line:0.5,inclusive:false},file,player)-0.30)<1e-12);
   assert.equal(modelProbability({market:'hits',side:'over',line:1.5,inclusive:false},file,player),null);
 });
 
