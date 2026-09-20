@@ -25,7 +25,7 @@ module.exports = async function handler(req, res) {
     if (legs.length > 20) return res.status(400).json({ ok: false, error: 'Maximum 20 legs per ping.' });
     const host = req.headers['x-forwarded-host'] || req.headers.host || 'parlayping.net';
     const proto = req.headers['x-forwarded-proto'] || 'https';
-    const raw = await analyzeMultiSport(legs, { baseUrl: `${proto}://${host}` });
+    const raw = await analyzeMultiSport(legs, { baseUrl: `${proto}://${host}`, referenceTime: body.referenceTime || null });
     const result = applyCorrelationSafety(raw);
     result.replyText = buildPublicReply(result, { maxLegs: 4 });
     return res.status(200).json(result);
