@@ -15,9 +15,19 @@ const MLB_MARKET_WORDS = [
   { re: /\bhits?\b/i, market:'hits' }
 ];
 
+const NHL_MARKET_WORDS = [
+  { re: /shots?\s+on\s+goal|\bsog\b/i, market:'shotsOnGoal', strong:true },
+  { re: /blocked\s+shots?/i, market:'blocks', strong:true },
+  { re: /\bsaves?\b/i, market:'saves', strong:false },
+  { re: /\bassists?\b/i, market:'assists', strong:false },
+  { re: /\bpoints?\b/i, market:'points', strong:false },
+  { re: /\bgoals?\b/i, market:'goals', strong:false }
+];
+
 const SPORT_ENUM = ['NFL','NCAAF','NBA','NCAAB','WNBA','MLB','NHL','SOCCER','TENNIS','MMA','GOLF','CRICKET','ESPORTS','RUGBY','VOLLEYBALL','MOTORSPORTS','OTHER'];
 const FOOTBALL_MARKETS = new Set(['recYds','rushYds','passYds','receptions','passTds','completions','atd']);
 const MLB_MARKETS = new Set(['homeRun','hits','totalBases','rbi','hrr','stolenBases']);
+const NHL_MARKETS = new Set(['shotsOnGoal','points','assists','goals','anytimeGoal','blocks','saves']);
 
 function cleanPlayer(value) {
   return String(value || '').replace(/^[-•✅☑️🔥🔒\s]+/, '').replace(/\b(over|under|o|u)\s*$/i, '').replace(/\s+/g, ' ').trim();
@@ -27,7 +37,7 @@ function normalizePlayerKey(value) {
 }
 function normalizeSport(value) {
   const raw = String(value || 'OTHER').toUpperCase().replace(/[^A-Z0-9]/g, '');
-  const aliases = { CFB:'NCAAF', NCAAFOOTBALL:'NCAAF', COLLEGEFOOTBALL:'NCAAF', COLLEGEBASKETBALL:'NCAAB', UFC:'MMA', BASEBALL:'MLB', PROBASEBALL:'MLB', MAJORLEAGUEBASEBALL:'MLB' };
+  const aliases = { CFB:'NCAAF', NCAAFOOTBALL:'NCAAF', COLLEGEFOOTBALL:'NCAAF', COLLEGEBASKETBALL:'NCAAB', UFC:'MMA', BASEBALL:'MLB', PROBASEBALL:'MLB', MAJORLEAGUEBASEBALL:'MLB', HOCKEY:'NHL', PROHOCKEY:'NHL', NATIONALHOCKEYLEAGUE:'NHL' };
   const sport = aliases[raw] || raw;
   return SPORT_ENUM.includes(sport) ? sport : 'OTHER';
 }
@@ -66,6 +76,7 @@ function dedupeLegs(rawLegs) {
 }
 function heuristicSport(text) {
   if (/\b(mlb|major league baseball|baseball)\b/i.test(text)) return 'MLB';
+  if (/\b(nhl|national hockey league|hockey)\b/i.test(text)) return 'NHL';
   if (/\b(ncaaf|cfb|college football|ncaa football)\b/i.test(text)) return 'NCAAF';
   return 'NFL';
 }
@@ -102,15 +113,29 @@ function heuristicParse(text) {
     }
     if(matched) continue;
 
+    const anytimeGoal = line.match(/^(.{2,70}?)(?:\s+[-–—:]?\s*)(?:anytime\s+(?:goal|goal\s+scorer)|to\s+score(?:\s+a\s+goal)?|to\s+record\s+(?:a\s+)?goal)\b/i);
+    if (anytimeGoal && contextSport === 'NHL') {
+      const player=cleanPlayer(anytimeGoal[1]);
+      if(player) legs.push({sport:'NHL',player,team:null,market:'anytimeGoal',side:'yes',line:null,inclusive:true,originalText:line});
+      continue;
+    }
+    for(const word of NHL_MARKET_WORDS){
+      if(!word.re.test(line)) continue;
+      if(contextSport!=='NHL'&&!word.strong) continue;
+      const leg=numericLegFromLine(line,word,'NHL');
+      if(leg){legs.push(leg);matched=true;break;}
+    }
+    if(matched) continue;
+
     const atd = line.match(/^(.{2,50}?)(?:\s+[-–—:]?\s*)(?:anytime\s+(?:touchdown|td)|to\s+score(?:\s+a\s+touchdown)?|atd)\b/i);
     if (atd) {
       const player = cleanPlayer(atd[1]);
-      if (player) legs.push({ sport:contextSport==='MLB'?'NFL':contextSport, player, team:null, market:'atd', side:'yes', line:null, inclusive:true, originalText:line });
+      if (player) legs.push({ sport:['MLB','NHL'].includes(contextSport)?'NFL':contextSport, player, team:null, market:'atd', side:'yes', line:null, inclusive:true, originalText:line });
       continue;
     }
     for (const word of FOOTBALL_MARKET_WORDS) {
       if (!word.re.test(line)) continue;
-      const leg=numericLegFromLine(line,word,contextSport==='MLB'?'NFL':contextSport);
+      const leg=numericLegFromLine(line,word,['MLB','NHL'].includes(contextSport)?'NFL':contextSport);
       if(leg) legs.push(leg);
       break;
     }
@@ -136,15 +161,16 @@ async function aiParse({ text, mediaUrls = [] }) {
   const images = normalizeMediaUrls(mediaUrls);
   const instructions = [
     'Extract explicit player-prop wagers from the supplied social post and/or sportsbook bet-slip screenshots.',
-    'Classify EACH leg by sport/league. Do not force a college player into NFL. Use NCAAF for NCAA/college football, NCAAB for NCAA/college basketball, and MLB for Major League Baseball. A mixed-sport slip may contain different sports on different legs.',
+    'Classify EACH leg by sport/league. Do not force a college player into NFL. Use NCAAF for NCAA/college football, NCAAB for NCAA/college basketball, MLB for Major League Baseball, and NHL for National Hockey League. A mixed-sport slip may contain different sports on different legs.',
     'If the league is visibly shown, use it. If it is not shown, use player/team/market context only when confident; otherwise use OTHER.',
     'Never invent or repair a player, line, team, market, or side that is not supported by the visible content.',
     'Treat each visible wager selection as one leg. Ignore odds, stake, payout, boosts, sportsbook branding, game totals, spreads, moneylines, settled icons, cash-out text, and promotional copy.',
     'If the same leg appears more than once because of repeated UI elements, output it only once.',
     'Canonical football markets: receiving yards=recYds, rushing yards=rushYds, passing yards=passYds, receptions=receptions, passing touchdowns=passTds, completions=completions, anytime touchdown=atd.',
     'Canonical MLB markets currently supported by ParlayPing: to hit a home run/home run=homeRun (yes/no binary), hits=hits, total bases=totalBases, RBI=rbi, hits+runs+RBI=hrr, stolen bases=stolenBases. Do not rename MLB home run to homeRuns.',
-    'For other sports use concise canonical camelCase keys such as points, rebounds, assists, threes, goals, shotsOnGoal, saves, anytimeGoal, aces, or significantStrikes. Do not convert one market into another.',
-    'Examples: 50+ Receiving Yards => recYds, over, line 50, inclusive true. Over 49.5 Receiving Yards => recYds, over, 49.5, inclusive false. Anytime TD => atd, yes, line null. 1+ Hits => MLB hits, over, line 1, inclusive true. Over 0.5 Hits => MLB hits, over, 0.5, inclusive false. 2+ Total Bases => MLB totalBases, over, 2, inclusive true. To Hit a Home Run => MLB homeRun, yes, line null.',
+    'Canonical NHL markets currently supported by ParlayPing: shots on goal/SOG=shotsOnGoal, points=points, assists=assists, goals=goals, anytime goal scorer=anytimeGoal (yes/no binary), blocked shots=blocks, goalie saves=saves.',
+    'For other sports use concise canonical camelCase keys such as points, rebounds, assists, threes, goals, aces, or significantStrikes. Do not convert one market into another.',
+    'Examples: 50+ Receiving Yards => recYds, over, line 50, inclusive true. Over 49.5 Receiving Yards => recYds, over, 49.5, inclusive false. Anytime TD => atd, yes, line null. 1+ Hits => MLB hits, over, line 1, inclusive true. Over 0.5 Hits => MLB hits, over, 0.5, inclusive false. 2+ Total Bases => MLB totalBases, over, 2, inclusive true. To Hit a Home Run => MLB homeRun, yes, line null. 3+ Shots on Goal => NHL shotsOnGoal, over, line 3, inclusive true. Over 2.5 Shots on Goal => NHL shotsOnGoal, over, line 2.5, inclusive false. Anytime Goal Scorer => NHL anytimeGoal, yes, line null.',
     'For originalText, copy a short visible phrase supporting the leg. If player + market + line/binary selection cannot be read confidently, omit the leg.'
   ].join(' ');
   const content = [{ type:'input_text', text:`${instructions}\n\nPost text (may be empty):\n${String(text || '').slice(0,6000)}` }];
@@ -188,4 +214,4 @@ async function parseSlip({ text = '', mediaUrls = [] } = {}) {
   return { legs, sports, sport:sports.length===1?sports[0]:sports.length?'MIXED':null, method, mediaCount:images.length, visionConfigured:Boolean(process.env.OPENAI_API_KEY), ...(visionError?{visionError}:{}) };
 }
 
-module.exports = { parseSlip, heuristicParse, dedupeLegs, sanitizeLeg, normalizeMediaUrls, normalizeSport, SPORT_ENUM, FOOTBALL_MARKETS, MLB_MARKETS };
+module.exports = { parseSlip, heuristicParse, dedupeLegs, sanitizeLeg, normalizeMediaUrls, normalizeSport, SPORT_ENUM, FOOTBALL_MARKETS, MLB_MARKETS, NHL_MARKETS };
