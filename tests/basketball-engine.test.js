@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { heuristicParse, sanitizeLeg, BASKETBALL_MARKETS } = require('../api/lib/slip-parser');
-const { parseSummaryPlayers, settleStatus, targetForLeg, quoteProbability } = require('../lib/basketball-engine');
+const { parseSummaryPlayers, settleStatus, targetForLeg, quoteMatchesLine, quoteProbability } = require('../lib/basketball-engine');
 const { normalizeSport, SUPPORTED_ANALYSIS } = require('../api/lib/sport-router');
 
 test('heuristic parses WNBA points rebounds and steals without MLB/NHL collisions', () => {
@@ -67,9 +67,16 @@ test('double-double and triple-double settle from derived indicators', () => {
 });
 
 test('basketball sportsbook probability de-vigs two-sided prices', () => {
-  const odds={rows:[{player:'Aja Wilson',team:'LVA',market:'points',line:24.5,commenceTime:'2026-09-20T23:00:00Z',overPrice:-110,underPrice:-110,book:'TestBook'}]};
+  const odds={rows:[{player:'Aja Wilson',team:'LVA',market:'points',marketKey:'player_points',line:24.5,commenceTime:'2026-09-20T23:00:00Z',overPrice:-110,underPrice:-110,book:'TestBook'}]};
   const match={game:{startTime:'2026-09-20T23:00:00Z'},player:{team:'LVA'}};
   const quote=quoteProbability(odds,match,{player:'Aja Wilson',team:'LVA',market:'points',side:'over',line:25,inclusive:true});
   assert.ok(Math.abs(quote.probability-0.5)<1e-12);
   assert.equal(quote.method,'sportsbook-devig-median');
+});
+
+test('10+ milestone matches alt line 10 but standard equivalent at 9.5', () => {
+  const leg={market:'points',side:'over',line:10,inclusive:true};
+  assert.equal(quoteMatchesLine({marketKey:'player_points_alt',line:10,overPrice:-160,underPrice:null},leg),true);
+  assert.equal(quoteMatchesLine({marketKey:'player_points',line:9.5,overPrice:-110,underPrice:-110},leg),true);
+  assert.equal(quoteMatchesLine({marketKey:'player_points',line:10,overPrice:-110,underPrice:-110},leg),false);
 });
