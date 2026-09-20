@@ -201,6 +201,10 @@ function normalizeMediaUrls(mediaUrls) {
   }
   return out;
 }
+function openAiTimeoutMs(){
+  const configured=Number(process.env.OPENAI_TIMEOUT_MS);
+  return Number.isFinite(configured)?Math.max(3000,Math.min(30000,Math.round(configured))):12000;
+}
 async function aiParse({ text, mediaUrls = [] }) {
   const key = process.env.OPENAI_API_KEY; if (!key) return null;
   const images = normalizeMediaUrls(mediaUrls);
@@ -234,8 +238,9 @@ async function aiParse({ text, mediaUrls = [] }) {
     }}}
     ,required:['legs']
   };
+  const signal=typeof AbortSignal==='function'&&typeof AbortSignal.timeout==='function'?AbortSignal.timeout(openAiTimeoutMs()):undefined;
   const response = await fetch('https://api.openai.com/v1/responses', {
-    method:'POST', headers:{'content-type':'application/json',authorization:`Bearer ${key}`},
+    method:'POST', headers:{'content-type':'application/json',authorization:`Bearer ${key}`},signal,
     body:JSON.stringify({ model:process.env.OPENAI_MODEL || 'gpt-5.6-luna', store:false, reasoning:{effort:'none'}, max_output_tokens:1800,
       input:[{role:'user',content}], text:{format:{type:'json_schema',name:'parlayping_slip',strict:true,schema}} })
   });
@@ -261,4 +266,4 @@ async function parseSlip({ text = '', mediaUrls = [] } = {}) {
   return { legs, sports, sport:sports.length===1?sports[0]:sports.length?'MIXED':null, method, mediaCount:images.length, visionConfigured:Boolean(process.env.OPENAI_API_KEY), ...(visionError?{visionError}:{}) };
 }
 
-module.exports = { parseSlip, heuristicParse, dedupeLegs, sanitizeLeg, normalizeMediaUrls, normalizeSport, SPORT_ENUM, FOOTBALL_MARKETS, MLB_MARKETS, NHL_MARKETS, BASKETBALL_MARKETS };
+module.exports = { parseSlip, heuristicParse, dedupeLegs, sanitizeLeg, normalizeMediaUrls, normalizeSport, SPORT_ENUM, FOOTBALL_MARKETS, MLB_MARKETS, NHL_MARKETS, BASKETBALL_MARKETS, openAiTimeoutMs };
