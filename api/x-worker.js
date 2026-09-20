@@ -1,38 +1,89 @@
+const crypto = require('crypto');
 const { parseSlip } = require('./lib/slip-parser');
 const { analyzeSlip } = require('./lib/parlay-engine');
 
 const X_API = 'https://api.x.com/2';
 const X_USERNAME = process.env.X_USERNAME || 'ParlayPing';
 
-function authHeaders() {
-  const token = process.env.X_USER_ACCESS_TOKEN;
-  if (!token) throw new Error('X_USER_ACCESS_TOKEN is not configured.');
-  return { authorization: `Bearer ${token}` };
+function pct(value) {
+  return encodeURIComponent(String(value))
+    .replace(/!/g, '%21')
+    .replace(/'/g, '%27')
+    .replace(/\(/g, '%28')
+    .replace(/\)/g, '%29')
+    .replace(/\*/g, '%2A');
 }
 
-async function xGet(path) {
-  const response = await fetch(`${X_API}${path}`, { headers: authHeaders() });
-  const payload = await response.json();
-  if (!response.ok) throw new Error(payload?.detail || payload?.title || `X API GET failed (${response.status})`);
+function oauthCredentials() {
+  const apiKey = process.env.X_API_KEY;
+  const apiSecret = process.env.X_API_SECRET;
+  const accessToken = process.env.X_ACCESS_TOKEN;
+  const accessTokenSecret = process.env.X_ACCESS_TOKEN_SECRET;
+  if (!apiKey || !apiSecret || !accessToken || !accessTokenSecret) {
+    throw new Error('X OAuth 1.0a credentials are incomplete. Configure X_API_KEY, X_API_SECRET, X_ACCESS_TOKEN, and X_ACCESS_TOKEN_SECRET.');
+  }
+  return { apiKey, apiSecret, accessToken, accessTokenSecret };
+}
+
+function oauthHeader(method, rawUrl) {
+  const { apiKey, apiSecret, accessToken, accessTokenSecret } = oauthCredentials();
+  const url = new URL(rawUrl);
+  const oauth = {
+    oauth_consumer_key: apiKey,
+    oauth_nonce: crypto.randomBytes(18).toString('hex'),
+    oauth_signature_method: 'HMAC-SHA1',
+    oauth_timestamp: String(Math.floor(Date.now() / 1000)),
+    oauth_token: accessToken,
+    oauth_version: '1.0'
+  };
+
+  const pairs = [];
+  for (const [key, value] of url.searchParams.entries()) pairs.push([pct(key), pct(value)]);
+  for (const [key, value] of Object.entries(oauth)) pairs.push([pct(key), pct(value)]);
+  pairs.sort((a, b) => a[0] === b[0] ? a[1].localeCompare(b[1]) : a[0].localeCompare(b[0]));
+  const parameterString = pairs.map(([k, v]) => `${k}=${v}`).join('&');
+  const baseUrl = `${url.protocol}//${url.host}${url.pathname}`;
+  const signatureBase = [method.toUpperCase(), pct(baseUrl), pct(parameterString)].join('&');
+  const signingKey = `${pct(apiSecret)}&${pct(accessTokenSecret)}`;
+  oauth.oauth_signature = crypto.createHmac('sha1', signingKey).update(signatureBase).digest('base64');
+
+  const auth = Object.keys(oauth)
+    .sort()
+    .map(key => `${pct(key)}="${pct(oauth[key])}"`)
+    .join(', ');
+  return `OAuth ${auth}`;
+}
+
+async function xRequest(method, path, body) {
+  const url = `${X_API}${path}`;
+  const headers = { authorization: oauthHeader(method, url) };
+  const options = { method, headers };
+  if (body !== undefined) {
+    headers['content-type'] = 'application/json';
+    options.body = JSON.stringify(body);
+  }
+  const response = await fetch(url, options);
+  const text = await response.text();
+  let payload = {};
+  try { payload = text ? JSON.parse(text) : {}; } catch (_) { payload = { detail: text }; }
+  if (!response.ok) {
+    const message = payload?.detail || payload?.title || payload?.errors?.[0]?.message || `X API ${method} failed (${response.status})`;
+    throw new Error(message);
+  }
   return payload;
 }
 
-async function xPost(path, body) {
-  const response = await fetch(`${X_API}${path}`, {
-    method: 'POST',
-    headers: { ...authHeaders(), 'content-type':'application/json' },
-    body: JSON.stringify(body)
-  });
-  const payload = await response.json();
-  if (!response.ok) throw new Error(payload?.detail || payload?.title || `X API POST failed (${response.status})`);
-  return payload;
-}
+const xGet = path => xRequest('GET', path);
+const xPost = (path, body) => xRequest('POST', path, body);
 
 async function resolveBotUserId() {
   if (process.env.X_USER_ID) return String(process.env.X_USER_ID);
-  const user = await xGet(`/users/by/username/${encodeURIComponent(X_USERNAME)}?user.fields=id,username`);
-  const id = user?.data?.id;
-  if (!id) throw new Error(`Unable to resolve @${X_USERNAME} user ID from X.`);
+  const me = await xGet('/users/me?user.fields=id,username,name');
+  const id = me?.data?.id;
+  if (!id) throw new Error('Unable to resolve the authenticated X user with /users/me.');
+  if (me?.data?.username && String(me.data.username).toLowerCase() !== X_USERNAME.toLowerCase()) {
+    throw new Error(`X credentials are authenticated as @${me.data.username}, not @${X_USERNAME}.`);
+  }
   return String(id);
 }
 
@@ -140,7 +191,7 @@ module.exports = async function handler(req, res) {
     const enabled = String(process.env.X_AUTOREPLY_ENABLED || '').toLowerCase() === 'true';
     const dryRun = !(approved && enabled);
     const candidates = await processMentions({ dryRun });
-    return res.status(200).json({ ok:true, dryRun, username:X_USERNAME, xApprovalRecorded:approved, autoReplyEnabled:enabled, processed:candidates.length, candidates });
+    return res.status(200).json({ ok:true, dryRun, username:X_USERNAME, auth:'oauth1-user-context', xApprovalRecorded:approved, autoReplyEnabled:enabled, processed:candidates.length, candidates });
   } catch (error) {
     console.error('ParlayPing X worker', error);
     return res.status(500).json({ ok:false, error:error?.message || 'X worker failed.' });
