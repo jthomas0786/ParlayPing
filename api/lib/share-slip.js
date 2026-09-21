@@ -132,7 +132,7 @@ function canonicalSlip(input = {}) {
     returnLabel: returnUrl ? (cleanText(input.returnLabel ?? input.return_label, 80) || 'The Sports Outpost') : null,
     sportsbook: cleanText(input.sportsbook ?? input.book ?? input.bookName, 80),
     combinedOddsAmerican,
-    combinedOddsVerified: combinedOddsAmerican != null ? input.combinedOddsVerified !== false : false,
+    combinedOddsVerified: combinedOddsAmerican != null && input.combinedOddsVerified === true,
     legs,
   };
 }
