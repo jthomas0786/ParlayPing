@@ -50,7 +50,7 @@ function unsupportedResult(leg){
 }
 
 async function analyzeMultiSport(rawLegs,options={}){
-  const legs=(Array.isArray(rawLegs)?rawLegs:[]).slice(0,20).map(normalizeUniversalLeg).filter(l=>l.player&&l.market);
+  const legs=(Array.isArray(rawLegs)?rawLegs:[]).slice(0,25).map(normalizeUniversalLeg).filter(l=>l.player&&l.market);
   if(!legs.length) throw new Error('No supported player-prop legs were provided.');
   const grouped=new Map();
   for(const leg of legs){ if(!grouped.has(leg.sport))grouped.set(leg.sport,[]); grouped.get(leg.sport).push(leg); }
