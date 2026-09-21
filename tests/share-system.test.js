@@ -160,7 +160,7 @@ test('8-leg share card renders six legs plus +2 more and rasterizes as a real PN
   assert.match(svg, /\+2 more legs/);
   assert.match(svg, /68\.4%/);
   assert.match(svg, /47 \/ 60 yards/);
-  assert.doesNotMatch(svg, /ADDITIONAL PICKS NOT SHOWN/i);
+  assert.match(svg, /ADDITIONAL PICKS NOT SHOWN/i);
 
   const png = new Resvg(svg, { fitTo: { mode: 'width', value: 1200 } }).render().asPng();
   assert.ok(png.length > 1000);
