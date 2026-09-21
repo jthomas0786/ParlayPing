@@ -7,6 +7,7 @@ const MAX_COMPRESSED_BYTES = 48 * 1024;
 const MAX_INFLATED_BYTES = 160 * 1024;
 
 function finiteOrNull(value) {
+  if (value === null || value === undefined || value === '') return null;
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
 }
