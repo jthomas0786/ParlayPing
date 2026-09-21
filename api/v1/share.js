@@ -36,7 +36,13 @@ module.exports = async function handler(req, res) {
   let statusCode = 500;
   try {
     const body = parseBody(req);
-    const slip = canonicalSlip({ ...body, legs: body.legs, source: body.source || 'ParlayPing API' });
+    const slip = canonicalSlip({
+      ...body,
+      legs: body.legs,
+      source: body.source || 'ParlayPing API',
+      returnUrl: body.returnUrl,
+      returnLabel: body.returnLabel,
+    });
     const token = encodeShareSlip(slip);
     const root = requestBaseUrl(req);
     const shareUrl = buildShareUrl(token, root);
@@ -45,7 +51,15 @@ module.exports = async function handler(req, res) {
     return res.status(201).json({
       ok:true,
       requestId,
-      share:{ token, url:shareUrl, cardUrl, legCount:slip.legs.length, createdAt:slip.createdAt },
+      share:{
+        token,
+        url:shareUrl,
+        cardUrl,
+        legCount:slip.legs.length,
+        createdAt:slip.createdAt,
+        returnUrl:slip.returnUrl || null,
+        returnLabel:slip.returnLabel || null,
+      },
       api:{ version:'v1', plan:auth.payload?.plan || null },
     });
   } catch (error) {
