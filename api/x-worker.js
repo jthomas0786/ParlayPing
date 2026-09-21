@@ -3,6 +3,7 @@ const { parseSlip } = require('../lib/slip-parser-wrapper');
 const { analyzeMultiSport } = require('./lib/sport-router');
 const { applyCorrelationSafety, replyReadiness, buildPublicReply } = require('./lib/analysis-safety');
 const { claimMention, markMentionReplied, markMentionError, releaseMention } = require('./lib/x-idempotency');
+const { tryBuildXShareBundle } = require('./lib/x-share-bundle');
 
 const X_API = 'https://api.x.com/2';
 const X_USERNAME = process.env.X_USERNAME || 'ParlayPing';
@@ -29,7 +30,11 @@ async function processMentions({dryRun,idempotencySecret}){
     const parentId=replyTarget(mention),parent=parentId?includesTweets.get(String(parentId)):null;
     if(parent?.possibly_sensitive){candidates.push({mentionId:mention.id,parentId,status:'ignored-sensitive-parent'});continue;}
     const input=buildMentionInput(mention,parent,mediaByKey),parsed=await parseSlip({text:input.text,mediaUrls:input.mediaUrls});if(!parsed.legs.length){candidates.push({mentionId:mention.id,parentId:parentId||null,status:'unparsed',sourceMode:input.sourceMode,parentAvailable:Boolean(parent),parser:parsed.method,mediaCount:input.mediaUrls.length});continue;}
-    const raw=await analyzeMultiSport(parsed.legs,{baseUrl:process.env.PUBLIC_BASE_URL||'https://parlayping.net',referenceTime:input.referenceTime});const analysis=applyCorrelationSafety(raw),readiness=replyReadiness(analysis);const row={mentionId:mention.id,parentId:parentId||null,status:readiness.ready?'ready':'needs-match',sourceMode:input.sourceMode,parentAvailable:Boolean(parent),parser:parsed.method,sports:parsed.sports||[],mediaCount:input.mediaUrls.length,counts:analysis.counts,readiness,unresolvedLegs:(analysis.results||[]).filter(r=>r?.status==='UNRESOLVED').map(r=>({sport:r.sport||null,player:r.player||null,team:r.team||null,market:r.market||null,side:r.side||null,line:r.line??null,originalText:r.originalText||null,reason:r.resolutionReason||'unresolved-leg'})),correlation:analysis.correlation,combinedTailProbability:analysis.combinedTailProbability,combinedTailProbabilityMethod:analysis.combinedTailProbabilityMethod,tailUrl:analysis.tailUrl,replyText:readiness.ready?buildPublicReply(analysis,{maxLegs:3}):null};
+    const baseUrl=process.env.PUBLIC_BASE_URL||'https://parlayping.net';
+    const raw=await analyzeMultiSport(parsed.legs,{baseUrl,referenceTime:input.referenceTime});
+    const analysis=applyCorrelationSafety(raw),readiness=replyReadiness(analysis);
+    const share=readiness.ready?tryBuildXShareBundle({parsedLegs:parsed.legs,analysis,sourceReference:`x:${parentId||mention.id}`,baseUrl,maxReplyLegs:3}):{ready:false,reason:readiness.reason,shareUrl:null,cardUrl:null,xReplyCardUrl:null,replyText:null};
+    const row={mentionId:mention.id,parentId:parentId||null,status:readiness.ready?'ready':'needs-match',sourceMode:input.sourceMode,parentAvailable:Boolean(parent),parser:parsed.method,sports:parsed.sports||[],mediaCount:input.mediaUrls.length,counts:analysis.counts,readiness,unresolvedLegs:(analysis.results||[]).filter(r=>r?.status==='UNRESOLVED').map(r=>({sport:r.sport||null,player:r.player||null,team:r.team||null,market:r.market||null,side:r.side||null,line:r.line??null,originalText:r.originalText||null,reason:r.resolutionReason||'unresolved-leg'})),correlation:analysis.correlation,combinedTailProbability:analysis.combinedTailProbability,combinedTailProbabilityMethod:analysis.combinedTailProbabilityMethod,tailUrl:analysis.tailUrl,shareReady:Boolean(share.ready),shareReason:share.reason||null,shareUrl:share.shareUrl||null,cardUrl:share.cardUrl||null,xReplyCardUrl:share.xReplyCardUrl||null,replyText:readiness.ready?(share.replyText||buildPublicReply(analysis,{maxLegs:3})):null};
     if(!dryRun&&readiness.ready&&row.replyText){
       const claim=await claimMention(idempotencySecret,String(mention.id));
       row.idempotency={claimed:Boolean(claim?.claimed),status:claim?.status||null,replyId:claim?.replyId||null};
