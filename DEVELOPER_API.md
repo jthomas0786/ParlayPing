@@ -67,7 +67,7 @@ Example body:
 }
 ```
 
-`/api/v1/analyze` returns ParlayPing's current analysis for the supplied legs. Unsupported or unverifiable legs fail closed instead of being guessed.
+`/api/v1/analyze` accepts up to 25 legs and returns ParlayPing's current analysis for the supplied legs. Unsupported or unverifiable legs fail closed instead of being guessed.
 
 ## Build a betslip from real candidates
 
@@ -110,8 +110,8 @@ Example body:
 
 Builder rules:
 
-- up to 20 candidate legs may be submitted per request;
-- the requested build is capped at 10 selected legs;
+- up to 25 candidate legs may be submitted per request;
+- the requested build may select up to 25 legs;
 - candidates are analyzed by the same ParlayPing multi-sport engine used by the main product;
 - only supported pregame `PENDING` legs with a real current model probability are eligible;
 - highest model probabilities are preferred;
@@ -134,7 +134,7 @@ Your backend / Edge Function
 ParlayPing /api/v1/build
 ```
 
-The Sports Outpost uses this same design as ParlayPing's first-party reference integration: its browser sends the current betslip to a Sports Outpost Edge Function, and that server-side function calls the commercial ParlayPing Build API.
+The Sports Outpost is the first-party reference client for this architecture. Its ParlayPing betslip UI is staged separately, with the private API integration remaining server-side rather than exposing a `pp_live_...` key in browser JavaScript.
 
 ## Quotas
 
