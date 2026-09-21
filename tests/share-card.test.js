@@ -43,7 +43,9 @@ test('signed share slips round-trip and reject tampering', () => {
   assert.equal(decoded.combinedOddsAmerican, 785);
   assert.equal(decoded.combinedOddsVerified, true);
   const parts = token.split('.');
-  const tampered = `${parts[0]}.${parts[1].slice(0,-1)}A.${parts[2]}`;
+  const signature = parts[2];
+  const changed = `${signature[0] === 'A' ? 'B' : 'A'}${signature.slice(1)}`;
+  const tampered = `${parts[0]}.${parts[1]}.${changed}`;
   assert.throws(() => decodeShareSlip(tampered, SECRET), /signature|token/i);
 });
 
