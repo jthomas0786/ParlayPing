@@ -117,10 +117,11 @@ Builder rules:
 - highest model probabilities are preferred;
 - distinct games are used by default when game identity is available;
 - multiple legs from the same game require `allowSameGame: true`;
+- when repeated known game IDs are present, `correlationDetected` is `true` and combined probability is withheld instead of multiplying correlated legs as if independent;
 - `minProbability` and `sports` are optional filters;
 - ParlayPing never invents a replacement leg to fill the requested count.
 
-A successful response contains a `build` object with `selectedLegs`, model percentages, strategy, and `buildable` state. If there are not enough safe candidates, `buildable` is `false`; ParlayPing may return the eligible subset, but it does not claim that the requested parlay was completed and does not return a combined probability for an incomplete build.
+A successful response contains a `build` object with `selectedLegs`, model percentages, strategy, `correlationDetected`, and `buildable` state. If there are not enough safe candidates, `buildable` is `false`; ParlayPing may return the eligible subset, but it does not claim that the requested parlay was completed and does not return a combined probability for an incomplete build. A complete build containing repeated known game IDs is also returned without a naive combined probability.
 
 ### Recommended partner architecture
 
