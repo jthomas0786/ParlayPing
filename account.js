@@ -1,3 +1,4 @@
+// Preview redeploy marker: Stripe test billing environment validation.
 const SUPABASE_URL='https://avwqjgiitxqphvmitolw.supabase.co';
 const SUPABASE_KEY='sb_publishable_7mYXjjkRrQq3iRig7UYHNQ_b6EZZiJA';
 const SESSION_KEY='parlayping_supabase_session_v1';
