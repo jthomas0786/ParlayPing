@@ -63,6 +63,15 @@ test('share token round-trips a canonical premade slip and rejects tampering', (
   assert.throws(() => decodeShareSlip(`${prefix}.${tamperedPayload}.${signature}`), /signature|token/i);
 });
 
+test('combined parlay odds require explicit verification before display eligibility', () => {
+  const omitted = canonicalSlip({ combinedOddsAmerican: 785, legs: [leg(1), leg(2)] });
+  const stringFlag = canonicalSlip({ combinedOddsAmerican: 785, combinedOddsVerified: 'true', legs: [leg(1), leg(2)] });
+  const verified = canonicalSlip({ combinedOddsAmerican: 785, combinedOddsVerified: true, legs: [leg(1), leg(2)] });
+  assert.equal(omitted.combinedOddsVerified, false);
+  assert.equal(stringFlag.combinedOddsVerified, false);
+  assert.equal(verified.combinedOddsVerified, true);
+});
+
 test('Sports Outpost return URL is signed into the share token and rendered as Back and close controls', () => {
   const returnUrl = 'https://thesportsoutpost.com/nfl.html?view=props#betslip';
   const slip = canonicalSlip({
