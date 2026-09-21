@@ -33,7 +33,7 @@ module.exports=async function handler(req,res){
     const body=parseBody(req);
     const candidates=Array.isArray(body.candidates)?body.candidates:[];
     if(!candidates.length){statusCode=400;return res.status(400).json({ok:false,error:'candidates[] is required.',requestId});}
-    if(candidates.length>20){statusCode=400;return res.status(400).json({ok:false,error:'Maximum 20 candidate legs per build request.',requestId});}
+    if(candidates.length>25){statusCode=400;return res.status(400).json({ok:false,error:'Maximum 25 candidate legs per build request.',requestId});}
 
     const normalized=candidates.map(normalizeBuildCandidate).filter(row=>row.player&&row.market);
     if(!normalized.length){statusCode=400;return res.status(400).json({ok:false,error:'No valid candidate legs were provided.',requestId});}
