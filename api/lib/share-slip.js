@@ -5,6 +5,7 @@ const MAX_SHARE_LEGS = 25;
 const SHARE_TOKEN_PREFIX = 's1';
 const MAX_COMPRESSED_BYTES = 48 * 1024;
 const MAX_INFLATED_BYTES = 160 * 1024;
+const DEFAULT_RETURN_ORIGINS = ['https://thesportsoutpost.com', 'https://www.thesportsoutpost.com'];
 
 function finiteOrNull(value) {
   if (value === null || value === undefined || value === '') return null;
@@ -29,6 +30,27 @@ function cleanUrl(value) {
   try {
     const url = new URL(text);
     return url.protocol === 'https:' ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+function allowedReturnOrigins(value = process.env.PARLAYPING_ALLOWED_RETURN_ORIGINS) {
+  const configured = String(value || '').split(',').map(x => x.trim()).filter(Boolean);
+  const source = configured.length ? configured : DEFAULT_RETURN_ORIGINS;
+  return new Set(source.map(origin => {
+    try { return new URL(origin).origin; } catch { return null; }
+  }).filter(Boolean));
+}
+
+function cleanReturnUrl(value, origins) {
+  const text = cleanText(value, 1200);
+  if (!text) return null;
+  try {
+    const url = new URL(text);
+    if (url.protocol !== 'https:') return null;
+    if (!allowedReturnOrigins(origins).has(url.origin)) return null;
+    return url.toString();
   } catch {
     return null;
   }
@@ -98,11 +120,14 @@ function canonicalSlip(input = {}) {
   if (!legs.length) throw new Error('No valid share legs were provided.');
 
   const combinedOddsAmerican = finiteOrNull(input.combinedOddsAmerican ?? input.parlayOddsAmerican ?? input.parlayOdds);
+  const returnUrl = cleanReturnUrl(input.returnUrl ?? input.return_url);
   return {
     v: 1,
     createdAt: cleanText(input.createdAt, 80) || new Date().toISOString(),
     source: cleanText(input.source, 120) || 'ParlayPing',
     sourceReference: cleanText(input.sourceReference, 180),
+    returnUrl,
+    returnLabel: returnUrl ? (cleanText(input.returnLabel ?? input.return_label, 80) || 'The Sports Outpost') : null,
     sportsbook: cleanText(input.sportsbook ?? input.book ?? input.bookName, 80),
     combinedOddsAmerican,
     combinedOddsVerified: combinedOddsAmerican != null ? input.combinedOddsVerified !== false : false,
@@ -248,6 +273,7 @@ function mergeAnalysisIntoSlip(slipInput, analysis = {}) {
 module.exports = {
   MAX_SHARE_LEGS,
   SHARE_TOKEN_PREFIX,
+  DEFAULT_RETURN_ORIGINS,
   canonicalLeg,
   canonicalSlip,
   encodeShareSlip,
@@ -259,4 +285,6 @@ module.exports = {
   inferUnit,
   probabilityOrNull,
   finiteOrNull,
+  cleanReturnUrl,
+  allowedReturnOrigins,
 };
