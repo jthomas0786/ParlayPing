@@ -55,10 +55,13 @@ function buildFromAnalysis(analysis,options={}){
   }
 
   const publicRows=selected.map(({__index,...row})=>({...row,probabilityPct:probabilityPct(row.probability)}));
-  const combined=publicRows.length&&publicRows.every(row=>Number.isFinite(row.probability))
+  const knownGameIds=publicRows.map(normalizeGameId).filter(Boolean);
+  const correlationDetected=new Set(knownGameIds).size<knownGameIds.length;
+  const independentCombined=publicRows.length&&publicRows.every(row=>Number.isFinite(row.probability))&&!correlationDetected
     ?publicRows.reduce((total,row)=>total*row.probability,1)
     :null;
   const buildable=publicRows.length===desiredLegs;
+  const combined=buildable?independentCombined:null;
 
   return {
     buildable,
@@ -69,11 +72,14 @@ function buildFromAnalysis(analysis,options={}){
     selectedCount:publicRows.length,
     eligibleCount:eligible.length,
     rejectedCount:Math.max(0,all.length-eligible.length),
-    combinedProbability:buildable?combined:null,
-    combinedProbabilityPct:buildable?probabilityPct(combined):null,
-    note:buildable
-      ?(allowSameGame?'Same-game legs were allowed by the request; combined probability should be treated cautiously.':'Selected legs come from distinct games when game identity is available.')
-      :'ParlayPing did not invent replacement legs. Add more supported pregame candidates or loosen the requested filters.',
+    correlationDetected,
+    combinedProbability:combined,
+    combinedProbabilityPct:combined==null?null:probabilityPct(combined),
+    note:!buildable
+      ?'ParlayPing did not invent replacement legs. Add more supported pregame candidates or loosen the requested filters.'
+      :correlationDetected
+        ?'Same-game legs were allowed by the request. Combined probability is withheld because correlated legs are not multiplied as if independent.'
+        :(allowSameGame?'Same-game legs were allowed by the request, but the selected build does not contain a repeated known game.':'Selected legs come from distinct games when game identity is available.'),
   };
 }
 
