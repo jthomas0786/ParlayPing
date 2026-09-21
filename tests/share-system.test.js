@@ -86,11 +86,15 @@ test('Sports Outpost return URL is signed into the share token and rendered as B
   assert.match(html, /https:\/\/thesportsoutpost\.com\/nfl\.html\?view=props#betslip/);
 });
 
-test('return navigation rejects non-Sports-Outpost and non-HTTPS targets', () => {
+test('return navigation rejects unsafe targets and strips credentials from allowed URLs', () => {
   assert.equal(cleanReturnUrl('https://evil.example/phish'), null);
   assert.equal(cleanReturnUrl('http://thesportsoutpost.com/nfl.html'), null);
   assert.equal(cleanReturnUrl('javascript:alert(1)'), null);
   assert.equal(cleanReturnUrl('https://www.thesportsoutpost.com/nfl.html'), 'https://www.thesportsoutpost.com/nfl.html');
+  assert.equal(
+    cleanReturnUrl('https://user:pass@thesportsoutpost.com/nfl.html?view=props#betslip'),
+    'https://thesportsoutpost.com/nfl.html?view=props#betslip',
+  );
 });
 
 test('share slips support 25 legs but reject 26', () => {
