@@ -11,6 +11,7 @@ const {
   buildShareUrl,
   buildCardUrl,
   mergeAnalysisIntoSlip,
+  cleanReturnUrl,
 } = require('../api/lib/share-slip');
 const {
   resolveLegDisplay,
@@ -19,6 +20,7 @@ const {
   selectVisibleLegs,
   renderShareSvg,
 } = require('../api/lib/share-renderer');
+const { pageHtml } = require('../api/share-page');
 const { Resvg } = require('@resvg/resvg-js');
 
 function leg(i, overrides = {}) {
@@ -56,9 +58,39 @@ test('share token round-trips a canonical premade slip and rejects tampering', (
   assert.equal(buildShareUrl(token), `https://parlayping.net/slip/${encodeURIComponent(token)}`);
   assert.equal(buildCardUrl(token), `https://parlayping.net/share/${encodeURIComponent(token)}.png`);
 
-  const last = token.at(-1);
-  const tampered = `${token.slice(0, -1)}${last === 'a' ? 'b' : 'a'}`;
-  assert.throws(() => decodeShareSlip(tampered), /signature|token/i);
+  const [prefix, payload, signature] = token.split('.');
+  const tamperedPayload = `${payload.slice(0, -1)}${payload.at(-1) === 'a' ? 'b' : 'a'}`;
+  assert.throws(() => decodeShareSlip(`${prefix}.${tamperedPayload}.${signature}`), /signature|token/i);
+});
+
+test('Sports Outpost return URL is signed into the share token and rendered as Back and close controls', () => {
+  const returnUrl = 'https://thesportsoutpost.com/nfl.html?view=props#betslip';
+  const slip = canonicalSlip({
+    source: 'The Sports Outpost',
+    returnUrl,
+    returnLabel: 'The Sports Outpost',
+    legs: [leg(1), leg(2), leg(3)],
+  });
+  const decoded = decodeShareSlip(encodeShareSlip(slip));
+  assert.equal(decoded.returnUrl, returnUrl);
+  assert.equal(decoded.returnLabel, 'The Sports Outpost');
+  const html = pageHtml({
+    slip: decoded,
+    shareUrl: 'https://parlayping.net/slip/test',
+    cardUrl: 'https://parlayping.net/share/test.png',
+    baseUrl: 'https://parlayping.net',
+    liveDataAvailable: true,
+  });
+  assert.match(html, /Back to The Sports Outpost/);
+  assert.match(html, /Close ParlayPing and return to The Sports Outpost/);
+  assert.match(html, /https:\/\/thesportsoutpost\.com\/nfl\.html\?view=props#betslip/);
+});
+
+test('return navigation rejects non-Sports-Outpost and non-HTTPS targets', () => {
+  assert.equal(cleanReturnUrl('https://evil.example/phish'), null);
+  assert.equal(cleanReturnUrl('http://thesportsoutpost.com/nfl.html'), null);
+  assert.equal(cleanReturnUrl('javascript:alert(1)'), null);
+  assert.equal(cleanReturnUrl('https://www.thesportsoutpost.com/nfl.html'), 'https://www.thesportsoutpost.com/nfl.html');
 });
 
 test('share slips support 25 legs but reject 26', () => {
