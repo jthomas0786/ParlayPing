@@ -4,7 +4,7 @@
   "rewrites": [
     {
       "source": "/slip/:token",
-      "destination": "/api/share-page?slip=:token"
+      "destination": "/api/share-page-external?slip=:token"
     },
     {
       "source": "/share/:token.png",
