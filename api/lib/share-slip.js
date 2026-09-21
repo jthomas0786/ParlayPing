@@ -50,6 +50,8 @@ function cleanReturnUrl(value, origins) {
     const url = new URL(text);
     if (url.protocol !== 'https:') return null;
     if (!allowedReturnOrigins(origins).has(url.origin)) return null;
+    url.username = '';
+    url.password = '';
     return url.toString();
   } catch {
     return null;
