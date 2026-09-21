@@ -93,6 +93,24 @@ test('Sports Outpost return URL is signed into the share token and rendered as B
   assert.match(html, /Back to The Sports Outpost/);
   assert.match(html, /Close ParlayPing and return to The Sports Outpost/);
   assert.match(html, /https:\/\/thesportsoutpost\.com\/nfl\.html\?view=props#betslip/);
+  assert.doesNotMatch(html, /class="return-btn history-fallback"/);
+});
+
+test('slip page always renders Back and close with history/home fallback when no trusted return exists', () => {
+  const slip = canonicalSlip({ source: 'ParlayPing', legs: [leg(1), leg(2)] });
+  const html = pageHtml({
+    slip,
+    shareUrl: 'https://parlayping.net/slip/test',
+    cardUrl: 'https://parlayping.net/share/test.png',
+    baseUrl: 'https://parlayping.net',
+    liveDataAvailable: true,
+  });
+  assert.match(html, /class="return-btn history-fallback"/);
+  assert.match(html, /aria-label="Back"/);
+  assert.match(html, /class="close-btn history-fallback"/);
+  assert.match(html, /aria-label="Close ParlayPing"/);
+  assert.match(html, /href="https:\/\/parlayping\.net\/"/);
+  assert.match(html, /window\.history\.back\(\)/);
 });
 
 test('return navigation rejects unsafe targets and strips credentials from allowed URLs', () => {
