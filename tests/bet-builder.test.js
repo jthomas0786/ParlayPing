@@ -62,11 +62,20 @@ test('minimum probability and sport filters are enforced',()=>{
   assert.deepEqual(out.selectedLegs.map(x=>x.id),['nfl']);
 });
 
+test('builder supports a full 25-leg distinct-game build',()=>{
+  const results=Array.from({length:25},(_,i)=>({id:`leg-${i+1}`,sport:'NFL',status:'PENDING',probability:.70-i/1000,gameId:`game-${i+1}`}));
+  const out=buildFromAnalysis({results},{desiredLegs:25});
+  assert.equal(out.buildable,true);
+  assert.equal(out.requestedLegs,25);
+  assert.equal(out.selectedCount,25);
+});
+
 test('v1 build route is API-key authenticated quota-accounted and capped',()=>{
   assert.match(route,/extractApiKey\(req\)/);
   assert.match(route,/endpoint:'\/api\/v1\/build'/);
   assert.match(route,/apiAuth\(\{apiKey,endpoint:'\/api\/v1\/build',requestId\}\)/);
-  assert.match(route,/Maximum 20 candidate legs per build request/);
+  assert.match(route,/Maximum 25 candidate legs per build request/);
+  assert.match(route,/candidates\.length>25/);
   assert.match(route,/action:'finalize'/);
   assert.doesNotMatch(route,/pp_live_[0-9a-f]{48}/i);
 });
