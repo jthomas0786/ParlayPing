@@ -26,7 +26,7 @@ module.exports=async function handler(req,res){
   try{
     const body=parseBody(req);const legs=Array.isArray(body.legs)?body.legs:[];
     if(!legs.length){statusCode=400;return res.status(400).json({ok:false,error:'legs[] is required.',requestId});}
-    if(legs.length>20){statusCode=400;return res.status(400).json({ok:false,error:'Maximum 20 legs per request.',requestId});}
+    if(legs.length>25){statusCode=400;return res.status(400).json({ok:false,error:'Maximum 25 legs per request.',requestId});}
     const host=req.headers['x-forwarded-host']||req.headers.host||'parlayping.net';
     const proto=req.headers['x-forwarded-proto']||'https';
     const raw=await analyzeMultiSport(legs,{baseUrl:`${proto}://${host}`,referenceTime:body.referenceTime||null});
