@@ -24,6 +24,7 @@ test('builder ranks model probability and defaults to distinct games',()=>{
   assert.equal(out.buildable,true);
   assert.deepEqual(out.selectedLegs.map(x=>x.id),['a','c','d']);
   assert.equal(out.strategy,'highest-model-probability-distinct-games');
+  assert.equal(out.correlationDetected,false);
   assert.ok(out.combinedProbability>0);
 });
 
@@ -51,6 +52,20 @@ test('builder fails closed rather than inventing legs when requested build canno
   assert.match(out.note,/did not invent replacement legs/i);
 });
 
+test('same-game opt-in never multiplies correlated probabilities as independent',()=>{
+  const analysis={results:[
+    {id:'a',sport:'NFL',status:'PENDING',probability:.70,gameId:'same'},
+    {id:'b',sport:'NFL',status:'PENDING',probability:.65,gameId:'same'},
+  ]};
+  const out=buildFromAnalysis(analysis,{desiredLegs:2,allowSameGame:true});
+  assert.equal(out.buildable,true);
+  assert.equal(out.selectedCount,2);
+  assert.equal(out.correlationDetected,true);
+  assert.equal(out.combinedProbability,null);
+  assert.equal(out.combinedProbabilityPct,null);
+  assert.match(out.note,/correlated legs are not multiplied/i);
+});
+
 test('minimum probability and sport filters are enforced',()=>{
   const analysis={results:[
     {id:'nfl',sport:'NFL',status:'PENDING',probability:.66,gameId:'1'},
@@ -68,6 +83,8 @@ test('builder supports a full 25-leg distinct-game build',()=>{
   assert.equal(out.buildable,true);
   assert.equal(out.requestedLegs,25);
   assert.equal(out.selectedCount,25);
+  assert.equal(out.correlationDetected,false);
+  assert.ok(out.combinedProbability>0);
 });
 
 test('v1 build route is API-key authenticated quota-accounted and capped',()=>{
