@@ -26,7 +26,7 @@ function normalizeBuildCandidate(input,index=0){
 function probabilityPct(value){return Number.isFinite(value)?Math.round(value*1000)/10:null;}
 
 function buildFromAnalysis(analysis,options={}){
-  const desiredLegs=clampInt(options.desiredLegs,1,10,Math.min(4,(analysis?.results||[]).length||1));
+  const desiredLegs=clampInt(options.desiredLegs,1,25,Math.min(4,(analysis?.results||[]).length||1));
   const allowSameGame=options.allowSameGame===true;
   const minProbabilityRaw=Number(options.minProbability);
   const minProbability=Number.isFinite(minProbabilityRaw)?Math.max(0,Math.min(.999,minProbabilityRaw)):0;
