@@ -8,6 +8,8 @@ const require=createRequire(import.meta.url);
 process.env.PUBLIC_BASE_URL='http://127.0.0.1:4174';
 const {renderBuilderHtml}=require('../server/api/builder-page');
 const root=path.resolve(path.dirname(new URL(import.meta.url).pathname),'..');
+const artifactDir=path.join(root,'artifacts');
+fs.mkdirSync(artifactDir,{recursive:true});
 
 const slip={
   source:'The Sports Outpost',
@@ -92,6 +94,7 @@ if(metrics.bodyWidth>metrics.viewportWidth+2)throw new Error(`horizontal page ov
 if(metrics.scrollHeight>2450)throw new Error(`mobile page is still excessively tall: ${metrics.scrollHeight}px`);
 if(metrics.share.y-metrics.cta.bottom>40)throw new Error(`excess whitespace before Share Your Betslip: ${metrics.share.y-metrics.cta.bottom}px`);
 
+await page.screenshot({path:path.join(artifactDir,'builder-mobile-default.png'),fullPage:true});
 await page.click('#tuneBtn');
 await page.waitForTimeout(300);
 const tune=await page.evaluate(()=>({
@@ -102,6 +105,7 @@ const tune=await page.evaluate(()=>({
 if(!tune.active)throw new Error('Parlay Tune did not enter selected state');
 if(tune.alts.some(h=>h<38||h>78))throw new Error(`Alt Lines mobile expansion drift: ${tune.alts.join(', ')}`);
 if(tune.cards.some(h=>h>200))throw new Error(`Tune-expanded card too tall: ${tune.cards.join(', ')}`);
+await page.screenshot({path:path.join(artifactDir,'builder-mobile-tune.png'),fullPage:true});
 
 console.log(JSON.stringify({metrics,tune},null,2));
 await browser.close();
