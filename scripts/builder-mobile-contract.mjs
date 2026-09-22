@@ -19,7 +19,7 @@ const slip={
   combinedOddsAmerican:null,
   combinedOddsVerified:false,
   legs:[
-    {id:'okamoto',sport:'MLB',player:'Kazuma Okamoto',playerId:'848550',team:'TOR',matchup:'Blue Jays @ Orioles',market:'HR',displayMarket:'O0.5 HR',oddsAmerican:null,status:'UNRESOLVED',pregameProbability:null},
+    {id:'okamoto',sport:'MLB',player:'Kazuma Okamoto',playerId:'672960',team:'TOR',matchup:'Blue Jays @ Orioles',market:'HR',displayMarket:'O0.5 HR',oddsAmerican:null,status:'UNRESOLVED',pregameProbability:null},
     {id:'abrams',sport:'MLB',player:'CJ Abrams',playerId:'682928',team:'WSH',matchup:'Nationals @ Tigers',market:'HR',displayMarket:'O0.5 HR',oddsAmerican:null,status:'UNRESOLVED',pregameProbability:null},
   ],
 };
@@ -43,22 +43,26 @@ const browser=await chromium.launch({headless:true});
 const page=await browser.newPage({viewport:{width:393,height:852},deviceScaleFactor:1,isMobile:true,hasTouch:true});
 await page.goto('http://127.0.0.1:4174/fixture',{waitUntil:'domcontentloaded'});
 await page.waitForSelector('.pick-card');
-await page.waitForTimeout(550);
+await page.waitForTimeout(650);
 
 const metrics=await page.evaluate(()=>{
   const rect=s=>{const r=document.querySelector(s)?.getBoundingClientRect();return r?{x:r.x,y:r.y,width:r.width,height:r.height,bottom:r.bottom}:null};
   const allRects=s=>[...document.querySelectorAll(s)].map(el=>{const r=el.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height,bottom:r.bottom}});
   return {
-    header:rect('.app-header'),returnBar:rect('.pp-mobile-return-bar'),hero:rect('.concept-hero'),panel:rect('.parlay-panel'),
+    header:rect('.app-header'),originControls:rect('.pp-mobile-origin-controls'),hero:rect('.concept-hero'),panel:rect('.parlay-panel'),
     clearSvg:rect('#clearAllBtn svg'),cta:rect('#openBookBtn'),ctaText:document.querySelector('#openBookBtn')?.innerText.trim(),
     cards:allRects('.pick-card'),gameBars:allRects('.game-bar'),photos:allRects('.player-photo'),
+    playerNames:[...document.querySelectorAll('.player-copy strong')].map(x=>x.textContent.trim()),
+    markets:[...document.querySelectorAll('.player-copy span')].map(x=>x.textContent.trim()),
     odds:[...document.querySelectorAll('.pick-odds')].map(x=>x.textContent.trim()),
     teamImgs:[...document.querySelectorAll('.pick-card .team-pair img')].map(x=>x.getAttribute('src')),
     teamFallbacks:[...document.querySelectorAll('.pick-card .team-pair .team-token')].filter(x=>getComputedStyle(x).display!=='none').map(x=>x.textContent.trim()),
+    sportShields:document.querySelectorAll('.sport-shield').length,
     books:allRects('.book-card'),bookGrid:rect('.sportsbook-grid'),share:rect('.share-section'),shares:allRects('.share-action'),
     secondaryIcons:allRects('.secondary-icon svg,.pin-icon svg'),lower:allRects('.secondary-panel'),footer:rect('.app-footer'),
     returnBackPosition:getComputedStyle(document.querySelector('.pp-return-back')).position,
     returnClosePosition:getComputedStyle(document.querySelector('.pp-return-close')).position,
+    toastDisplay:getComputedStyle(document.querySelector('#toast')).display,
     svgRects:allRects('svg'),
     scrollHeight:document.documentElement.scrollHeight,
     bodyWidth:document.body.scrollWidth,
@@ -69,12 +73,15 @@ const metrics=await page.evaluate(()=>{
 const near=(actual,expected,tol,label)=>{if(Math.abs(actual-expected)>tol)throw new Error(`${label}: expected ${expected}±${tol}, got ${actual}`);};
 near(metrics.header.height,148,2,'mobile header height');
 near(metrics.hero.height,326,2,'mobile hero height');
-if(!metrics.returnBar||metrics.returnBar.y<metrics.header.bottom-2)throw new Error('return bar is not in normal flow below the header');
+if(!metrics.originControls||metrics.originControls.y<0||metrics.originControls.bottom>metrics.header.height+2)throw new Error('Sports Outpost controls are not integrated into the mobile header');
 if(metrics.returnBackPosition==='fixed'||metrics.returnClosePosition==='fixed')throw new Error('Sports Outpost return controls still overlay mobile content');
+if(metrics.sportShields!==0)throw new Error(`league shields were reintroduced ahead of team logos: ${metrics.sportShields}`);
 if(metrics.cards.length!==2)throw new Error(`expected 2 player cards, got ${metrics.cards.length}`);
 if(metrics.cards.some(r=>r.height>125))throw new Error(`mobile player card too tall: ${metrics.cards.map(x=>x.height).join(', ')}`);
 if(metrics.gameBars.some(r=>Math.abs(r.height-38)>2))throw new Error(`mobile game bar height drift: ${metrics.gameBars.map(x=>x.height).join(', ')}`);
 if(metrics.photos.some(r=>Math.abs(r.width-44)>2||Math.abs(r.height-44)>2))throw new Error('mobile player photo geometry drifted');
+if(!metrics.playerNames.includes('Kazuma Okamoto'))throw new Error(`full player name missing: ${metrics.playerNames.join(', ')}`);
+if(!metrics.markets.some(x=>/^Over 0\.5 HR$/i.test(x)))throw new Error(`market label was not normalized to concept copy: ${metrics.markets.join(', ')}`);
 if(metrics.odds.some(x=>x!=='—'))throw new Error(`missing odds rendered incorrectly: ${metrics.odds.join(', ')}`);
 if(!metrics.teamImgs.some(x=>/\/mlb\/500\/tor\.png/.test(x||''))||!metrics.teamImgs.some(x=>/\/mlb\/500\/bal\.png/.test(x||'')))throw new Error(`Blue Jays/Orioles logos not resolved: ${metrics.teamImgs.join(', ')}`);
 if(!metrics.teamImgs.some(x=>/\/mlb\/500\/wsh\.png/.test(x||''))||!metrics.teamImgs.some(x=>/\/mlb\/500\/det\.png/.test(x||'')))throw new Error(`Nationals/Tigers logos not resolved: ${metrics.teamImgs.join(', ')}`);
@@ -90,8 +97,9 @@ const shareY=metrics.shares[0].y;if(metrics.shares.some(x=>Math.abs(x.y-shareY)>
 if(metrics.clearSvg&&Math.max(metrics.clearSvg.width,metrics.clearSvg.height)>20)throw new Error(`trash icon oversized: ${JSON.stringify(metrics.clearSvg)}`);
 if(metrics.secondaryIcons.some(r=>Math.max(r.width,r.height)>24))throw new Error(`lower-panel SVG oversized: ${JSON.stringify(metrics.secondaryIcons)}`);
 if(metrics.svgRects.some(r=>r.width>80||r.height>80))throw new Error(`oversized inline SVG remains: ${JSON.stringify(metrics.svgRects.filter(r=>r.width>80||r.height>80))}`);
+if(metrics.toastDisplay!=='none')throw new Error('interaction toast is still visible over the approved mobile concept');
 if(metrics.bodyWidth>metrics.viewportWidth+2)throw new Error(`horizontal page overflow: body ${metrics.bodyWidth}, viewport ${metrics.viewportWidth}`);
-if(metrics.scrollHeight>2450)throw new Error(`mobile page is still excessively tall: ${metrics.scrollHeight}px`);
+if(metrics.scrollHeight>2380)throw new Error(`mobile page is still excessively tall: ${metrics.scrollHeight}px`);
 if(metrics.share.y-metrics.cta.bottom>40)throw new Error(`excess whitespace before Share Your Betslip: ${metrics.share.y-metrics.cta.bottom}px`);
 
 await page.screenshot({path:path.join(artifactDir,'builder-mobile-default.png'),fullPage:true});
@@ -101,10 +109,12 @@ const tune=await page.evaluate(()=>({
   active:document.querySelector('#tuneBtn')?.classList.contains('active'),
   alts:[...document.querySelectorAll('.alt-lines')].map(x=>x.getBoundingClientRect().height),
   cards:[...document.querySelectorAll('.pick-card')].map(x=>x.getBoundingClientRect().height),
+  toastDisplay:getComputedStyle(document.querySelector('#toast')).display,
 }));
 if(!tune.active)throw new Error('Parlay Tune did not enter selected state');
 if(tune.alts.some(h=>h<38||h>78))throw new Error(`Alt Lines mobile expansion drift: ${tune.alts.join(', ')}`);
 if(tune.cards.some(h=>h>200))throw new Error(`Tune-expanded card too tall: ${tune.cards.join(', ')}`);
+if(tune.toastDisplay!=='none')throw new Error('Parlay Tune toast is covering the alt-line concept state');
 await page.screenshot({path:path.join(artifactDir,'builder-mobile-tune.png'),fullPage:true});
 
 console.log(JSON.stringify({metrics,tune},null,2));
