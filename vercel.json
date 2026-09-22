@@ -1,6 +1,26 @@
 {
   "cleanUrls": true,
   "trailingSlash": false,
+  "rewrites": [
+    { "source": "/api/analyze", "destination": "/api/index?__pp_route=analyze" },
+    { "source": "/api/parse", "destination": "/api/index?__pp_route=parse" },
+    { "source": "/api/status", "destination": "/api/index?__pp_route=status" },
+    { "source": "/api/account", "destination": "/api/index?__pp_route=account" },
+    { "source": "/api/api-keys", "destination": "/api/index?__pp_route=api-keys" },
+    { "source": "/api/plans", "destination": "/api/index?__pp_route=plans" },
+    { "source": "/api/billing-checkout", "destination": "/api/index?__pp_route=billing-checkout" },
+    { "source": "/api/billing-portal", "destination": "/api/index?__pp_route=billing-portal" },
+    { "source": "/api/share-card", "destination": "/api/index?__pp_route=share-card" },
+    { "source": "/api/share-page", "destination": "/api/index?__pp_route=share-page" },
+    { "source": "/api/v1/analyze", "destination": "/api/index?__pp_route=v1-analyze" },
+    { "source": "/api/v1/build", "destination": "/api/index?__pp_route=v1-build" },
+    { "source": "/api/v1/share", "destination": "/api/index?__pp_route=v1-share" },
+    { "source": "/api/x-dry-run", "destination": "/api/index?__pp_route=x-dry-run" },
+    { "source": "/api/x-scheduler", "destination": "/api/index?__pp_route=x-scheduler" },
+    { "source": "/api/x-worker", "destination": "/api/index?__pp_route=x-worker" },
+    { "source": "/slip/:token", "destination": "/api/index?__pp_route=share-page&slip=:token" },
+    { "source": "/share/:token.png", "destination": "/api/index?__pp_route=share-card&slip=:token" }
+  ],
   "headers": [
     {
       "source": "/(.*)",

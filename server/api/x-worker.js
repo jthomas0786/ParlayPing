@@ -1,0 +1,71 @@
+const crypto = require('crypto');
+const { parseSlip } = require('../lib/slip-parser-wrapper');
+const { analyzeMultiSport } = require('./lib/sport-router');
+const { applyCorrelationSafety, replyReadiness, buildPublicReply } = require('./lib/analysis-safety');
+const { claimMention, markMentionReplied, markMentionError, releaseMention } = require('./lib/x-idempotency');
+const { tryBuildXShareBundle } = require('./lib/x-share-bundle');
+
+const X_API = 'https://api.x.com/2';
+const X_USERNAME = process.env.X_USERNAME || 'ParlayPing';
+const ANALYSIS_ADAPTERS=['NFL','NCAAF','MLB','NHL','NBA','NCAAB','WNBA','SOCCER','TENNIS','MMA','ESPORTS','TABLE_TENNIS','VOLLEYBALL','CRICKET','RUGBY_LEAGUE','AFL','BOXING','GOLF'];
+function pct(value){return encodeURIComponent(String(value)).replace(/!/g,'%21').replace(/'/g,'%27').replace(/\(/g,'%28').replace(/\)/g,'%29').replace(/\*/g,'%2A');}
+function oauthCredentials(){const apiKey=process.env.X_API_KEY,apiSecret=process.env.X_API_SECRET,accessToken=process.env.X_ACCESS_TOKEN,accessTokenSecret=process.env.X_ACCESS_TOKEN_SECRET;if(!apiKey||!apiSecret||!accessToken||!accessTokenSecret)throw new Error('X OAuth 1.0a credentials are incomplete. Configure X_API_KEY, X_API_SECRET, X_ACCESS_TOKEN, and X_ACCESS_TOKEN_SECRET.');return{apiKey,apiSecret,accessToken,accessTokenSecret};}
+function xTimeoutMs(){const configured=Number(process.env.X_REQUEST_TIMEOUT_MS);return Number.isFinite(configured)?Math.max(3000,Math.min(30000,Math.round(configured))):12000;}
+function oauthHeader(method,rawUrl){const{apiKey,apiSecret,accessToken,accessTokenSecret}=oauthCredentials();const url=new URL(rawUrl);const oauth={oauth_consumer_key:apiKey,oauth_nonce:crypto.randomBytes(18).toString('hex'),oauth_signature_method:'HMAC-SHA1',oauth_timestamp:String(Math.floor(Date.now()/1000)),oauth_token:accessToken,oauth_version:'1.0'};const pairs=[];for(const[key,value]of url.searchParams.entries())pairs.push([pct(key),pct(value)]);for(const[key,value]of Object.entries(oauth))pairs.push([pct(key),pct(value)]);pairs.sort((a,b)=>a[0]===b[0]?a[1].localeCompare(b[1]):a[0].localeCompare(b[0]));const parameterString=pairs.map(([k,v])=>`${k}=${v}`).join('&');const baseUrl=`${url.protocol}//${url.host}${url.pathname}`;const signatureBase=[method.toUpperCase(),pct(baseUrl),pct(parameterString)].join('&');const signingKey=`${pct(apiSecret)}&${pct(accessTokenSecret)}`;oauth.oauth_signature=crypto.createHmac('sha1',signingKey).update(signatureBase).digest('base64');return `OAuth ${Object.keys(oauth).sort().map(key=>`${pct(key)}="${pct(oauth[key])}"`).join(', ')}`;}
+async function xRequest(method,path,body){const url=`${X_API}${path}`;const headers={authorization:oauthHeader(method,url)};const signal=typeof AbortSignal==='function'&&typeof AbortSignal.timeout==='function'?AbortSignal.timeout(xTimeoutMs()):undefined;const options={method,headers,signal};if(body!==undefined){headers['content-type']='application/json';options.body=JSON.stringify(body);}const response=await fetch(url,options);const text=await response.text();let payload={};try{payload=text?JSON.parse(text):{};}catch(_){payload={detail:text};}if(!response.ok){const error=new Error(payload?.detail||payload?.title||payload?.errors?.[0]?.message||`X API ${method} failed (${response.status})`);error.status=response.status;error.retryAfter=response.headers?.get?.('retry-after')||null;throw error;}return payload;}
+const xGet=path=>xRequest('GET',path);const xPost=(path,body)=>xRequest('POST',path,body);
+async function probeXAuth(){const me=await xGet('/users/me?user.fields=id,username,name');const id=me?.data?.id,username=me?.data?.username;if(!id||!username)throw new Error('X auth probe could not resolve the authenticated user.');if(String(username).toLowerCase()!==X_USERNAME.toLowerCase())throw new Error(`X credentials are authenticated as @${username}, not @${X_USERNAME}.`);return{userId:String(id),username:String(username),name:me?.data?.name||null};}
+async function resolveBotUserId(){if(process.env.X_USER_ID)return String(process.env.X_USER_ID);return (await probeXAuth()).userId;}
+function replyTarget(tweet){return (tweet?.referenced_tweets||[]).find(r=>r.type==='replied_to')?.id||(tweet?.referenced_tweets||[]).find(r=>r.type==='quoted')?.id||null;}
+function collectMediaUrls(tweet,mediaByKey){const out=[];for(const key of tweet?.attachments?.media_keys||[]){const media=mediaByKey.get(String(key));const url=media?.url||media?.preview_image_url;if(url)out.push(url);}return out;}
+function buildMentionInput(mention,parent,mediaByKey){const tweets=[parent,mention].filter(Boolean),textParts=[],mediaUrls=[],seenMedia=new Set();for(const tweet of tweets){const value=String(tweet?.text||'').trim();if(value&&!textParts.includes(value))textParts.push(value);for(const url of collectMediaUrls(tweet,mediaByKey)){if(seenMedia.has(url))continue;seenMedia.add(url);mediaUrls.push(url);if(mediaUrls.length>=4)break;}if(mediaUrls.length>=4)break;}return{text:textParts.join('\n'),mediaUrls,referenceTime:parent?.created_at||mention?.created_at||null,sourceMode:parent?'parent-plus-mention':'direct-mention'};}
+function isActionableMention(mention,replied){return !replied.has(String(mention?.id))&&!mention?.possibly_sensitive&&!/\b(stop|unsubscribe|opt\s*out)\b/i.test(mention?.text||'');}
+async function hydrateMissingParents(mentions,includesTweets,mediaByKey){const missing=[...new Set(mentions.map(replyTarget).filter(Boolean).map(String).filter(id=>!includesTweets.has(id)))];if(!missing.length)return;const q=new URLSearchParams({ids:missing.join(','),'tweet.fields':'author_id,attachments,created_at,conversation_id,possibly_sensitive,referenced_tweets,text',expansions:'attachments.media_keys','media.fields':'media_key,type,url,preview_image_url'});const fetched=await xGet(`/tweets?${q}`);for(const tweet of fetched.data||[])includesTweets.set(String(tweet.id),tweet);for(const media of fetched.includes?.media||[])mediaByKey.set(String(media.media_key),media);}
+async function getContext(userId){const q=new URLSearchParams({max_results:'20','tweet.fields':'author_id,attachments,created_at,conversation_id,possibly_sensitive,referenced_tweets,text',expansions:'author_id,attachments.media_keys,referenced_tweets.id,referenced_tweets.id.attachments.media_keys','media.fields':'media_key,type,url,preview_image_url','user.fields':'username,name'});const mentions=await xGet(`/users/${userId}/mentions?${q}`);const own=await xGet(`/users/${userId}/tweets?max_results=100&tweet.fields=referenced_tweets,created_at`);const replied=new Set();for(const tweet of own.data||[])for(const ref of tweet.referenced_tweets||[])if(ref.type==='replied_to')replied.add(String(ref.id));return{mentions,replied};}
+
+async function processMentions({dryRun,idempotencySecret}){
+  const userId=await resolveBotUserId();const{mentions,replied}=await getContext(userId);const includesTweets=new Map((mentions.includes?.tweets||[]).map(t=>[String(t.id),t]));const mediaByKey=new Map((mentions.includes?.media||[]).map(m=>[String(m.media_key),m]));const actionableMentions=(mentions.data||[]).filter(mention=>isActionableMention(mention,replied));await hydrateMissingParents(actionableMentions,includesTweets,mediaByKey);
+  const candidates=[];
+  for(const mention of [...actionableMentions].reverse()){
+    const parentId=replyTarget(mention),parent=parentId?includesTweets.get(String(parentId)):null;
+    if(parent?.possibly_sensitive){candidates.push({mentionId:mention.id,parentId,status:'ignored-sensitive-parent'});continue;}
+    const input=buildMentionInput(mention,parent,mediaByKey),parsed=await parseSlip({text:input.text,mediaUrls:input.mediaUrls});if(!parsed.legs.length){candidates.push({mentionId:mention.id,parentId:parentId||null,status:'unparsed',sourceMode:input.sourceMode,parentAvailable:Boolean(parent),parser:parsed.method,mediaCount:input.mediaUrls.length});continue;}
+    const baseUrl=process.env.PUBLIC_BASE_URL||'https://parlayping.net';
+    const raw=await analyzeMultiSport(parsed.legs,{baseUrl,referenceTime:input.referenceTime});
+    const analysis=applyCorrelationSafety(raw),readiness=replyReadiness(analysis);
+    const share=readiness.ready?tryBuildXShareBundle({parsedLegs:parsed.legs,analysis,sourceReference:`x:${parentId||mention.id}`,baseUrl,maxReplyLegs:3}):{ready:false,reason:readiness.reason,shareUrl:null,cardUrl:null,xReplyCardUrl:null,replyText:null};
+    const row={mentionId:mention.id,parentId:parentId||null,status:readiness.ready?'ready':'needs-match',sourceMode:input.sourceMode,parentAvailable:Boolean(parent),parser:parsed.method,sports:parsed.sports||[],mediaCount:input.mediaUrls.length,counts:analysis.counts,readiness,unresolvedLegs:(analysis.results||[]).filter(r=>r?.status==='UNRESOLVED').map(r=>({sport:r.sport||null,player:r.player||null,team:r.team||null,market:r.market||null,side:r.side||null,line:r.line??null,originalText:r.originalText||null,reason:r.resolutionReason||'unresolved-leg'})),correlation:analysis.correlation,combinedTailProbability:analysis.combinedTailProbability,combinedTailProbabilityMethod:analysis.combinedTailProbabilityMethod,tailUrl:analysis.tailUrl,shareReady:Boolean(share.ready),shareReason:share.reason||null,shareUrl:share.shareUrl||null,cardUrl:share.cardUrl||null,xReplyCardUrl:share.xReplyCardUrl||null,replyText:readiness.ready?(share.replyText||buildPublicReply(analysis,{maxLegs:3})):null};
+    if(!dryRun&&readiness.ready&&row.replyText){
+      const claim=await claimMention(idempotencySecret,String(mention.id));
+      row.idempotency={claimed:Boolean(claim?.claimed),status:claim?.status||null,replyId:claim?.replyId||null};
+      if(!claim?.claimed){
+        row.status=claim?.status==='replied'?'already-replied':'duplicate-blocked';
+        row.replyId=claim?.replyId||null;
+      }else{
+        try{
+          const posted=await xPost('/tweets',{text:row.replyText,reply:{in_reply_to_tweet_id:String(mention.id)}});
+          const replyId=posted?.data?.id||null;
+          if(!replyId)throw new Error('X post succeeded without returning a reply id.');
+          await markMentionReplied(idempotencySecret,String(mention.id),String(replyId));
+          row.status='replied';row.replyId=replyId;row.idempotency={claimed:true,status:'replied',replyId};
+        }catch(error){
+          try{
+            if(error?.status===429)await releaseMention(idempotencySecret,String(mention.id));
+            else await markMentionError(idempotencySecret,String(mention.id),error?.message||'X post failed.');
+          }catch(idempotencyError){console.error('ParlayPing idempotency finalization',idempotencyError);}
+          throw error;
+        }
+      }
+    }
+    candidates.push(row);
+  }
+  return candidates;
+}
+
+module.exports=async function handler(req,res){res.setHeader('Cache-Control','no-store');try{const workerSecret=process.env.X_WORKER_SECRET;if(!workerSecret)return res.status(503).json({ok:false,error:'Worker protection is not configured.'});const supplied=req.headers['x-parlayping-secret'];if(supplied!==workerSecret)return res.status(401).json({ok:false,error:'Unauthorized.'});const approved=String(process.env.X_AI_REPLY_APPROVED||'').toLowerCase()==='true';const enabled=String(process.env.X_AUTOREPLY_ENABLED||'').toLowerCase()==='true';const probe=String(req?.query?.probe||'').toLowerCase();if(probe==='auth'){const auth=await probeXAuth();return res.status(200).json({ok:true,probe:'auth',probeOnly:true,xAuthReady:true,username:auth.username,userId:auth.userId,auth:'oauth1-user-context',xApprovalRecorded:approved,autoReplyEnabled:enabled,postingActive:false,analysisAdapters:ANALYSIS_ADAPTERS});}if(!(approved&&enabled))return res.status(200).json({ok:true,active:false,dryRun:true,reason:'posting-gates-disabled',username:X_USERNAME,auth:'oauth1-user-context',xApprovalRecorded:approved,autoReplyEnabled:enabled,analysisAdapters:ANALYSIS_ADAPTERS,processed:0,candidates:[]});const idempotencySecret=req.headers['x-parlayping-scheduler-secret'];if(!idempotencySecret)return res.status(409).json({ok:false,active:false,error:'Durable idempotency is required before X posting.','reason':'idempotency-secret-missing'});const candidates=await processMentions({dryRun:false,idempotencySecret});return res.status(200).json({ok:true,active:true,dryRun:false,username:X_USERNAME,auth:'oauth1-user-context',xApprovalRecorded:approved,autoReplyEnabled:enabled,analysisAdapters:ANALYSIS_ADAPTERS,processed:candidates.length,candidates});}catch(error){console.error('ParlayPing X worker',error);return res.status(error?.status===429?429:500).json({ok:false,error:error?.message||'X worker failed.',retryAfter:error?.retryAfter||null});}};
+
+module.exports.probeXAuth=probeXAuth;
+module.exports.buildMentionInput=buildMentionInput;
+module.exports.isActionableMention=isActionableMention;
+module.exports.xTimeoutMs=xTimeoutMs;
+module.exports.processMentions=processMentions;

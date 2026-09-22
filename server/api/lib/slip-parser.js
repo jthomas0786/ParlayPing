@@ -38,7 +38,7 @@ const BASKETBALL_MARKET_WORDS = [
   { re: /\bpoints?\b|\bpts\b/i, market:'points' }
 ];
 
-const SPORT_ENUM = ['NFL','NCAAF','NBA','NCAAB','WNBA','MLB','NHL','SOCCER','TENNIS','MMA','GOLF','CRICKET','ESPORTS','RUGBY','VOLLEYBALL','MOTORSPORTS','OTHER'];
+const SPORT_ENUM = ['NFL','NCAAF','NBA','NCAAB','WNBA','MLB','NHL','SOCCER','TENNIS','MMA','GOLF','CRICKET','ESPORTS','TABLE_TENNIS','RUGBY','VOLLEYBALL','MOTORSPORTS','OTHER'];
 const FOOTBALL_MARKETS = new Set(['recYds','rushYds','passYds','receptions','passTds','completions','atd']);
 const MLB_MARKETS = new Set(['homeRun','hits','totalBases','rbi','hrr','stolenBases']);
 const NHL_MARKETS = new Set(['shotsOnGoal','points','assists','goals','anytimeGoal','blocks','saves']);
@@ -52,7 +52,7 @@ function normalizePlayerKey(value) {
 }
 function normalizeSport(value) {
   const raw = String(value || 'OTHER').toUpperCase().replace(/[^A-Z0-9]/g, '');
-  const aliases = { CFB:'NCAAF', NCAAFOOTBALL:'NCAAF', COLLEGEFOOTBALL:'NCAAF', COLLEGEBASKETBALL:'NCAAB', NCAAM:'NCAAB', NCAAMBB:'NCAAB', PROBASKETBALL:'NBA', BASKETBALL:'NBA', WOMENSNBA:'WNBA', UFC:'MMA', BASEBALL:'MLB', PROBASEBALL:'MLB', MAJORLEAGUEBASEBALL:'MLB', HOCKEY:'NHL', PROHOCKEY:'NHL', NATIONALHOCKEYLEAGUE:'NHL' };
+  const aliases = { CFB:'NCAAF', NCAAFOOTBALL:'NCAAF', COLLEGEFOOTBALL:'NCAAF', COLLEGEBASKETBALL:'NCAAB', NCAAM:'NCAAB', NCAAMBB:'NCAAB', PROBASKETBALL:'NBA', BASKETBALL:'NBA', WOMENSNBA:'WNBA', UFC:'MMA', MIXEDMARTIALARTS:'MMA', BASEBALL:'MLB', PROBASEBALL:'MLB', MAJORLEAGUEBASEBALL:'MLB', HOCKEY:'NHL', PROHOCKEY:'NHL', NATIONALHOCKEYLEAGUE:'NHL', TABLETENNIS:'TABLE_TENNIS', PINGPONG:'TABLE_TENNIS' };
   const sport = aliases[raw] || raw;
   return SPORT_ENUM.includes(sport) ? sport : 'OTHER';
 }
@@ -62,7 +62,7 @@ function sanitizeLeg(raw) {
   const market = String(raw.market || '').trim();
   if (!player || player.length < 2 || !/^[A-Za-z][A-Za-z0-9_]{1,63}$/.test(market)) return null;
   const sport = normalizeSport(raw.sport);
-  const binary = ['atd','anytimeGoal','homeRun','doubleDouble','tripleDouble'].includes(market);
+  const binary = ['atd','anytimeGoal','homeRun','doubleDouble','tripleDouble','toReceiveCard','matchWinner','fightWinner'].includes(market);
   const side = binary ? String(raw.side || 'yes').toLowerCase() : String(raw.side || 'over').toLowerCase();
   if (!['over','under','yes','no'].includes(side)) return null;
   const line = raw.line == null ? null : Number(raw.line);
@@ -90,12 +90,16 @@ function dedupeLegs(rawLegs) {
   return out;
 }
 function heuristicSport(text) {
+  if (/\b(table\s+tennis|ping[\s-]?pong)\b/i.test(text)) return 'TABLE_TENNIS';
   if (/\b(wnba|women'?s national basketball association)\b/i.test(text)) return 'WNBA';
   if (/\b(ncaab|ncaam|college basketball|ncaa basketball)\b/i.test(text)) return 'NCAAB';
   if (/\b(nba|national basketball association)\b/i.test(text)) return 'NBA';
   if (/\b(mlb|major league baseball|baseball)\b/i.test(text)) return 'MLB';
   if (/\b(nhl|national hockey league|hockey)\b/i.test(text)) return 'NHL';
   if (/\b(ncaaf|cfb|college football|ncaa football)\b/i.test(text)) return 'NCAAF';
+  if (/\b(ufc|mma|mixed martial arts)\b/i.test(text)) return 'MMA';
+  if (/\b(tennis|atp|wta)\b/i.test(text)) return 'TENNIS';
+  if (/\b(soccer|football club|premier league|epl|mls|la liga|bundesliga|serie a|ligue 1)\b/i.test(text)) return 'SOCCER';
   if (/\b(total\s+bases?|stolen\s+bases?|rbi(?:s)?|hits?\s*\+\s*runs?\s*\+\s*rbi(?:s)?|hits?)\b/i.test(text)) return 'MLB';
   if (/\b(rebounds?|pra|3pm|three[-\s]?pointers?|double[-\s]?double|triple[-\s]?double|turnovers?)\b/i.test(text)) return 'NBA';
   return 'NFL';
@@ -120,6 +124,15 @@ function heuristicParse(text) {
   const legs = [];
   const basketballContext=['NBA','NCAAB','WNBA'].includes(contextSport);
   for (const line of lines) {
+    if (['TABLE_TENNIS','TENNIS','MMA'].includes(contextSport)) {
+      const winner=line.match(/^(.{2,70}?)(?:\s+[-–—:]?\s*)(match\s+winner|fight\s+winner|to\s+win\s+(?:the\s+)?(?:match|fight)|moneyline)\b/i);
+      if(winner){
+        const player=cleanPlayer(winner[1]);
+        const market=contextSport==='MMA'?'fightWinner':'matchWinner';
+        if(player)legs.push({sport:contextSport,player,team:null,market,side:'yes',line:null,inclusive:true,originalText:line});
+        continue;
+      }
+    }
     if (basketballContext) {
       const dd=line.match(/^(.{2,70}?)(?:\s+[-–—:]?\s*)(?:to\s+record\s+(?:a\s+)?|(?:yes\s+)?)(double[-\s]?double|triple[-\s]?double)\b/i);
       if(dd){const player=cleanPlayer(dd[1]),market=/triple/i.test(dd[2])?'tripleDouble':'doubleDouble';if(player)legs.push({sport:contextSport,player,team:null,market,side:'yes',line:null,inclusive:true,originalText:line});continue;}
@@ -188,22 +201,27 @@ function normalizeMediaUrls(mediaUrls) {
   }
   return out;
 }
+function openAiTimeoutMs(){
+  const configured=Number(process.env.OPENAI_TIMEOUT_MS);
+  return Number.isFinite(configured)?Math.max(3000,Math.min(30000,Math.round(configured))):12000;
+}
 async function aiParse({ text, mediaUrls = [] }) {
   const key = process.env.OPENAI_API_KEY; if (!key) return null;
   const images = normalizeMediaUrls(mediaUrls);
   const instructions = [
     'Extract explicit player-prop wagers from the supplied social post and/or sportsbook bet-slip screenshots.',
-    'Classify EACH leg by sport/league. Do not force a college player into a pro league. Use NCAAF for NCAA/college football, NBA for NBA, WNBA for WNBA, NCAAB for NCAA/college basketball, MLB for Major League Baseball, and NHL for National Hockey League. A mixed-sport slip may contain different sports on different legs.',
+    'Classify EACH leg by sport/league. Do not force a college player into a pro league. Use NCAAF for NCAA/college football, NBA for NBA, WNBA for WNBA, NCAAB for NCAA/college basketball, MLB for Major League Baseball, NHL for National Hockey League, SOCCER for soccer, TENNIS for tennis, MMA for UFC/MMA, ESPORTS for esports, and TABLE_TENNIS for table tennis or ping pong. A mixed-sport slip may contain different sports on different legs.',
     'If the league is visibly shown, use it. If it is not shown, use player/team/market context only when confident; otherwise use OTHER.',
     'Never invent or repair a player, line, team, market, or side that is not supported by the visible content.',
-    'Treat each visible wager selection as one leg. Ignore odds, stake, payout, boosts, sportsbook branding, game totals, spreads, moneylines, settled icons, cash-out text, and promotional copy.',
+    'Treat each visible wager selection as one leg. Ignore odds, stake, payout, boosts, sportsbook branding, game totals, spreads, unrelated team/game moneylines, settled icons, cash-out text, and promotional copy. Tennis/Table Tennis explicit player match-winner selections and MMA fighter-winner selections are valid legs and should not be discarded as generic moneylines.',
     'If the same leg appears more than once because of repeated UI elements, output it only once.',
     'Canonical football markets: receiving yards=recYds, rushing yards=rushYds, passing yards=passYds, receptions=receptions, passing touchdowns=passTds, completions=completions, anytime touchdown=atd.',
     'Canonical basketball markets for NBA/WNBA/NCAAB: points=points, rebounds=rebounds, assists=assists, made three-pointers=threes, steals=steals, blocks=blocks, turnovers=turnovers, points+rebounds+assists=pra, points+rebounds=ptsRebs, points+assists=ptsAsts, rebounds+assists=rebsAsts, double-double=doubleDouble (yes/no binary), triple-double=tripleDouble (yes/no binary).',
     'Canonical MLB markets currently supported by ParlayPing: to hit a home run/home run=homeRun (yes/no binary), hits=hits, total bases=totalBases, RBI=rbi, hits+runs+RBI=hrr, stolen bases=stolenBases. Do not rename MLB home run to homeRuns.',
     'Canonical NHL markets currently supported by ParlayPing: shots on goal/SOG=shotsOnGoal, points=points, assists=assists, goals=goals, anytime goal scorer=anytimeGoal (yes/no binary), blocked shots=blocks, goalie saves=saves.',
+    'Canonical extended winner markets: Tennis match winner=matchWinner (yes/no binary), Table Tennis/Ping Pong match winner=matchWinner (yes/no binary), MMA/UFC fight winner=fightWinner (yes/no binary).',
     'For other sports use concise canonical camelCase keys such as goals, aces, or significantStrikes. Do not convert one market into another.',
-    'Examples: 50+ Receiving Yards => recYds, over, line 50, inclusive true. Over 49.5 Receiving Yards => recYds, over, 49.5, inclusive false. Anytime TD => atd, yes, line null. 25+ Points => basketball points, over, line 25, inclusive true. Over 24.5 Points => basketball points, over, line 24.5, inclusive false. 10+ Rebounds => rebounds, over, line 10, inclusive true. 3+ Made Threes => threes, over, line 3, inclusive true. Double Double => doubleDouble, yes, line null. 1+ Hits => MLB hits, over, line 1, inclusive true. Over 0.5 Hits => MLB hits, over, 0.5, inclusive false. 2+ Total Bases => MLB totalBases, over, line 2, inclusive true. To Hit a Home Run => MLB homeRun, yes, line null. 3+ Shots on Goal => NHL shotsOnGoal, over, line 3, inclusive true. Over 2.5 Shots on Goal => NHL shotsOnGoal, over, line 2.5, inclusive false. Anytime Goal Scorer => NHL anytimeGoal, yes, line null.',
+    'Examples: 50+ Receiving Yards => recYds, over, line 50, inclusive true. Over 49.5 Receiving Yards => recYds, over, 49.5, inclusive false. Anytime TD => atd, yes, line null. 25+ Points => basketball points, over, line 25, inclusive true. Over 24.5 Points => basketball points, over, line 24.5, inclusive false. 10+ Rebounds => rebounds, over, line 10, inclusive true. 3+ Made Threes => threes, over, line 3, inclusive true. Double Double => doubleDouble, yes, line null. 1+ Hits => MLB hits, over, line 1, inclusive true. Over 0.5 Hits => MLB hits, over, 0.5, inclusive false. 2+ Total Bases => MLB totalBases, over, line 2, inclusive true. To Hit a Home Run => MLB homeRun, yes, line null. 3+ Shots on Goal => NHL shotsOnGoal, over, line 3, inclusive true. Over 2.5 Shots on Goal => NHL shotsOnGoal, over, line 2.5, inclusive false. Anytime Goal Scorer => NHL anytimeGoal, yes, line null. Table Tennis Match Winner => TABLE_TENNIS matchWinner, yes, line null. UFC Fight Winner => MMA fightWinner, yes, line null.',
     'For originalText, copy a short visible phrase supporting the leg. If player + market + line/binary selection cannot be read confidently, omit the leg.'
   ].join(' ');
   const content = [{ type:'input_text', text:`${instructions}\n\nPost text (may be empty):\n${String(text || '').slice(0,6000)}` }];
@@ -220,8 +238,9 @@ async function aiParse({ text, mediaUrls = [] }) {
     }}}
     ,required:['legs']
   };
+  const signal=typeof AbortSignal==='function'&&typeof AbortSignal.timeout==='function'?AbortSignal.timeout(openAiTimeoutMs()):undefined;
   const response = await fetch('https://api.openai.com/v1/responses', {
-    method:'POST', headers:{'content-type':'application/json',authorization:`Bearer ${key}`},
+    method:'POST', headers:{'content-type':'application/json',authorization:`Bearer ${key}`},signal,
     body:JSON.stringify({ model:process.env.OPENAI_MODEL || 'gpt-5.6-luna', store:false, reasoning:{effort:'none'}, max_output_tokens:1800,
       input:[{role:'user',content}], text:{format:{type:'json_schema',name:'parlayping_slip',strict:true,schema}} })
   });
@@ -247,4 +266,4 @@ async function parseSlip({ text = '', mediaUrls = [] } = {}) {
   return { legs, sports, sport:sports.length===1?sports[0]:sports.length?'MIXED':null, method, mediaCount:images.length, visionConfigured:Boolean(process.env.OPENAI_API_KEY), ...(visionError?{visionError}:{}) };
 }
 
-module.exports = { parseSlip, heuristicParse, dedupeLegs, sanitizeLeg, normalizeMediaUrls, normalizeSport, SPORT_ENUM, FOOTBALL_MARKETS, MLB_MARKETS, NHL_MARKETS, BASKETBALL_MARKETS };
+module.exports = { parseSlip, heuristicParse, dedupeLegs, sanitizeLeg, normalizeMediaUrls, normalizeSport, SPORT_ENUM, FOOTBALL_MARKETS, MLB_MARKETS, NHL_MARKETS, BASKETBALL_MARKETS, openAiTimeoutMs };
