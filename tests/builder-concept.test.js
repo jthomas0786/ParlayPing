@@ -53,6 +53,21 @@ test('signed builder renderer injects real slip state into the approved concept'
   assert.doesNotMatch(html,/src="\.\/app\.js"/);
 });
 
+test('Sports Outpost signed builder adds exact signed Back and close controls',()=>{
+  const html=renderBuilderHtml({
+    token:'s1.example.signature',
+    liveDataAvailable:true,
+    slip:{
+      returnUrl:'https://thesportsoutpost.com/nfl.html?view=props#betslip',
+      returnLabel:'The Sports Outpost',
+      legs:[{id:'leg-1',sport:'NFL',player:'Player 1',market:'Rushing Yards',status:'PENDING'}],
+    },
+  });
+  assert.match(html,/Back to The Sports Outpost/);
+  assert.match(html,/Close ParlayPing and return to The Sports Outpost/);
+  assert.match(html,/https:\/\/thesportsoutpost\.com\/nfl\.html\?view=props#betslip/);
+});
+
 test('build route is separate from the signed shared-slip route',()=>{
   const vercel=read('vercel.json');
   const dispatcher=read('api/index.js');

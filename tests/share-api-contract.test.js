@@ -14,9 +14,16 @@ test('share API body parser accepts object and JSON string bodies', () => {
   assert.deepEqual(shareRoute.parseBody({ body:'not-json' }), {});
 });
 
-test('share URL request host helpers use forwarded HTTPS host', () => {
+test('share URL request host helpers use canonical ParlayPing HTTPS host', () => {
   const req = { headers:{ 'x-forwarded-host':'parlayping.net', 'x-forwarded-proto':'https' } };
   assert.equal(shareRoute.requestBaseUrl(req), 'https://parlayping.net');
+});
+
+test('share API exposes concept builder launch URL separately from legacy slip URL', () => {
+  assert.equal(
+    shareRoute.buildLaunchUrl('s1.payload.signature', 'https://parlayping.net/'),
+    'https://parlayping.net/build/s1.payload.signature',
+  );
 });
 
 test('share page and card token readers accept routed slip parameter', () => {
