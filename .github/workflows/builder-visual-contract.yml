@@ -1,0 +1,34 @@
+name: Builder Visual Contract
+
+on:
+  pull_request:
+    paths:
+      - 'builder-template.html'
+      - 'builder.css'
+      - 'builder-precision.css'
+      - 'builder-precision-runtime.js'
+      - 'builder-concept-finish.js'
+      - 'server/api/builder-page.js'
+      - 'scripts/builder-visual-contract.mjs'
+      - '.github/workflows/builder-visual-contract.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  visual:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install app dependencies
+        run: npm install --no-audit --no-fund
+      - name: Install Playwright
+        run: npm install --no-save --no-audit --no-fund playwright@1.55.0
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Verify approved concept geometry
+        run: node scripts/builder-visual-contract.mjs

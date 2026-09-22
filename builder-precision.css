@@ -1,0 +1,120 @@
+:root{--pp-deep:#020e19;--pp-panel:#061928;--pp-panel-2:#082237;--pp-line:#15445d;--pp-line-strong:#1b607b;--pp-text:#f7fbff;--pp-muted:#8eaac0;--pp-cyan:#14dfe8;--pp-mint:#2ef0a1}
+body{background:radial-gradient(circle at 50% -7%,rgba(16,98,118,.19),transparent 36%),linear-gradient(180deg,#03111e 0,#020e19 100%)}
+.app-shell{width:min(940px,calc(100% - 34px))}
+.app-header{height:84px;background:rgba(2,14,25,.965);border-bottom:1px solid rgba(74,168,203,.1)}
+.header-inner{gap:18px}
+.brand{width:215px;flex:0 0 215px;height:62px;display:flex;align-items:center;gap:10px;text-decoration:none}
+.brand .pp-brand-mark{width:48px;height:48px;flex:0 0 48px;display:block}
+.brand .pp-brand-copy{display:flex;flex-direction:column;line-height:1;min-width:0}
+.brand .pp-brand-name{font-family:"Space Grotesk",Inter,sans-serif;font-size:22px;letter-spacing:-.035em;font-weight:800;color:#f7fbff;white-space:nowrap}
+.brand .pp-brand-name em{font-style:normal;color:#20e8c8}
+.brand .pp-brand-tag{font-size:7.5px;letter-spacing:.18em;font-weight:800;color:#9eb6c6;margin-top:5px;white-space:nowrap}
+.main-nav{gap:20px}
+.nav-item{min-width:62px;font-size:11px;gap:5px}
+.nav-item .nav-icon{width:19px;height:19px;display:grid;place-items:center;font-size:0}
+.nav-item .nav-icon svg{width:19px;height:19px;display:block;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.nav-item.active:after{left:10px;right:10px;bottom:7px}
+.header-actions{min-width:154px;gap:9px}
+.round-button,.profile-button{width:40px;height:40px;border-radius:10px}
+.round-button svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.profile-button{border-radius:50%;font-size:13px;box-shadow:0 0 0 2px rgba(46,124,255,.13)}
+.profile-button:after{content:"⌄";position:absolute;right:-12px;top:12px;color:#87a7ba;font-size:11px}
+.notification-badge{right:-5px;top:-6px;min-width:19px;height:19px;font-size:9px;border-width:2px}
+.concept-hero{margin-top:12px;height:228px;border-radius:12px;background-image:linear-gradient(180deg,rgba(2,16,28,.12),rgba(1,12,20,.75)),linear-gradient(90deg,rgba(4,20,31,.46),rgba(3,16,28,.05) 48%,rgba(3,16,28,.52)),url('https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=1800&q=82');box-shadow:inset 0 -35px 70px rgba(0,0,0,.34),0 18px 54px rgba(0,0,0,.28)}
+.hero-copy{padding-top:24px}
+.hero-copy h1{font-size:30px;letter-spacing:.01em}
+.hero-copy p{font-size:13px;margin-top:6px;color:#edf4f7}
+.hero-tools{left:38px;right:84px;bottom:15px;gap:14px}
+.hero-tool-icon{width:48px;height:48px;font-size:0;border-color:rgba(71,190,220,.72);background:rgba(4,24,38,.74)}
+.hero-tool-icon svg{width:22px;height:22px;stroke:#e7f8fd;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.hero-tool strong{font-size:11px;margin-top:4px}
+.hero-tool small{font-size:10px;color:#acc0cd}
+.hero-note{right:15px;top:47px;font-size:18px;line-height:1.05}
+.hero-note:after{width:62px;height:3px;margin-top:5px}
+.parlay-panel{margin-top:13px;border-radius:10px;padding:15px 15px 14px;background:linear-gradient(180deg,rgba(5,24,38,.97),rgba(3,18,29,.99));box-shadow:0 18px 55px rgba(0,0,0,.28)}
+.parlay-toolbar{gap:16px}
+.parlay-heading h2{font-size:24px;margin-bottom:10px}
+.parlay-metrics{gap:7px}
+.metric-pill{min-height:36px;padding:0 14px;font-size:11px}
+.odds-pill{min-width:82px;font-size:17px;color:#32f1e9}
+.info-dot{width:16px;height:16px;font-size:9px;margin-left:6px}
+.parlay-actions{gap:10px}
+.clear-button{font-size:11px;text-decoration:none;color:#cbd9e1}
+.clear-button span{font-size:15px}
+.action-row{gap:8px}
+.tune-button,.save-button{height:40px;border-radius:8px;padding:0 17px;font-size:12px}
+.tune-button svg,.save-button svg{width:16px;height:16px;margin-right:7px;vertical-align:-3px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.picks{gap:8px;margin-top:10px}
+.pick-card{border-radius:9px;background:#061929;border-color:#174c65}
+.game-bar{height:42px;padding:0 13px;gap:9px;background:#092239;font-size:11px;position:relative}
+.game-bar .sport-shield{width:29px;height:29px;flex:0 0 29px;border:1px solid #2b6380;border-radius:7px 7px 9px 9px;background:linear-gradient(180deg,#0c2c45,#071a2c);display:grid;place-items:center;color:#dff8ff;font-size:7px;font-weight:900;letter-spacing:.04em;clip-path:polygon(8% 0,92% 0,100% 68%,50% 100%,0 68%)}
+.team-pair{gap:3px;min-width:57px}
+.team-pair .team-token,.team-pair img{width:27px;height:27px;flex:0 0 27px}
+.team-pair img{object-fit:contain}
+.team-pair .team-token{border-radius:50%;display:grid;place-items:center;border:1px solid #28536b;background:#0b2b40;color:#cde4ef;font-size:7px;font-weight:900}
+.game-bar strong{font-size:12px;white-space:nowrap}
+.game-bar .game-time{margin-left:auto;display:flex;align-items:center;gap:7px;color:#aebfca;white-space:nowrap}
+.game-bar .game-time i{font-style:normal;color:#6f90a4}
+.pick-main{min-height:78px;display:grid;grid-template-columns:minmax(252px,1.15fr) minmax(175px,.75fr) 70px 20px;align-items:center;gap:11px;padding:8px 13px 9px}
+.player-photo{width:54px;height:54px;margin-right:11px;border-color:#1a516c;background:#0d2c43}
+.player-fallback{display:grid!important;place-items:center;font-weight:900;color:#d9f5ff;font-size:13px}
+.player-copy strong{font-size:14px}
+.player-copy span{font-size:11px;margin-top:2px}
+.player-copy small{font-size:10px;margin-top:2px}
+.probability-meter{gap:11px;justify-content:center}
+.meter-track{width:116px;height:11px;background:#0a4059}
+.pick-probability{font-size:14px;min-width:48px;text-align:right}
+.pick-probability.status-label{font-size:11px;font-weight:800;letter-spacing:.04em}
+.pick-odds{font-size:18px;padding-left:12px}
+.kebab{font-size:24px;color:#9caedc}
+.alt-lines{grid-template-columns:125px 1fr;gap:12px;padding-left:13px;padding-right:13px}
+.tune-open .alt-lines{max-height:74px;padding:0 13px 11px}
+.alt-title{font-size:11px;padding-left:13px}
+.alt-options{gap:8px}
+.alt-option{height:32px;font-size:11px;border-radius:7px}
+.alt-option.selected{background:linear-gradient(180deg,#0f4c54,#0b343d);border-color:#1be7dc;box-shadow:0 0 0 1px rgba(27,231,220,.35) inset,0 0 12px rgba(27,231,220,.1)}
+.alt-option:disabled{opacity:.32;cursor:not-allowed}
+.add-pick-button{height:42px;margin-top:8px;border-radius:7px;font-size:13px}
+.add-pick-button span{font-size:20px}
+.sportsbook-section{margin-top:10px}
+.sportsbook-heading{margin-bottom:7px}
+.sportsbook-heading h3{font-size:12px}
+.sportsbook-grid{gap:5px}
+.book-card{height:58px;border-radius:7px;gap:7px;padding:6px 7px}
+.book-logo{width:31px;height:31px;flex:0 0 31px;border-radius:6px;position:relative;overflow:hidden;font-size:9px}
+.book-logo svg{width:23px;height:23px;display:block}
+.book-logo.dk{background:#071f11;color:#39ef4b}
+.book-logo.fd{background:#072b63;color:#5eaaff}
+.book-logo.b365{background:#08724d;color:#fff;font-size:8px}
+.book-logo.cz{background:#291b06;color:#f0be52}
+.book-logo.espn{background:#073c45;color:#38f1e6}
+.book-logo.more{background:#102237;color:#e8f5fb}
+.book-card strong{font-size:9px}
+.book-card small{font-size:8px;margin-top:2px}
+.open-book-button{height:47px;margin-top:7px;border-radius:7px;font-size:14px;background:linear-gradient(90deg,#12dce7,#2cf1d2)}
+.share-section{margin:15px 0 1px}
+.share-heading{gap:13px}
+.share-heading h3{font-size:12px}
+.share-actions{gap:34px;margin-top:11px}
+.share-action{width:61px}
+.share-circle{width:48px;height:48px;margin-bottom:6px;font-size:20px}
+.share-circle svg{width:20px;height:20px;display:block;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.share-action small{font-size:10px}
+.lower-grid{grid-template-columns:1.15fr .85fr;gap:12px;margin-top:12px}
+.secondary-panel{border-radius:9px;min-height:205px;padding:12px 13px}
+.secondary-title{margin-bottom:6px}
+.secondary-title h3{font-size:14px}
+.similar-row{grid-template-columns:54px 1fr auto 29px;gap:8px;min-height:49px}
+.mini-avatars img{width:30px;height:30px}
+.similar-row strong{font-size:11px}
+.similar-row small{font-size:8px}
+.tails{font-size:9px}
+.insights-list{font-size:10px;line-height:1.45}
+.analysis-button{height:38px;font-size:10px}
+.app-footer{min-height:78px;font-size:10px}
+.truth-note{color:#7698ad;font-size:9px;margin-top:7px}
+.pp-return-control{top:88px!important;font-size:10px!important;background:rgba(6,25,40,.9)!important;border-color:#1b526c!important;box-shadow:0 8px 22px rgba(0,0,0,.23)!important}
+.pp-return-back{left:10px!important;padding:8px 10px!important}
+.pp-return-close{right:10px!important;width:32px!important;height:32px!important;font-size:20px!important}
+@media(max-width:900px){.app-shell{width:min(100% - 22px,940px)}.brand{width:172px;flex-basis:172px}.brand .pp-brand-mark{width:42px;height:42px}.brand .pp-brand-name{font-size:19px}.main-nav{gap:10px}.nav-item{min-width:52px}.header-actions{min-width:126px}.hero-note{display:none}.hero-tools{right:38px}.pick-main{grid-template-columns:minmax(220px,1fr) minmax(155px,.72fr) 62px 18px}.meter-track{width:96px}.book-card{padding:5px}.book-logo{width:28px;height:28px;flex-basis:28px}}
+@media(max-width:720px){.app-header{height:auto;min-height:78px}.header-inner{min-height:78px;flex-wrap:wrap;padding:10px 0}.brand{width:160px;flex-basis:160px}.main-nav{order:3;width:100%;height:44px}.header-actions{margin-left:auto}.concept-hero{height:auto;min-height:250px}.hero-copy{padding:22px 18px 0}.hero-copy h1{font-size:25px}.hero-tools{position:relative;left:auto;right:auto;bottom:auto;grid-template-columns:repeat(2,1fr);padding:20px 22px}.parlay-toolbar{flex-direction:column}.parlay-actions{width:100%;flex-direction:row-reverse;justify-content:space-between;align-items:center}.pick-main{grid-template-columns:1fr auto;grid-template-areas:'player odds' 'prob prob';gap:7px 10px}.player-block{grid-area:player}.probability-meter{grid-area:prob;justify-content:flex-start}.meter-track{width:min(58vw,260px)}.pick-odds{grid-area:odds;border-left:0}.kebab{display:none}.game-bar .game-time{font-size:9px}.alt-lines,.tune-open .alt-lines{grid-template-columns:1fr}.alt-title{padding-left:0}.sportsbook-grid{grid-template-columns:repeat(2,1fr)}.book-card{height:54px}.lower-grid{grid-template-columns:1fr}.pp-return-control{top:auto!important;bottom:10px!important}}
