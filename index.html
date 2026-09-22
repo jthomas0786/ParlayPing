@@ -3,202 +3,253 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#071725" />
-  <meta name="description" content="ParlayPing turns social betting posts into live slip status, remaining-leg probabilities, and adjustable tail builds." />
-  <meta property="og:title" content="ParlayPing — Tag it. Track it. Tail what's left." />
-  <meta property="og:description" content="See what's hit, what's live, what's left, and tune the risk before you tail." />
+  <meta name="theme-color" content="#031421" />
+  <meta name="description" content="Build, tweak, share, and tail smarter with ParlayPing." />
+  <meta property="og:title" content="ParlayPing — Build. Tweak. Share. Tail." />
+  <meta property="og:description" content="Find value, adjust alt lines, link to your book, and share your betslip." />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://parlayping.net" />
-  <title>ParlayPing — Tag it. Track it. Tail what's left.</title>
+  <title>ParlayPing — Build. Tweak. Share. Tail.</title>
   <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
-  <div class="ambient ambient-one"></div>
-  <div class="ambient ambient-two"></div>
+  <div class="page-glow page-glow-a"></div>
+  <div class="page-glow page-glow-b"></div>
 
-  <header class="site-header">
-    <a class="brand" href="#top" aria-label="ParlayPing home">
-      <span class="brand-mark" aria-hidden="true">
-        <svg viewBox="0 0 64 64" role="img">
-          <defs>
-            <linearGradient id="ppGrad" x1="0" x2="1" y1="0" y2="1">
-              <stop offset="0" stop-color="#49f59f" />
-              <stop offset="1" stop-color="#24d9ff" />
-            </linearGradient>
-          </defs>
-          <path d="M13 8h24c12 0 20 8 20 19 0 10-7 18-18 19H28v10H13V8Z" fill="#0b1f31" stroke="url(#ppGrad)" stroke-width="3" />
-          <path d="M16 15h19c8 0 13 5 13 12 0 6-5 11-12 11H28V25H16V15Z" fill="none" stroke="url(#ppGrad)" stroke-width="4" stroke-linecap="round" />
-          <path d="M16 18h16v29H16z" fill="#f7fbff" rx="3" />
-          <path d="M16 45l3 3 3-3 3 3 3-3 3 3 1-1V18H16v27Z" fill="#f7fbff" />
-          <circle cx="21" cy="25" r="3.5" fill="#24dfa3" /><path d="m19.6 25 1.1 1.2 2.1-2.5" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-          <circle cx="21" cy="34" r="3.5" fill="#24dfa3" /><path d="m19.6 34 1.1 1.2 2.1-2.5" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-          <path d="M27 24h6M27 33h6" stroke="#8295a8" stroke-width="2.2" stroke-linecap="round" />
-          <circle cx="38" cy="28" r="3" fill="url(#ppGrad)" />
-          <path d="M42 22c3 2 4 4 4 6s-1 4-4 6M45 18c5 3 7 6 7 10s-2 8-7 11" fill="none" stroke="url(#ppGrad)" stroke-width="3" stroke-linecap="round" />
-        </svg>
-      </span>
-      <span class="brand-text">Parlay<span>Ping</span></span>
-    </a>
+  <header class="app-header" id="top">
+    <div class="app-shell header-inner">
+      <a class="brand" href="#top" aria-label="ParlayPing home">
+        <img src="./parlayping-logo.svg" alt="ParlayPing" />
+      </a>
 
-    <nav class="nav-links" aria-label="Primary navigation">
-      <a href="#demo">Live demo</a>
-      <a href="#how">How it works</a>
-      <a href="#features">Features</a>
-    </nav>
+      <nav class="main-nav" aria-label="Primary navigation">
+        <a class="nav-item active" href="#build" aria-current="page">
+          <span class="nav-icon">⚡</span><span>Build</span>
+        </a>
+        <a class="nav-item" href="#similar">
+          <span class="nav-icon">⊕</span><span>Explore</span>
+        </a>
+        <a class="nav-item" href="#community">
+          <span class="nav-icon">♧</span><span>Community</span>
+        </a>
+        <a class="nav-item" href="#insights">
+          <span class="nav-icon bars">▥</span><span>Insights</span>
+        </a>
+      </nav>
 
-    <a class="x-button" href="https://x.com/ParlayPing" target="_blank" rel="noreferrer">Follow @ParlayPing</a>
+      <div class="header-actions">
+        <button class="round-button search-button" type="button" aria-label="Search">⌕</button>
+        <button class="round-button notification-button" type="button" aria-label="Notifications">
+          ♧<span class="notification-badge">3</span>
+        </button>
+        <a class="profile-button" href="./account.html" aria-label="Account">JT</a>
+      </div>
+    </div>
   </header>
 
-  <main id="top">
-    <section class="hero section-shell">
+  <main class="app-shell" id="build">
+    <section class="concept-hero" aria-labelledby="conceptHeadline">
+      <div class="hero-overlay"></div>
       <div class="hero-copy">
-        <div class="eyebrow"><span class="pulse-dot"></span> LIVE BET INTELLIGENCE FOR SOCIAL</div>
-        <h1>See the bet.<br /><span>Ping what’s left.</span></h1>
-        <p class="hero-sub">Tag <strong>@ParlayPing</strong> under a betting post and instantly see what hit, what’s live, what hasn’t started, and the modeled probability of the remaining legs.</p>
-        <div class="hero-actions">
-          <a class="primary-button" href="#demo">Try the interactive preview <span>→</span></a>
-          <a class="secondary-button" href="https://x.com/ParlayPing" target="_blank" rel="noreferrer">Open @ParlayPing on X</a>
+        <h1 id="conceptHeadline">BUILD. TWEAK. SHARE. <span>TAIL.</span></h1>
+        <p>Find value. Adjust alt lines. Link to your book. Share with the community.</p>
+      </div>
+      <div class="hero-tools" aria-label="ParlayPing tools">
+        <div class="hero-tool">
+          <span class="hero-tool-icon sliders-icon">☷</span>
+          <strong>Adjust Alt Lines</strong>
+          <small>Find your number</small>
         </div>
-        <div class="mini-proof">
-          <span><i class="dot green"></i> Live leg status</span>
-          <span><i class="dot cyan"></i> Probability modeling</span>
-          <span><i class="dot white"></i> Risk controls</span>
+        <div class="hero-tool">
+          <span class="hero-tool-icon">↗</span>
+          <strong>Link to Sportsbooks</strong>
+          <small>Open your betslip</small>
+        </div>
+        <div class="hero-tool">
+          <span class="hero-tool-icon">♧</span>
+          <strong>Share &amp; Get Tails</strong>
+          <small>Build together</small>
+        </div>
+        <div class="hero-tool">
+          <span class="hero-tool-icon">▥</span>
+          <strong>Track &amp; Compare</strong>
+          <small>See what’s hitting</small>
+        </div>
+      </div>
+      <div class="hero-note" aria-hidden="true">Good<br />Bets<br />Travel<br />Faster.</div>
+    </section>
+
+    <section class="parlay-panel" aria-labelledby="myParlayTitle">
+      <div class="parlay-toolbar">
+        <div class="parlay-heading">
+          <h2 id="myParlayTitle">My Parlay <button class="edit-title" type="button" aria-label="Rename parlay">✎</button></h2>
+          <div class="parlay-metrics">
+            <span class="metric-pill"><strong id="legCount">3</strong>&nbsp; Legs</span>
+            <span class="metric-pill odds-pill" id="combinedOdds">+412</span>
+            <span class="metric-pill probability-pill"><strong id="impliedProbability">19.5%</strong>&nbsp; Implied Probability <span class="info-dot">i</span></span>
+          </div>
+        </div>
+        <div class="parlay-actions">
+          <button class="clear-button" id="clearAllBtn" type="button"><span>♲</span> Clear All</button>
+          <div class="action-row">
+            <button class="tune-button" id="tuneBtn" type="button" aria-expanded="false"><span>☷</span> Parlay Tune</button>
+            <button class="save-button" id="saveBtn" type="button"><span>▱</span> Save</button>
+          </div>
         </div>
       </div>
 
-      <div class="hero-visual" aria-label="ParlayPing product preview">
-        <div class="post-card glass-card">
-          <div class="post-topline">
-            <div class="avatar">JT</div>
-            <div>
-              <strong>Sunday Card</strong>
-              <span>@sportsfan · 2h</span>
+      <div class="picks" id="picks">
+        <article class="pick-card" data-pick="henry" data-base-prob="93.7" data-base-odds="-235">
+          <header class="game-bar">
+            <div class="team-pair">
+              <img src="https://a.espncdn.com/i/teamlogos/nfl/500/bal.png" alt="Baltimore Ravens" />
+              <img src="https://a.espncdn.com/i/teamlogos/nfl/500/kc.png" alt="Kansas City Chiefs" />
             </div>
-            <div class="post-kebab">•••</div>
+            <strong>BAL @ KC</strong>
+            <span>Sun, Dec 1</span><i>•</i><span>12:00 PM</span>
+          </header>
+          <div class="pick-main">
+            <div class="player-block">
+              <img class="player-photo" src="https://a.espncdn.com/i/headshots/nfl/players/full/3043078.png" alt="Derrick Henry" />
+              <div class="player-copy"><strong>Derrick Henry</strong><span>Anytime TD Scorer</span><small>BAL @ KC</small></div>
+            </div>
+            <div class="probability-meter"><span class="meter-track"><i style="--meter:93.7%"></i></span><strong class="pick-probability">93.7%</strong></div>
+            <div class="pick-odds">-235</div>
+            <button class="kebab" type="button" aria-label="Derrick Henry bet options">⋮</button>
           </div>
-          <p>4-leg NFL parlay. Let’s ride. 🔒</p>
-          <div class="slip-mini">
-            <span>Bijan Robinson — ATD</span><b>✓</b>
-            <span>Kyle Pitts — 50+ REC</span><b class="live-text">LIVE</b>
-            <span>Jordan Addison — 50+ REC</span><b>4:25</b>
-            <span>Travis Kelce — 60+ REC</span><b>8:20</b>
+          <div class="alt-lines" aria-hidden="true">
+            <div class="alt-title">Alt Lines <span class="info-dot">i</span></div>
+            <div class="alt-options" role="group" aria-label="Derrick Henry alternate lines">
+              <button class="alt-option selected" type="button" data-line="0.5" data-prob="93.7" data-odds="-235">0.5</button>
+              <button class="alt-option" type="button" data-line="1.5" data-prob="67.5" data-odds="+108">1.5</button>
+              <button class="alt-option" type="button" data-line="2.5" data-prob="42.6" data-odds="+274">2.5</button>
+              <button class="alt-option" type="button" data-line="3.5" data-prob="24.8" data-odds="+515">3.5</button>
+              <button class="alt-option" type="button" data-line="4.5" data-prob="13.4" data-odds="+890">4.5</button>
+            </div>
           </div>
-          <div class="reply-line"><span>↳</span> <strong>@ParlayPing</strong></div>
-        </div>
+        </article>
 
-        <div class="ping-card glass-card">
-          <div class="ping-title"><span class="brand-pip">P</span><div><strong>ParlayPing Live</strong><small>Reply generated from the original slip</small></div></div>
-          <div class="status-row hit"><span class="status-icon">✓</span><div><strong>Bijan Robinson ATD</strong><small>HIT</small></div></div>
-          <div class="status-row live"><span class="status-icon">●</span><div><strong>Kyle Pitts 50+ REC</strong><small>37 / 50 YDS · Q3 8:41</small></div><b>67%</b></div>
-          <div class="status-row pending"><span class="status-icon">◷</span><div><strong>Jordan Addison 50+ REC</strong><small>HAS NOT STARTED</small></div><b>58%</b></div>
-          <div class="status-row pending"><span class="status-icon">◷</span><div><strong>Travis Kelce 60+ REC</strong><small>HAS NOT STARTED</small></div><b>61%</b></div>
-          <div class="remaining-callout"><div><small>2 LEGS AVAILABLE TO TAIL</small><strong>Combined model: 35%</strong></div><span>Tail what’s left →</span></div>
-        </div>
+        <article class="pick-card" data-pick="mccaffrey" data-base-prob="94.0" data-base-odds="-240">
+          <header class="game-bar">
+            <div class="team-pair">
+              <img src="https://a.espncdn.com/i/teamlogos/nfl/500/ten.png" alt="Tennessee Titans" />
+              <img src="https://a.espncdn.com/i/teamlogos/nfl/500/hou.png" alt="Houston Texans" />
+            </div>
+            <strong>TEN @ HOU</strong>
+            <span>Sun, Dec 1</span><i>•</i><span>3:05 PM</span>
+          </header>
+          <div class="pick-main">
+            <div class="player-block">
+              <img class="player-photo" src="https://a.espncdn.com/i/headshots/nfl/players/full/3117251.png" alt="Christian McCaffrey" />
+              <div class="player-copy"><strong>Christian McCaffrey</strong><span>Anytime TD Scorer</span><small>TEN @ HOU</small></div>
+            </div>
+            <div class="probability-meter"><span class="meter-track"><i style="--meter:94%"></i></span><strong class="pick-probability">94.0%</strong></div>
+            <div class="pick-odds">-240</div>
+            <button class="kebab" type="button" aria-label="Christian McCaffrey bet options">⋮</button>
+          </div>
+          <div class="alt-lines" aria-hidden="true">
+            <div class="alt-title">Alt Lines <span class="info-dot">i</span></div>
+            <div class="alt-options" role="group" aria-label="Christian McCaffrey alternate lines">
+              <button class="alt-option selected" type="button" data-line="0.5" data-prob="94.0" data-odds="-240">0.5</button>
+              <button class="alt-option" type="button" data-line="1.5" data-prob="68.2" data-odds="+104">1.5</button>
+              <button class="alt-option" type="button" data-line="2.5" data-prob="43.1" data-odds="+265">2.5</button>
+              <button class="alt-option" type="button" data-line="3.5" data-prob="25.1" data-odds="+505">3.5</button>
+              <button class="alt-option" type="button" data-line="4.5" data-prob="13.7" data-odds="+875">4.5</button>
+            </div>
+          </div>
+        </article>
+
+        <article class="pick-card" data-pick="allen" data-base-prob="91.1" data-base-odds="-185">
+          <header class="game-bar">
+            <div class="team-pair">
+              <img src="https://a.espncdn.com/i/teamlogos/nfl/500/buf.png" alt="Buffalo Bills" />
+              <img src="https://a.espncdn.com/i/teamlogos/nfl/500/jax.png" alt="Jacksonville Jaguars" />
+            </div>
+            <strong>BUF @ JAX</strong>
+            <span>Sun, Dec 1</span><i>•</i><span>12:00 PM</span>
+          </header>
+          <div class="pick-main">
+            <div class="player-block">
+              <img class="player-photo" src="https://a.espncdn.com/i/headshots/nfl/players/full/3918298.png" alt="Josh Allen" />
+              <div class="player-copy"><strong>Josh Allen</strong><span>Anytime TD Scorer</span><small>BUF @ JAX</small></div>
+            </div>
+            <div class="probability-meter"><span class="meter-track"><i style="--meter:91.1%"></i></span><strong class="pick-probability">91.1%</strong></div>
+            <div class="pick-odds">-185</div>
+            <button class="kebab" type="button" aria-label="Josh Allen bet options">⋮</button>
+          </div>
+          <div class="alt-lines" aria-hidden="true">
+            <div class="alt-title">Alt Lines <span class="info-dot">i</span></div>
+            <div class="alt-options" role="group" aria-label="Josh Allen alternate lines">
+              <button class="alt-option selected" type="button" data-line="0.5" data-prob="91.1" data-odds="-185">0.5</button>
+              <button class="alt-option" type="button" data-line="1.5" data-prob="63.2" data-odds="+126">1.5</button>
+              <button class="alt-option" type="button" data-line="2.5" data-prob="38.5" data-odds="+320">2.5</button>
+              <button class="alt-option" type="button" data-line="3.5" data-prob="21.5" data-odds="+610">3.5</button>
+              <button class="alt-option" type="button" data-line="4.5" data-prob="11.2" data-odds="+1050">4.5</button>
+            </div>
+          </div>
+        </article>
       </div>
+
+      <button class="add-pick-button" id="addPickBtn" type="button"><span>＋</span> Add Another Pick</button>
+
+      <section class="sportsbook-section" aria-labelledby="bookHeading">
+        <div class="sportsbook-heading"><h3 id="bookHeading">Open This Parlay on Your Sportsbook</h3><span class="info-dot">i</span></div>
+        <div class="sportsbook-grid" role="list">
+          <button class="book-card active" type="button" data-book="DraftKings" role="listitem"><span class="book-logo dk">DK</span><span><strong>DraftKings</strong><small>Open Betslip</small></span></button>
+          <button class="book-card" type="button" data-book="FanDuel" role="listitem"><span class="book-logo fd">F</span><span><strong>FanDuel</strong><small>Open Betslip</small></span></button>
+          <button class="book-card" type="button" data-book="bet365" role="listitem"><span class="book-logo b365">bet</span><span><strong>bet365</strong><small>Open Betslip</small></span></button>
+          <button class="book-card" type="button" data-book="Caesars" role="listitem"><span class="book-logo cz">C</span><span><strong>Caesars</strong><small>Open Betslip</small></span></button>
+          <button class="book-card" type="button" data-book="ESPN BET" role="listitem"><span class="book-logo espn">B</span><span><strong>ESPN BET</strong><small>Open Betslip</small></span></button>
+          <button class="book-card more-books" type="button" data-book="More Books" role="listitem"><span class="book-logo more">•••</span><span><strong>More</strong><small>Books</small></span></button>
+        </div>
+        <button class="open-book-button" id="openBookBtn" type="button"><span class="link-icon">↗</span> <strong>Open Parlay on <span id="selectedBookLabel">DraftKings</span></strong> <span class="external-icon">↗</span></button>
+      </section>
+
+      <section class="share-section" aria-labelledby="shareHeading">
+        <div class="share-heading"><span></span><h3 id="shareHeading">Share Your Betslip</h3><span></span></div>
+        <div class="share-actions">
+          <button class="share-action" id="copyLinkBtn" type="button"><span class="share-circle">↗</span><small>Copy Link</small></button>
+          <a class="share-action" id="shareXBtn" href="https://x.com/intent/post?text=Check%20out%20my%20ParlayPing%20betslip&url=https%3A%2F%2Fparlayping.net" target="_blank" rel="noreferrer"><span class="share-circle x-icon">𝕏</span><small>X</small></a>
+          <button class="share-action" id="messageBtn" type="button"><span class="share-circle">▰</span><small>Message</small></button>
+          <button class="share-action" id="moreShareBtn" type="button"><span class="share-circle">•••</span><small>More</small></button>
+        </div>
+      </section>
     </section>
 
-    <section class="ticker-strip" aria-label="ParlayPing capabilities">
-      <span>TAG IT</span><i>•</i><span>TRACK IT</span><i>•</i><span>TAIL WHAT'S LEFT</span><i>•</i><span>LIVE STATUS</span><i>•</i><span>RISK CONTROL</span><i>•</i><span>PROBABILITY</span>
-    </section>
-
-    <section class="demo-section section-shell" id="demo">
-      <div class="section-heading center">
-        <div class="eyebrow">INTERACTIVE PRODUCT PREVIEW</div>
-        <h2>Build the rest of the bet <span>your way.</span></h2>
-        <p>This preview uses sample data. Drag the risk controls or choose a preset to see how ParlayPing will tune remaining legs without touching games already underway.</p>
-      </div>
-
-      <div class="demo-grid">
-        <aside class="original-slip glass-card">
-          <div class="card-label">ORIGINAL POST</div>
-          <h3>4-leg Sunday parlay</h3>
-          <div class="original-leg complete"><span>✓</span><div><strong>Bijan Robinson ATD</strong><small>Hit</small></div></div>
-          <div class="original-leg active"><span>●</span><div><strong>Kyle Pitts 50+ REC</strong><small>37 / 50 · Q3</small></div></div>
-          <div class="original-leg"><span>◷</span><div><strong>Jordan Addison 50+ REC</strong><small>Not started</small></div></div>
-          <div class="original-leg"><span>◷</span><div><strong>Travis Kelce 60+ REC</strong><small>Not started</small></div></div>
-          <div class="original-note">Started legs stay locked. ParlayPing only rebuilds markets still available to bet.</div>
-        </aside>
-
-        <div class="builder-card glass-card">
-          <div class="builder-head">
-            <div><div class="card-label">TAIL WHAT'S LEFT</div><h3>Risk Builder</h3></div>
-            <div class="combined-prob"><small>MODELED HIT PROBABILITY</small><strong id="combinedProbability">35%</strong></div>
-          </div>
-
-          <div class="presets" role="group" aria-label="Risk presets">
-            <button class="preset" data-preset="safe">Safer</button>
-            <button class="preset active" data-preset="balanced">Balanced</button>
-            <button class="preset" data-preset="aggressive">Send it</button>
-          </div>
-
-          <div class="risk-leg">
-            <div class="risk-leg-top"><div><span class="player-dot"></span><strong>Jordan Addison</strong><small>Receiving yards</small></div><div class="line-pill" id="addisonLine">50+</div></div>
-            <input id="addisonRisk" class="risk-range" type="range" min="0" max="4" value="2" step="1" aria-label="Jordan Addison risk" />
-            <div class="risk-scale"><span>SAFER</span><span id="addisonProb">58%</span><span>MORE PAYOUT</span></div>
-          </div>
-
-          <div class="risk-leg">
-            <div class="risk-leg-top"><div><span class="player-dot alt"></span><strong>Travis Kelce</strong><small>Receiving yards</small></div><div class="line-pill" id="kelceLine">60+</div></div>
-            <input id="kelceRisk" class="risk-range" type="range" min="0" max="4" value="2" step="1" aria-label="Travis Kelce risk" />
-            <div class="risk-scale"><span>SAFER</span><span id="kelceProb">61%</span><span>MORE PAYOUT</span></div>
-          </div>
-
-          <div class="builder-footer">
-            <div><small>CURRENT BUILD</small><strong id="buildSummary">Addison 50+ · Kelce 60+</strong></div>
-            <button class="disabled-action" type="button" id="demoButton">Sportsbook build coming soon</button>
-          </div>
+    <section class="lower-grid">
+      <article class="secondary-panel" id="similar">
+        <div class="secondary-title"><h3><span class="secondary-icon">▣</span> Similar Parlays</h3><a href="#similar">View All</a></div>
+        <div class="similar-list">
+          <div class="similar-row"><div class="mini-avatars"><img src="https://a.espncdn.com/i/headshots/nfl/players/full/3043078.png" alt=""/><img src="https://a.espncdn.com/i/headshots/nfl/players/full/3117251.png" alt=""/></div><div><strong>NFL TD Trio</strong><small>D. Henry, C. McCaffrey, J. Allen</small></div><span class="tails">🔥 312 tails</span><button type="button" aria-label="Add NFL TD Trio">＋</button></div>
+          <div class="similar-row"><div class="mini-avatars"><img src="https://a.espncdn.com/i/headshots/nfl/players/full/4241479.png" alt=""/><img src="https://a.espncdn.com/i/headshots/nfl/players/full/3040151.png" alt=""/></div><div><strong>Sunday Smash</strong><small>S. Barkley, J. Allen, G. Kittle</small></div><span class="tails">🔥 189 tails</span><button type="button" aria-label="Add Sunday Smash">＋</button></div>
+          <div class="similar-row"><div class="mini-avatars"><img src="https://a.espncdn.com/i/headshots/nfl/players/full/3117251.png" alt=""/><img src="https://a.espncdn.com/i/headshots/nfl/players/full/4361579.png" alt=""/></div><div><strong>Alt Line Value</strong><small>C. McCaffrey, J. Daniels, D. London</small></div><span class="tails">🔥 96 tails</span><button type="button" aria-label="Add Alt Line Value">＋</button></div>
         </div>
-      </div>
-    </section>
+      </article>
 
-    <section class="how-section section-shell" id="how">
-      <div class="section-heading">
-        <div class="eyebrow">HOW IT WORKS</div>
-        <h2>One tag. <span>Three moves.</span></h2>
-      </div>
-      <div class="steps-grid">
-        <article class="step-card glass-card"><span class="step-number">01</span><div class="step-icon">@</div><h3>Tag the post</h3><p>Reply <strong>@ParlayPing</strong> under a betting post or slip on X.</p></article>
-        <article class="step-card glass-card"><span class="step-number">02</span><div class="step-icon">◉</div><h3>Get live status</h3><p>See hits, misses, live progress, pending games, and modeled probabilities.</p></article>
-        <article class="step-card glass-card"><span class="step-number">03</span><div class="step-icon">↗</div><h3>Tail what's left</h3><p>Open the remaining legs, tune risk, then build a version that fits you.</p></article>
-      </div>
-    </section>
-
-    <section class="features-section section-shell" id="features">
-      <div class="feature-banner glass-card">
-        <div>
-          <div class="eyebrow">BUILT FOR THE BETTING FEED</div>
-          <h2>Not another picks page.<br /><span>A live action layer for bets.</span></h2>
-        </div>
-        <div class="feature-list">
-          <div><span>✓</span><p><strong>Live leg progress</strong><small>Know exactly where the original bet stands.</small></p></div>
-          <div><span>✓</span><p><strong>Pending-leg probability</strong><small>Evaluate games that haven't started yet.</small></p></div>
-          <div><span>✓</span><p><strong>Risk tuning</strong><small>Move remaining markets safer or more aggressive.</small></p></div>
-          <div><span>✓</span><p><strong>One-link continuation</strong><small>Jump from an X reply into the remaining build.</small></p></div>
-        </div>
-      </div>
-    </section>
-
-    <section class="cta-section section-shell">
-      <div class="cta-card">
-        <span class="cta-glow"></span>
-        <div class="eyebrow">EARLY ACCESS</div>
-        <h2>ParlayPing is getting ready to <span>go live.</span></h2>
-        <p>Follow <strong>@ParlayPing</strong> on X for launch updates and the first public pings.</p>
-        <a class="primary-button" href="https://x.com/ParlayPing" target="_blank" rel="noreferrer">Follow @ParlayPing <span>→</span></a>
-      </div>
+      <article class="secondary-panel insights-panel" id="insights">
+        <div class="secondary-title"><h3><span class="pin-icon">◉</span> Insights</h3></div>
+        <ul class="insights-list">
+          <li><span>✓</span> High correlation: All three players have strong red zone usage</li>
+          <li><span>✓</span> Low injury risk reported</li>
+          <li><span>✓</span> Positive matchup trends</li>
+          <li><span>✓</span> Popular with the community (73 tails)</li>
+        </ul>
+        <button class="analysis-button" id="analysisBtn" type="button">View Full Analysis <span>→</span></button>
+      </article>
     </section>
   </main>
 
-  <footer class="site-footer section-shell">
-    <div class="footer-brand"><span class="brand-text">Parlay<span>Ping</span></span><small>Tag it. Track it. Tail what's left.</small></div>
-    <div class="footer-links"><a href="https://x.com/ParlayPing" target="_blank" rel="noreferrer">X / @ParlayPing</a><span>ParlayPing.net</span></div>
-    <p class="disclaimer">ParlayPing provides informational and entertainment tools only. Probabilities are estimates, not guarantees. Sports betting involves risk. 21+ where applicable. Bet responsibly.</p>
+  <footer class="app-footer app-shell" id="community">
+    <div><strong>ParlayPing</strong><span>v1.0.0</span></div>
+    <em>“It’s not luck. It’s a link.”</em>
+    <nav aria-label="Footer"><a href="#faq">FAQ</a><a href="#privacy">Privacy</a><a href="#terms">Terms</a><a href="#contact">Contact</a></nav>
   </footer>
 
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <script src="./app.js"></script>
 </body>
 </html>
