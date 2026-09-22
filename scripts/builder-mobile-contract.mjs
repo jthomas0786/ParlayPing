@@ -81,7 +81,8 @@ if(metrics.books.length!==6)throw new Error(`expected 6 sportsbook tiles, got ${
 const bookY=metrics.books[0].y;if(metrics.books.some(x=>Math.abs(x.y-bookY)>2))throw new Error('sportsbook strip wrapped instead of staying one horizontal row');
 if(metrics.bookGrid.width>370)throw new Error(`sportsbook viewport is too wide for phone: ${metrics.bookGrid.width}`);
 near(metrics.cta.height,43,2,'sportsbook CTA height');
-if(!/Open Parlay on DraftKings/i.test(metrics.ctaText||''))throw new Error(`sportsbook CTA text missing: ${metrics.ctaText}`);
+const normalizedCta=String(metrics.ctaText||'').replace(/\s+/g,' ').trim();
+if(!/Open Parlay on DraftKings/i.test(normalizedCta))throw new Error(`sportsbook CTA text missing: ${normalizedCta}`);
 if(metrics.shares.length!==4)throw new Error(`expected 4 share actions, got ${metrics.shares.length}`);
 const shareY=metrics.shares[0].y;if(metrics.shares.some(x=>Math.abs(x.y-shareY)>2))throw new Error('share actions are not one row');
 if(metrics.clearSvg&&Math.max(metrics.clearSvg.width,metrics.clearSvg.height)>20)throw new Error(`trash icon oversized: ${JSON.stringify(metrics.clearSvg)}`);
