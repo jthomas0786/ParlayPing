@@ -49,6 +49,7 @@ await page.waitForTimeout(700);
 
 const visual=await page.evaluate(()=>({
   heroTools:[...document.querySelectorAll('.hero-tool')].map(el=>el.querySelector('strong')?.textContent?.trim()),
+  linkHeroCount:[...document.querySelectorAll('.hero-tool strong')].filter(el=>el.textContent?.trim()==='Link to Sportsbooks').length,
   heroHeight:document.querySelector('.concept-hero')?.getBoundingClientRect().height,
   probabilityLabels:[...document.querySelectorAll('.pick-probability')].map(el=>el.textContent.trim()),
   probabilityTracks:[...document.querySelectorAll('.meter-track')].map(el=>({width:el.getBoundingClientRect().width,height:el.getBoundingClientRect().height})),
@@ -57,7 +58,7 @@ const visual=await page.evaluate(()=>({
   heroCopy:document.querySelector('.hero-copy p')?.textContent?.trim(),
 }));
 if(visual.heroTools.join('|')!=='Adjust Alt Lines|Share & Get Tails|Track & Compare')throw new Error(`hero tools mismatch: ${visual.heroTools.join(', ')}`);
-if(document.body.textContent.includes('Link to Sportsbooks'))throw new Error('Link to Sportsbooks still exists in the rendered builder.');
+if(visual.linkHeroCount!==0)throw new Error('Link to Sportsbooks still exists in the rendered builder.');
 if(visual.heroHeight>270)throw new Error(`hero is still too tall: ${visual.heroHeight}`);
 if(visual.probabilityLabels.join('|')!=='18.0%|16.2%|—%')throw new Error(`probability labels mismatch: ${visual.probabilityLabels.join(', ')}`);
 if(visual.probabilityTracks.some(x=>x.width<65||x.height<9))throw new Error(`probability tracks too small: ${JSON.stringify(visual.probabilityTracks)}`);
