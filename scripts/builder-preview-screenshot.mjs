@@ -72,8 +72,14 @@ if(fanDuelOdds.map(x=>x.trim()).join('|')!=='+520|—|+650')throw new Error(`Fan
 await page.click('.book-card[data-book="DraftKings"]');
 await page.waitForTimeout(80);
 
-await page.evaluate(()=>window.scrollTo(0,0));
-await page.waitForTimeout(120);
+await page.evaluate(()=>{
+  document.documentElement.style.scrollBehavior='auto';
+  document.body.style.scrollBehavior='auto';
+  window.scrollTo(0,0);
+});
+await page.waitForTimeout(50);
+const normalScrollY=await page.evaluate(()=>window.scrollY);
+if(normalScrollY>1)throw new Error(`normal screenshot did not return to page top: ${normalScrollY}`);
 await page.screenshot({path:path.join(artifactDir,'builder-preview-default.png')});
 
 await page.click('#tuneBtn');
@@ -84,11 +90,11 @@ await page.evaluate(()=>{
   const top=(panel?.getBoundingClientRect().top||0)+window.scrollY-(header?.getBoundingClientRect().height||0)-6;
   window.scrollTo(0,Math.max(0,top));
 });
-await page.waitForTimeout(120);
+await page.waitForTimeout(80);
 const tuneVisible=await page.locator('.parlay-panel').evaluate(el=>el.classList.contains('tune-open'));
 if(!tuneVisible)throw new Error('Parlay Tune did not open.');
 await page.screenshot({path:path.join(artifactDir,'builder-preview-tune.png')});
 
-console.log(JSON.stringify({...visual,fanDuelOdds:fanDuelOdds.map(x=>x.trim())},null,2));
+console.log(JSON.stringify({...visual,fanDuelOdds:fanDuelOdds.map(x=>x.trim()),normalScrollY},null,2));
 await browser.close();
 await new Promise(resolve=>server.close(resolve));
