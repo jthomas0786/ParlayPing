@@ -40,8 +40,7 @@
 .concept-hero .hero-overlay{position:absolute!important;inset:0!important;z-index:0!important;background:linear-gradient(180deg,rgba(2,14,24,.03),rgba(2,14,24,.18))!important}
 .concept-hero .hero-copy,.concept-hero .hero-tools,.concept-hero .hero-note{position:relative!important;z-index:2!important}
 
-/* Keep three hero actions on one clean row. Sportsbook selection already lives below the parlay. */
-.hero-tool:nth-child(2){display:none!important}
+/* The sportsbook shortcut is removed in JS. Keep the three approved hero actions on one row. */
 .hero-tools{grid-template-columns:repeat(3,minmax(0,1fr))!important;grid-template-rows:1fr!important;left:58px!important;right:58px!important;gap:20px!important}
 
 @media(max-width:720px){
