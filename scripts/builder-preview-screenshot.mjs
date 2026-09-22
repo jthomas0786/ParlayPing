@@ -65,22 +65,15 @@ if(visual.probabilityTracks.some(x=>x.width<65||x.height<9))throw new Error(`pro
 if(visual.probabilityFills[0]<=0||visual.probabilityFills[1]<=0||visual.probabilityFills[2]!==0)throw new Error(`probability fills mismatch: ${visual.probabilityFills.join(', ')}`);
 if(visual.draftKingsOdds.join('|')!=='+470|+550|+610')throw new Error(`DraftKings HR odds mismatch: ${visual.draftKingsOdds.join(', ')}`);
 
+/* Capture the normal state before interacting with controls that auto-scroll into view. */
+await page.screenshot({path:path.join(artifactDir,'builder-preview-default.png')});
+
 await page.click('.book-card[data-book="FanDuel"]');
 await page.waitForTimeout(80);
 const fanDuelOdds=await page.locator('.pick-odds').allTextContents();
 if(fanDuelOdds.map(x=>x.trim()).join('|')!=='+520|—|+650')throw new Error(`FanDuel exact-leg odds mismatch: ${fanDuelOdds.join(', ')}`);
 await page.click('.book-card[data-book="DraftKings"]');
 await page.waitForTimeout(80);
-
-await page.evaluate(()=>{
-  document.documentElement.style.scrollBehavior='auto';
-  document.body.style.scrollBehavior='auto';
-  window.scrollTo(0,0);
-});
-await page.waitForTimeout(50);
-const normalScrollY=await page.evaluate(()=>window.scrollY);
-if(normalScrollY>1)throw new Error(`normal screenshot did not return to page top: ${normalScrollY}`);
-await page.screenshot({path:path.join(artifactDir,'builder-preview-default.png')});
 
 await page.click('#tuneBtn');
 await page.waitForTimeout(200);
@@ -95,6 +88,6 @@ const tuneVisible=await page.locator('.parlay-panel').evaluate(el=>el.classList.
 if(!tuneVisible)throw new Error('Parlay Tune did not open.');
 await page.screenshot({path:path.join(artifactDir,'builder-preview-tune.png')});
 
-console.log(JSON.stringify({...visual,fanDuelOdds:fanDuelOdds.map(x=>x.trim()),normalScrollY},null,2));
+console.log(JSON.stringify({...visual,fanDuelOdds:fanDuelOdds.map(x=>x.trim())},null,2));
 await browser.close();
 await new Promise(resolve=>server.close(resolve));
