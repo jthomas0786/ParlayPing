@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const { renderBuilderHtml, builderUrl } = require('../server/api/builder-page');
 
 function read(file){return fs.readFileSync(path.join(__dirname,'..',file),'utf8');}
 
@@ -28,6 +29,28 @@ test('social builder template matches the approved concept surface',()=>{
   assert.match(js,/__PARLAYPING_BUILDER__/);
   assert.match(js,/setTuneState/);
   assert.match(js,/navigator\.share/);
+});
+
+test('signed builder renderer injects real slip state into the approved concept',()=>{
+  const token='s1.example.signature';
+  const html=renderBuilderHtml({
+    token,
+    liveDataAvailable:true,
+    slip:{
+      sportsbook:'DraftKings',
+      combinedOddsAmerican:412,
+      combinedOddsVerified:true,
+      legs:[{id:'leg-1',sport:'NFL',player:'Derrick Henry',team:'BAL',gameId:'game-1',market:'Anytime TD Scorer',displayMarket:'Anytime TD Scorer',oddsAmerican:-235,status:'PENDING',pregameProbability:.937}],
+    },
+  });
+  assert.equal(builderUrl(token),'https://parlayping.net/build/s1.example.signature');
+  assert.match(html,/\/builder\.css/);
+  assert.match(html,/\/builder-runtime\.js/);
+  assert.match(html,/window\.__PARLAYPING_BUILDER__/);
+  assert.match(html,/Derrick Henry/);
+  assert.match(html,/https:\/\/parlayping\.net\/build\/s1\.example\.signature/);
+  assert.match(html,/https:\/\/parlayping\.net\/share\/s1\.example\.signature\.png/);
+  assert.doesNotMatch(html,/src="\.\/app\.js"/);
 });
 
 test('build route is separate from the signed shared-slip route',()=>{
