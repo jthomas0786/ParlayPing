@@ -1,0 +1,61 @@
+/* Final visual corrections from rendered iPhone screenshot review. */
+
+/* The approved game header starts with the two teams, not a league shield. */
+.game-bar .sport-shield{display:none!important}
+
+@media(max-width:720px){
+  /* Fold source navigation into the top brand row so the concept starts immediately below nav. */
+  .pp-mobile-return-bar{display:none!important}
+  .pp-mobile-origin-controls{display:flex;align-items:center;gap:4px;margin-right:7px}
+  .pp-mobile-origin-controls .pp-return-control{position:static!important;inset:auto!important;margin:0!important;padding:0!important;box-shadow:none!important;background:#071b2c!important;border:1px solid #19465f!important;color:#dfeef6!important;font-family:Inter,system-ui,sans-serif!important}
+  .pp-mobile-origin-controls .pp-return-back{width:30px!important;height:30px!important;min-height:30px!important;border-radius:50%!important;display:grid!important;place-items:center!important;font-size:0!important}
+  .pp-mobile-origin-controls .pp-return-back:before{content:'←';font-size:15px;font-weight:800;line-height:1}
+  .pp-mobile-origin-controls .pp-return-close{width:30px!important;height:30px!important;border-radius:50%!important;display:grid!important;place-items:center!important;font-size:18px!important;line-height:1!important}
+  .header-actions{gap:4px!important}
+  .profile-button{margin-left:2px!important}
+
+  /* Make the stadium materially visible like the approved concept. */
+  .concept-hero{
+    margin-top:10px!important;
+    background-image:
+      linear-gradient(180deg,rgba(2,16,28,.04),rgba(1,12,20,.36)),
+      linear-gradient(90deg,rgba(3,18,30,.18),rgba(3,18,30,.02) 48%,rgba(3,18,30,.22)),
+      url('https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=1200&q=88')!important;
+    background-position:center 46%!important;
+    background-size:cover!important;
+  }
+  .concept-hero .hero-overlay{background:radial-gradient(circle at 17% 30%,rgba(26,137,185,.08),transparent 28%),linear-gradient(180deg,rgba(2,14,24,.02),rgba(2,14,24,.12))!important}
+
+  /* No interaction toast floating over the approved Tune layout. */
+  #toast{display:none!important}
+
+  /* With the sport shield removed, logos align exactly to the left edge of the game row. */
+  .game-bar{gap:7px!important}
+  .team-pair{min-width:50px!important}
+
+  /* Give names more room while keeping the probability/odds composition. */
+  .pick-main{grid-template-columns:minmax(0,1fr) 74px 36px 10px!important;gap:5px!important}
+  .probability-meter{grid-template-columns:44px 27px!important;gap:3px!important}
+  .meter-track{width:44px!important}
+  .player-copy strong{font-size:11.5px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+  .pick-odds{font-size:12px!important;padding-left:4px!important}
+  .kebab{font-size:18px!important}
+
+  /* Concept mini avatars should remain circles, never concatenate initials into KOCA text. */
+  .mini-avatars{display:flex!important;align-items:center!important;min-width:44px!important}
+  .mini-avatars .team-token{width:27px!important;height:27px!important;flex:0 0 27px!important;border-radius:50%!important;border:2px solid #071a2a!important;background:#0c3048!important;color:#dff6ff!important;display:grid!important;place-items:center!important;font-size:7px!important;font-weight:850!important;letter-spacing:-.02em!important;overflow:hidden!important}
+  .mini-avatars .team-token+.team-token{margin-left:-8px!important}
+
+  /* Keep lower-panel headings in the exact compact horizontal treatment. */
+  .secondary-title h3{display:flex!important;align-items:center!important;gap:6px!important}
+}
+
+@media(max-width:390px){
+  .pp-mobile-origin-controls{gap:3px;margin-right:4px}
+  .pp-mobile-origin-controls .pp-return-back,.pp-mobile-origin-controls .pp-return-close{width:28px!important;height:28px!important;min-height:28px!important}
+  .brand .pp-brand-name{font-size:19px!important}
+  .brand .pp-brand-mark{width:42px!important;height:42px!important;flex-basis:42px!important}
+  .pick-main{grid-template-columns:minmax(0,1fr) 68px 34px 9px!important}
+  .probability-meter{grid-template-columns:40px 25px!important}
+  .meter-track{width:40px!important}
+}
