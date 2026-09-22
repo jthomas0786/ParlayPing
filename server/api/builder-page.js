@@ -22,6 +22,21 @@ function safeJson(value) {
     .replace(/\u2029/g, '\\u2029');
 }
 
+function esc(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function returnControls(slip) {
+  if (!slip?.returnUrl) return '';
+  const label = slip.returnLabel || 'The Sports Outpost';
+  return `<style>.pp-return-control{position:fixed;z-index:70;top:92px;border:1px solid #1b607b;background:#061928;color:#eef8fd;text-decoration:none;font:700 12px Inter,system-ui,sans-serif;box-shadow:0 10px 30px rgba(0,0,0,.28)}.pp-return-back{left:14px;padding:10px 13px;border-radius:999px}.pp-return-close{right:14px;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-size:24px}@media(max-width:1180px){.pp-return-control{top:auto;bottom:14px}}</style><a class="pp-return-control pp-return-back" href="${esc(slip.returnUrl)}" aria-label="Back to ${esc(label)}">← Back to ${esc(label)}</a><a class="pp-return-control pp-return-close" href="${esc(slip.returnUrl)}" aria-label="Close ParlayPing and return to ${esc(label)}">×</a>`;
+}
+
 function renderBuilderHtml({ slip, token, liveDataAvailable }) {
   const baseUrl = publicBaseUrl();
   const url = builderUrl(token, baseUrl);
@@ -42,7 +57,8 @@ function renderBuilderHtml({ slip, token, liveDataAvailable }) {
     .replace(/<meta name="description" content="[^"]*" \/>/, `<meta name="description" content="${description}" />`)
     .replace(/<meta property="og:title" content="[^"]*" \/>/, `<meta property="og:title" content="${title}" />`)
     .replace(/<meta property="og:description" content="[^"]*" \/>/, `<meta property="og:description" content="${description}" />`)
-    .replace(/<meta property="og:url" content="[^"]*" \/>/, `<meta property="og:url" content="${url}" />`);
+    .replace(/<meta property="og:url" content="[^"]*" \/>/, `<meta property="og:url" content="${url}" />`)
+    .replace('<body>', `<body>${returnControls(slip)}`);
 
   const social = `<meta property="og:image" content="${cardUrl}" /><meta property="og:image:width" content="1200" /><meta property="og:image:height" content="675" /><meta name="twitter:card" content="summary_large_image" /><meta name="twitter:title" content="${title}" /><meta name="twitter:description" content="${description}" /><meta name="twitter:image" content="${cardUrl}" />`;
   html = html.replace('</head>', `${social}</head>`);
