@@ -1,47 +1,63 @@
-const accountRouter=require('../server/api/account-router');
-const analyze=require('../server/api/analyze');
-const parse=require('../server/api/parse');
-const shareCard=require('../server/api/share-card');
-const sharePage=require('../server/api/share-page');
-const status=require('../server/api/status');
-const v1Analyze=require('../server/api/v1/analyze');
-const v1Build=require('../server/api/v1/build');
-const v1Share=require('../server/api/v1/share');
-const xDryRun=require('../server/api/x-dry-run');
-const xScheduler=require('../server/api/x-scheduler');
-const xWorker=require('../server/api/x-worker');
-
-const handlers={
-  analyze,
-  parse,
-  status,
-  account:accountRouter,
-  'api-keys':accountRouter,
-  plans:accountRouter,
-  'billing-checkout':accountRouter,
-  'billing-portal':accountRouter,
-  'share-card':shareCard,
-  'share-page':sharePage,
-  'v1-analyze':v1Analyze,
-  'v1-build':v1Build,
-  'v1-share':v1Share,
-  'x-dry-run':xDryRun,
-  'x-scheduler':xScheduler,
-  'x-worker':xWorker,
+const loaders={
+  analyze:()=>require('../server/api/analyze'),
+  parse:()=>require('../server/api/parse'),
+  status:()=>require('../server/api/status'),
+  account:()=>require('../server/api/account-router'),
+  'api-keys':()=>require('../server/api/account-router'),
+  plans:()=>require('../server/api/account-router'),
+  'billing-checkout':()=>require('../server/api/account-router'),
+  'billing-portal':()=>require('../server/api/account-router'),
+  'share-card':()=>require('../server/api/share-card'),
+  'share-page':()=>require('../server/api/share-page'),
+  'v1-analyze':()=>require('../server/api/v1/analyze'),
+  'v1-build':()=>require('../server/api/v1/build'),
+  'v1-share':()=>require('../server/api/v1/share'),
+  'x-dry-run':()=>require('../server/api/x-dry-run'),
+  'x-scheduler':()=>require('../server/api/x-scheduler'),
+  'x-worker':()=>require('../server/api/x-worker'),
 };
+
+const accountRoutes=new Set(['account','api-keys','plans','billing-checkout','billing-portal']);
 
 module.exports=async function handler(req,res){
   const raw=req.query?.__pp_route;
   const route=String(Array.isArray(raw)?raw[0]:raw||'').trim().toLowerCase();
-  const selected=handlers[route];
-  if(!selected){
+  const load=loaders[route];
+  if(!load){
     res.setHeader('Cache-Control','no-store');
     res.setHeader('Content-Type','application/json; charset=utf-8');
     return res.status(404).json({ok:false,error:'Unknown ParlayPing API route.'});
   }
-  if(selected===accountRouter){
+
+  let selected;
+  try{
+    // Load only the requested route. This keeps unrelated sports/social modules
+    // from taking down account/API-key requests during serverless initialization.
+    selected=load();
+  }catch(error){
+    console.error('ParlayPing API route initialization failed',{route,error});
+    if(!res.headersSent){
+      res.setHeader('Cache-Control','no-store');
+      res.setHeader('Content-Type','application/json; charset=utf-8');
+      return res.status(500).json({ok:false,error:'ParlayPing API route failed to initialize.'});
+    }
+    throw error;
+  }
+
+  if(accountRoutes.has(route)){
     req.query=req.query&&typeof req.query==='object'?req.query:{};
     req.query.route=route;
   }
-  return selected(req,res);
+
+  try{
+    return await selected(req,res);
+  }catch(error){
+    console.error('ParlayPing API route failed',{route,error});
+    if(!res.headersSent){
+      res.setHeader('Cache-Control','no-store');
+      res.setHeader('Content-Type','application/json; charset=utf-8');
+      return res.status(500).json({ok:false,error:'ParlayPing API request failed.'});
+    }
+    throw error;
+  }
 };
