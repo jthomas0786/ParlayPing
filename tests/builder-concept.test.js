@@ -16,7 +16,8 @@ test('marketing homepage is restored and does not contain the builder concept',(
 test('social builder template matches the approved concept surface',()=>{
   const html=read('builder-template.html');
   const css=read('builder.css');
-  const js=read('builder-runtime.js');
+  const precision=read('builder-precision.css');
+  const js=read('builder-precision-runtime.js');
   assert.match(html,/BUILD\. TWEAK\. SHARE\./);
   assert.match(html,/My Parlay/);
   assert.match(html,/Parlay Tune/);
@@ -26,7 +27,13 @@ test('social builder template matches the approved concept surface',()=>{
   assert.match(html,/Insights/);
   assert.doesNotMatch(html,/Gambly/i);
   assert.match(css,/\.tune-open \.alt-lines/);
+  assert.match(precision,/\.app-shell\{width:min\(940px/);
+  assert.match(precision,/\.pick-main\{min-height:78px/);
+  assert.match(precision,/\.sportsbook-grid/);
   assert.match(js,/__PARLAYPING_BUILDER__/);
+  assert.match(js,/pp-brand-name/);
+  assert.match(js,/sport-shield/);
+  assert.match(js,/teamPair\(leg\)/);
   assert.match(js,/setTuneState/);
   assert.match(js,/navigator\.share/);
 });
@@ -40,14 +47,16 @@ test('signed builder renderer injects real slip state into the approved concept'
       sportsbook:'DraftKings',
       combinedOddsAmerican:412,
       combinedOddsVerified:true,
-      legs:[{id:'leg-1',sport:'NFL',player:'Derrick Henry',team:'BAL',gameId:'game-1',market:'Anytime TD Scorer',displayMarket:'Anytime TD Scorer',oddsAmerican:-235,status:'PENDING',pregameProbability:.937}],
+      legs:[{id:'leg-1',sport:'NFL',player:'Derrick Henry',team:'BAL',matchup:'BAL @ KC',gameId:'game-1',market:'Anytime TD Scorer',displayMarket:'Anytime TD Scorer',oddsAmerican:-235,status:'PENDING',pregameProbability:.937}],
     },
   });
   assert.equal(builderUrl(token),'https://parlayping.net/build/s1.example.signature');
   assert.match(html,/\/builder\.css/);
-  assert.match(html,/\/builder-runtime\.js/);
+  assert.match(html,/\/builder-precision\.css/);
+  assert.match(html,/\/builder-precision-runtime\.js/);
   assert.match(html,/window\.__PARLAYPING_BUILDER__/);
   assert.match(html,/Derrick Henry/);
+  assert.match(html,/BAL @ KC/);
   assert.match(html,/https:\/\/parlayping\.net\/build\/s1\.example\.signature/);
   assert.match(html,/https:\/\/parlayping\.net\/share\/s1\.example\.signature\.png/);
   assert.doesNotMatch(html,/src="\.\/app\.js"/);
