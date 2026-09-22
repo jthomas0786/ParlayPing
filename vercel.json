@@ -3,6 +3,26 @@
   "trailingSlash": false,
   "rewrites": [
     {
+      "source": "/api/account",
+      "destination": "/api/account-router?route=account"
+    },
+    {
+      "source": "/api/api-keys",
+      "destination": "/api/account-router?route=api-keys"
+    },
+    {
+      "source": "/api/plans",
+      "destination": "/api/account-router?route=plans"
+    },
+    {
+      "source": "/api/billing-checkout",
+      "destination": "/api/account-router?route=billing-checkout"
+    },
+    {
+      "source": "/api/billing-portal",
+      "destination": "/api/account-router?route=billing-portal"
+    },
+    {
       "source": "/slip/:token",
       "destination": "/api/share-page?slip=:token"
     },

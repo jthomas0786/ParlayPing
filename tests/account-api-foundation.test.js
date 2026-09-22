@@ -39,7 +39,7 @@ test('account console exposes upgrade and Stripe billing management flows',()=>{
 });
 
 test('Vercel account/API source never requires or embeds Supabase service-role credentials',()=>{
-  const files=['api/lib/supabase-account.js','api/account.js','api/api-keys.js','api/lib/api-key-auth.js','api/v1/analyze.js','account.js'];
+  const files=['api/lib/supabase-account.js','api/account-router.js','api/lib/api-key-auth.js','api/v1/analyze.js','account.js'];
   for(const rel of files){
     const source=fs.readFileSync(path.join(__dirname,'..',rel),'utf8');
     assert.doesNotMatch(source,/SUPABASE_SERVICE_ROLE_KEY/);
