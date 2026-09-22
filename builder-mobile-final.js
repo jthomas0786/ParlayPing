@@ -3,10 +3,10 @@
   const state=window.__PARLAYPING_BUILDER__||{},legs=Array.isArray(state.slip?.legs)?state.slip.legs:[];
   const BOOK_ODDS_PREFIX='PP_BOOK_ODDS:';
 
-  /* Use the exact user-approved ParlayPing artwork, not a reconstructed lockup. */
+  /* Use the exact user-approved ringless ParlayPing artwork, not a reconstructed lockup. */
   const brand=q('.brand');
   if(brand){
-    brand.innerHTML='<img class="pp-brand-lockup" src="/parlayping-approved-logo.png" alt="ParlayPing — Bet Smarter Together"/><span class="pp-brand-name pp-brand-a11y">ParlayPing</span><span class="pp-brand-tag pp-brand-a11y">BET SMARTER TOGETHER</span>';
+    brand.innerHTML='<img class="pp-brand-lockup" src="/parlayping-approved-exact.webp" alt="ParlayPing"/><span class="pp-brand-name pp-brand-a11y">ParlayPing</span><span class="pp-brand-tag pp-brand-a11y">BET SMARTER TOGETHER</span>';
     brand.href='#top';
   }
 

@@ -1,6 +1,6 @@
 /* Final visual corrections from rendered concept review. */
 
-/* Exact approved logo asset supplied by the user. */
+/* Exact approved logo artwork supplied by the user. */
 .brand{position:relative}
 .brand .pp-brand-lockup{display:block;width:230px;max-width:100%;height:auto;object-fit:contain;object-position:left center}
 .pp-brand-a11y{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
@@ -12,7 +12,7 @@
 .tune-button,.save-button{display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:6px!important;text-align:center!important}
 .tune-button svg,.save-button svg{margin:0!important;flex:0 0 auto!important;vertical-align:0!important}
 
-/* Hero uses the actual approved logo as a large, faint, tilted watermark. */
+/* Hero uses the actual approved ringless logo as a large, faint, tilted watermark. */
 .concept-hero{
   position:relative!important;
   isolation:isolate!important;
@@ -30,12 +30,12 @@
   height:76%;
   left:-6%;
   top:18%;
-  background:url('/parlayping-approved-logo.png') center/contain no-repeat;
+  background:url('/parlayping-approved-exact.webp') center/contain no-repeat;
   opacity:.095;
   transform:rotate(-11deg) scale(1.08);
   transform-origin:center;
   pointer-events:none;
-  filter:saturate(.9) brightness(1.15);
+  filter:saturate(.95) brightness(1.08);
 }
 .concept-hero .hero-overlay{position:absolute!important;inset:0!important;z-index:0!important;background:linear-gradient(180deg,rgba(2,14,24,.03),rgba(2,14,24,.18))!important}
 .concept-hero .hero-copy,.concept-hero .hero-tools,.concept-hero .hero-note{position:relative!important;z-index:2!important}
@@ -48,21 +48,21 @@
   .header-actions{gap:4px!important}
   .profile-button{margin-left:2px!important}
 
-  .brand{width:214px!important;flex-basis:auto!important;min-width:0!important}
-  .brand .pp-brand-lockup{width:206px!important;max-height:62px!important}
+  .brand{width:208px!important;flex-basis:auto!important;min-width:0!important}
+  .brand .pp-brand-lockup{width:204px!important;max-height:68px!important}
 
-  /* Tighter hero: three actions in one row, pulled upward to remove unused space. */
-  .concept-hero{margin-top:10px!important;height:252px!important;min-height:252px!important}
-  .concept-hero::before{width:138%;height:70%;left:-19%;top:20%;opacity:.105;transform:rotate(-12deg) scale(1.12)}
-  .hero-copy{padding:19px 14px 0!important}
-  .hero-copy h1{font-size:22px!important;line-height:1.06!important}
-  .hero-copy p{font-size:10.5px!important;line-height:1.35!important;max-width:338px!important;margin:6px auto 0!important}
-  .hero-tools{position:absolute!important;left:8px!important;right:8px!important;bottom:17px!important;padding:0!important;display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;grid-template-rows:1fr!important;gap:4px!important;align-items:end!important}
+  /* Mobile hero: copy and tools live in separate flow rows so they can never overlap. */
+  .concept-hero{margin-top:10px!important;height:238px!important;min-height:238px!important;display:flex!important;flex-direction:column!important;justify-content:flex-start!important}
+  .concept-hero::before{width:136%;height:66%;left:-18%;top:27%;opacity:.105;transform:rotate(-11deg) scale(1.1)}
+  .hero-copy{padding:16px 12px 0!important;flex:0 0 auto!important}
+  .hero-copy h1{font-size:21px!important;line-height:1.06!important;margin:0!important}
+  .hero-copy p{font-size:10.2px!important;line-height:1.32!important;max-width:330px!important;margin:7px auto 0!important;min-height:27px!important}
+  .hero-tools{position:relative!important;left:auto!important;right:auto!important;bottom:auto!important;top:auto!important;width:auto!important;margin:16px 7px 12px!important;padding:0!important;display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;grid-template-rows:1fr!important;gap:4px!important;align-items:start!important;flex:0 0 auto!important}
   .hero-tool{gap:2px!important;min-width:0!important}
-  .hero-tool-icon{width:48px!important;height:48px!important;font-size:0!important;margin-inline:auto!important}
-  .hero-tool-icon svg{width:21px!important;height:21px!important}
-  .hero-tool strong{font-size:9.2px!important;margin-top:3px!important;line-height:1.1!important;white-space:nowrap!important}
-  .hero-tool small{font-size:8px!important;line-height:1.1!important;white-space:nowrap!important}
+  .hero-tool-icon{width:46px!important;height:46px!important;font-size:0!important;margin-inline:auto!important}
+  .hero-tool-icon svg{width:20px!important;height:20px!important}
+  .hero-tool strong{font-size:9px!important;margin-top:3px!important;line-height:1.1!important;white-space:nowrap!important}
+  .hero-tool small{font-size:7.8px!important;line-height:1.1!important;white-space:nowrap!important}
   #toast{display:none!important}
 
   /* Team logos -> matchup -> date/time, matching the approved concept header row. */
@@ -93,7 +93,7 @@
 }
 
 @media(max-width:390px){
-  .brand{width:202px!important}
+  .brand{width:198px!important}
   .brand .pp-brand-lockup{width:194px!important}
   .pick-main{grid-template-columns:minmax(0,1fr) 102px 34px 9px!important}
   .probability-meter{grid-template-columns:68px 30px!important}
