@@ -40,6 +40,10 @@
 .concept-hero .hero-overlay{position:absolute!important;inset:0!important;z-index:0!important;background:linear-gradient(180deg,rgba(2,14,24,.03),rgba(2,14,24,.18))!important}
 .concept-hero .hero-copy,.concept-hero .hero-tools,.concept-hero .hero-note{position:relative!important;z-index:2!important}
 
+/* Keep three hero actions on one clean row. Sportsbook selection already lives below the parlay. */
+.hero-tool:nth-child(2){display:none!important}
+.hero-tools{grid-template-columns:repeat(3,minmax(0,1fr))!important;grid-template-rows:1fr!important;left:58px!important;right:58px!important;gap:20px!important}
+
 @media(max-width:720px){
   .pp-mobile-return-bar,.pp-mobile-origin-controls,.pp-return-control{display:none!important}
   .header-actions{gap:4px!important}
@@ -48,8 +52,18 @@
   .brand{width:214px!important;flex-basis:auto!important;min-width:0!important}
   .brand .pp-brand-lockup{width:206px!important;max-height:62px!important}
 
-  .concept-hero{margin-top:10px!important}
-  .concept-hero::before{width:138%;height:64%;left:-19%;top:23%;opacity:.105;transform:rotate(-12deg) scale(1.12)}
+  /* Tighter hero: three actions in one row, pulled upward to remove unused space. */
+  .concept-hero{margin-top:10px!important;height:252px!important;min-height:252px!important}
+  .concept-hero::before{width:138%;height:70%;left:-19%;top:20%;opacity:.105;transform:rotate(-12deg) scale(1.12)}
+  .hero-copy{padding:19px 14px 0!important}
+  .hero-copy h1{font-size:22px!important;line-height:1.06!important}
+  .hero-copy p{font-size:10.5px!important;line-height:1.35!important;max-width:338px!important;margin:6px auto 0!important}
+  .hero-tools{position:absolute!important;left:8px!important;right:8px!important;bottom:17px!important;padding:0!important;display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;grid-template-rows:1fr!important;gap:4px!important;align-items:end!important}
+  .hero-tool{gap:2px!important;min-width:0!important}
+  .hero-tool-icon{width:48px!important;height:48px!important;font-size:0!important;margin-inline:auto!important}
+  .hero-tool-icon svg{width:21px!important;height:21px!important}
+  .hero-tool strong{font-size:9.2px!important;margin-top:3px!important;line-height:1.1!important;white-space:nowrap!important}
+  .hero-tool small{font-size:8px!important;line-height:1.1!important;white-space:nowrap!important}
   #toast{display:none!important}
 
   /* Team logos -> matchup -> date/time, matching the approved concept header row. */
@@ -59,10 +73,12 @@
   .game-bar .game-time{display:flex!important;font-size:7.8px!important;gap:3px!important;white-space:nowrap!important;color:#b9c8d1!important;flex:0 0 auto!important}
   .game-bar .game-time[hidden]{display:none!important}
 
-  .pick-main{grid-template-columns:minmax(0,1fr) 82px 36px 10px!important;gap:5px!important}
-  .probability-meter{grid-template-columns:49px 30px!important;gap:3px!important}
-  .meter-track{width:49px!important}
-  .pick-probability{font-size:8.5px!important;min-width:30px!important;text-align:right!important}
+  /* Make probability a clearly visible bar + percentage on every leg. */
+  .pick-main{grid-template-columns:minmax(0,1fr) 112px 38px 10px!important;gap:5px!important}
+  .probability-meter{grid-template-columns:76px 32px!important;gap:4px!important;justify-content:end!important;align-items:center!important}
+  .meter-track{width:76px!important;height:9px!important;border:1px solid rgba(34,164,194,.22)!important;background:#0a4059!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.015)!important}
+  .meter-track i{display:block!important;height:100%!important;width:var(--meter,0%)!important;border-radius:999px!important;background:linear-gradient(90deg,#1adce7,#2ef0a1)!important;box-shadow:0 0 7px rgba(32,232,223,.34)!important}
+  .pick-probability{font-size:9.5px!important;min-width:32px!important;text-align:right!important;color:#f4fbff!important;font-weight:700!important;white-space:nowrap!important}
   .player-copy strong{font-size:11.5px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
   .pick-odds{font-size:12px!important;padding-left:4px!important}
   .kebab{font-size:18px!important}
@@ -80,9 +96,9 @@
 @media(max-width:390px){
   .brand{width:202px!important}
   .brand .pp-brand-lockup{width:194px!important}
-  .pick-main{grid-template-columns:minmax(0,1fr) 76px 34px 9px!important}
-  .probability-meter{grid-template-columns:45px 28px!important}
-  .meter-track{width:45px!important}
+  .pick-main{grid-template-columns:minmax(0,1fr) 102px 34px 9px!important}
+  .probability-meter{grid-template-columns:68px 30px!important}
+  .meter-track{width:68px!important}
   .game-bar{gap:4px!important}
   .game-bar strong{font-size:8.5px!important}
   .game-bar .game-time{font-size:7.2px!important}
