@@ -13,6 +13,14 @@
   qa('.sport-shield').forEach(el=>el.remove());
   qa('.pp-return-control,.pp-mobile-return-bar,.pp-mobile-origin-controls').forEach(el=>el.remove());
 
+  /* The builder no longer advertises sportsbook linking in the hero. */
+  qa('.hero-tool').forEach(tool=>{
+    const label=q('strong',tool)?.textContent?.trim()||'';
+    if(/^Link to Sportsbooks$/i.test(label))tool.remove();
+  });
+  const heroCopy=q('.hero-copy p');
+  if(heroCopy)heroCopy.textContent='Find value. Adjust alt lines. Share with the community. Track and compare.';
+
   const safeProbability=value=>{
     if(value===null||value===undefined||value==='')return null;
     const n=Number(value);
@@ -42,7 +50,8 @@
   };
   function selectedBookPrice(leg,book){
     const normalized=normalizeBook(book),map=bookOddsMap(leg);
-    const mapped=Number(map[normalized]);
+    const mappedEntry=Object.entries(map).find(([key])=>normalizeBook(key)===normalized);
+    const mapped=mappedEntry?Number(mappedEntry[1]):NaN;
     if(Number.isFinite(mapped)&&mapped!==0)return mapped;
     if(normalizeBook(leg?.sportsbook)===normalized){
       const own=Number(leg?.oddsAmerican);if(Number.isFinite(own)&&own!==0)return own;
@@ -91,20 +100,18 @@
       if(over)market.textContent=`Over ${over[1]}${over[2]?` ${over[2].trim()}`:''}`;
     }
 
+    /* Probability is independent of grading state. Always show a real percentage or —%. */
     const status=String(leg.status||'PENDING').toUpperCase();
-    const settled=['HIT','MISS','PUSH','VOID'].includes(status);
     const probability=status==='LIVE'
       ? (safeProbability(leg.liveProbability)??safeProbability(leg.pregameProbability))
       : safeProbability(leg.pregameProbability);
     const label=q('.pick-probability',card),fill=q('.meter-track i',card);
-    if(!settled){
-      if(probability!=null){
-        if(label){label.textContent=`${(probability*100).toFixed(1)}%`;label.classList.remove('status-label');}
-        if(fill)fill.style.setProperty('--meter',`${probability*100}%`);
-      }else{
-        if(label){label.textContent='—%';label.classList.remove('status-label');}
-        if(fill)fill.style.setProperty('--meter','0%');
-      }
+    if(probability!=null){
+      if(label){label.textContent=`${(probability*100).toFixed(1)}%`;label.classList.remove('status-label');}
+      if(fill)fill.style.setProperty('--meter',`${probability*100}%`);
+    }else{
+      if(label){label.textContent='—%';label.classList.remove('status-label');}
+      if(fill)fill.style.setProperty('--meter','0%');
     }
   });
 
