@@ -5,6 +5,8 @@ on:
     paths:
       - 'builder-mobile-fix.css'
       - 'builder-mobile-fix.js'
+      - 'builder-mobile-final.css'
+      - 'builder-mobile-final.js'
       - 'server/api/builder-page.js'
       - 'scripts/builder-mobile-contract.mjs'
       - '.github/workflows/builder-mobile-contract.yml'
