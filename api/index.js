@@ -9,6 +9,7 @@ const loaders={
   'billing-portal':()=>require('../server/api/account-router'),
   'share-card':()=>require('../server/api/share-card'),
   'share-page':()=>require('../server/api/share-page'),
+  'builder-page':()=>require('../server/api/builder-page'),
   'v1-analyze':()=>require('../server/api/v1/analyze'),
   'v1-build':()=>require('../server/api/v1/build'),
   'v1-share':()=>require('../server/api/v1/share'),
@@ -31,8 +32,6 @@ module.exports=async function handler(req,res){
 
   let selected;
   try{
-    // Load only the requested route. This keeps unrelated sports/social modules
-    // from taking down account/API-key requests during serverless initialization.
     selected=load();
   }catch(error){
     console.error('ParlayPing API route initialization failed',{route,error});
