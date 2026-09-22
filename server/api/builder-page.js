@@ -52,7 +52,7 @@ function renderBuilderHtml({ slip, token, liveDataAvailable }) {
     .replace(/\.\/parlayping-logo\.svg/g, '/parlayping-logo.svg')
     .replace(/\.\/account\.html/g, '/account.html')
     .replace(/\.\/styles\.css/g, '/builder.css')
-    .replace(/<script src="\.\/app\.js"><\/script>/, `<script>window.__PARLAYPING_BUILDER__=${payload};</script><script src="/builder-precision-runtime.js"></script><script src="/builder-concept-finish.js"></script>`)
+    .replace(/<script src="\.\/app\.js"><\/script>/, `<script>window.__PARLAYPING_BUILDER__=${payload};</script><script src="/builder-precision-runtime.js"></script><script src="/builder-concept-finish.js"></script><script src="/builder-mobile-fix.js"></script><script src="/builder-mobile-final.js"></script>`)
     .replace(/<title>[^<]*<\/title>/, `<title>${title}</title>`)
     .replace(/<meta name="description" content="[^"]*" \/>/, `<meta name="description" content="${description}" />`)
     .replace(/<meta property="og:title" content="[^"]*" \/>/, `<meta property="og:title" content="${title}" />`)
@@ -61,7 +61,7 @@ function renderBuilderHtml({ slip, token, liveDataAvailable }) {
     .replace('<body>', `<body>${returnControls(slip)}`);
 
   const social = `<meta property="og:image" content="${cardUrl}" /><meta property="og:image:width" content="1200" /><meta property="og:image:height" content="675" /><meta name="twitter:card" content="summary_large_image" /><meta name="twitter:title" content="${title}" /><meta name="twitter:description" content="${description}" /><meta name="twitter:image" content="${cardUrl}" />`;
-  html = html.replace('</head>', `<link rel="stylesheet" href="/builder-precision.css" />${social}</head>`);
+  html = html.replace('</head>', `<link rel="stylesheet" href="/builder-precision.css" /><link rel="stylesheet" href="/builder-mobile-fix.css" /><link rel="stylesheet" href="/builder-mobile-final.css" />${social}</head>`);
   return html;
 }
 
