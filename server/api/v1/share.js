@@ -10,10 +10,8 @@ function parseBody(req) {
   return {};
 }
 
-function requestBaseUrl(req) {
-  const host = req.headers['x-forwarded-host'] || req.headers.host || 'parlayping.net';
-  const proto = req.headers['x-forwarded-proto'] || 'https';
-  return `${proto}://${host}`;
+function requestBaseUrl() {
+  return String(process.env.PUBLIC_BASE_URL || 'https://parlayping.net').replace(/\/+$/, '');
 }
 
 module.exports = async function handler(req, res) {
@@ -44,7 +42,7 @@ module.exports = async function handler(req, res) {
       returnLabel: body.returnLabel,
     });
     const token = encodeShareSlip(slip);
-    const root = requestBaseUrl(req);
+    const root = requestBaseUrl();
     const shareUrl = buildShareUrl(token, root);
     const cardUrl = buildCardUrl(token, root);
     statusCode = 201;
