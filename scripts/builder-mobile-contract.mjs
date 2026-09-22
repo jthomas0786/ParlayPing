@@ -19,8 +19,8 @@ const slip={
   combinedOddsAmerican:null,
   combinedOddsVerified:false,
   legs:[
-    {id:'okamoto',sport:'MLB',player:'Kazuma Okamoto',playerId:'672960',team:'TOR',matchup:'Blue Jays @ Orioles',market:'HR',displayMarket:'O0.5 HR',oddsAmerican:null,status:'UNRESOLVED',pregameProbability:null},
-    {id:'abrams',sport:'MLB',player:'CJ Abrams',playerId:'682928',team:'WSH',matchup:'Nationals @ Tigers',market:'HR',displayMarket:'O0.5 HR',oddsAmerican:null,status:'UNRESOLVED',pregameProbability:null},
+    {id:'okamoto',sport:'MLB',player:'Kazuma Okamoto',playerId:'672960',team:'TOR',matchup:'Blue Jays @ Orioles',market:'HR',displayMarket:'O0.5 HR',oddsAmerican:null,status:'UNRESOLVED',pregameProbability:.642,startTimeUTC:'2026-09-22T23:05:00Z'},
+    {id:'abrams',sport:'MLB',player:'CJ Abrams',playerId:'682928',team:'WSH',matchup:'Nationals @ Tigers',market:'HR',displayMarket:'O0.5 HR',oddsAmerican:null,status:'UNRESOLVED',pregameProbability:.587,startTimeUTC:'2026-09-22T23:10:00Z'},
   ],
 };
 const fixture=renderBuilderHtml({slip,token:'s1.mobile.contract',liveDataAvailable:false});
@@ -46,22 +46,32 @@ await page.waitForSelector('.pick-card');
 await page.waitForTimeout(650);
 
 const metrics=await page.evaluate(()=>{
-  const rect=s=>{const r=document.querySelector(s)?.getBoundingClientRect();return r?{x:r.x,y:r.y,width:r.width,height:r.height,bottom:r.bottom}:null};
-  const allRects=s=>[...document.querySelectorAll(s)].map(el=>{const r=el.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height,bottom:r.bottom}});
+  const rect=s=>{const r=document.querySelector(s)?.getBoundingClientRect();return r?{x:r.x,y:r.y,width:r.width,height:r.height,right:r.right,bottom:r.bottom}:null};
+  const allRects=s=>[...document.querySelectorAll(s)].map(el=>{const r=el.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height,right:r.right,bottom:r.bottom}});
+  const contentCenterDelta=s=>{
+    const el=document.querySelector(s);if(!el)return null;
+    const b=el.getBoundingClientRect(),range=document.createRange();range.selectNodeContents(el);const c=range.getBoundingClientRect();
+    return Math.abs((c.x+c.width/2)-(b.x+b.width/2));
+  };
   return {
-    header:rect('.app-header'),originControls:rect('.pp-mobile-origin-controls'),hero:rect('.concept-hero'),panel:rect('.parlay-panel'),
+    header:rect('.app-header'),hero:rect('.concept-hero'),panel:rect('.parlay-panel'),
+    brandSrc:document.querySelector('.pp-brand-lockup')?.getAttribute('src')||'',
+    heroBackground:getComputedStyle(document.querySelector('.concept-hero')).backgroundImage,
+    returnControls:document.querySelectorAll('.pp-return-control,.pp-mobile-return-bar,.pp-mobile-origin-controls').length,
     clearSvg:rect('#clearAllBtn svg'),cta:rect('#openBookBtn'),ctaText:document.querySelector('#openBookBtn')?.innerText.trim(),
     cards:allRects('.pick-card'),gameBars:allRects('.game-bar'),photos:allRects('.player-photo'),
+    teamPairs:allRects('.team-pair'),gameTimes:allRects('.game-time'),gameTimeText:[...document.querySelectorAll('.game-time')].map(x=>x.textContent.replace(/\s+/g,' ').trim()),
     playerNames:[...document.querySelectorAll('.player-copy strong')].map(x=>x.textContent.trim()),
     markets:[...document.querySelectorAll('.player-copy span')].map(x=>x.textContent.trim()),
+    probabilityLabels:[...document.querySelectorAll('.pick-probability')].map(x=>x.textContent.trim()),
+    probabilityFillWidths:allRects('.meter-track i').map(x=>x.width),
     odds:[...document.querySelectorAll('.pick-odds')].map(x=>x.textContent.trim()),
     teamImgs:[...document.querySelectorAll('.pick-card .team-pair img')].map(x=>x.getAttribute('src')),
     teamFallbacks:[...document.querySelectorAll('.pick-card .team-pair .team-token')].filter(x=>getComputedStyle(x).display!=='none').map(x=>x.textContent.trim()),
     sportShields:document.querySelectorAll('.sport-shield').length,
+    tuneCenterDelta:contentCenterDelta('#tuneBtn'),saveCenterDelta:contentCenterDelta('#saveBtn'),
     books:allRects('.book-card'),bookGrid:rect('.sportsbook-grid'),share:rect('.share-section'),shares:allRects('.share-action'),
     secondaryIcons:allRects('.secondary-icon svg,.pin-icon svg'),lower:allRects('.secondary-panel'),footer:rect('.app-footer'),
-    returnBackPosition:getComputedStyle(document.querySelector('.pp-return-back')).position,
-    returnClosePosition:getComputedStyle(document.querySelector('.pp-return-close')).position,
     toastDisplay:getComputedStyle(document.querySelector('#toast')).display,
     svgRects:allRects('svg'),
     scrollHeight:document.documentElement.scrollHeight,
@@ -73,8 +83,9 @@ const metrics=await page.evaluate(()=>{
 const near=(actual,expected,tol,label)=>{if(Math.abs(actual-expected)>tol)throw new Error(`${label}: expected ${expected}±${tol}, got ${actual}`);};
 near(metrics.header.height,148,2,'mobile header height');
 near(metrics.hero.height,326,2,'mobile hero height');
-if(!metrics.originControls||metrics.originControls.y<0||metrics.originControls.bottom>metrics.header.height+2)throw new Error('Sports Outpost controls are not integrated into the mobile header');
-if(metrics.returnBackPosition==='fixed'||metrics.returnClosePosition==='fixed')throw new Error('Sports Outpost return controls still overlay mobile content');
+if(metrics.returnControls!==0)throw new Error(`source Back/X controls still render: ${metrics.returnControls}`);
+if(!/parlayping-approved-lockup\.svg$/i.test(metrics.brandSrc))throw new Error(`approved logo asset is not in the header: ${metrics.brandSrc}`);
+if(!/parlayping-hero-stadium\.svg/i.test(metrics.heroBackground))throw new Error(`local hero background is missing: ${metrics.heroBackground}`);
 if(metrics.sportShields!==0)throw new Error(`league shields were reintroduced ahead of team logos: ${metrics.sportShields}`);
 if(metrics.cards.length!==2)throw new Error(`expected 2 player cards, got ${metrics.cards.length}`);
 if(metrics.cards.some(r=>r.height>125))throw new Error(`mobile player card too tall: ${metrics.cards.map(x=>x.height).join(', ')}`);
@@ -82,6 +93,12 @@ if(metrics.gameBars.some(r=>Math.abs(r.height-38)>2))throw new Error(`mobile gam
 if(metrics.photos.some(r=>Math.abs(r.width-44)>2||Math.abs(r.height-44)>2))throw new Error('mobile player photo geometry drifted');
 if(!metrics.playerNames.includes('Kazuma Okamoto'))throw new Error(`full player name missing: ${metrics.playerNames.join(', ')}`);
 if(!metrics.markets.some(x=>/^Over 0\.5 HR$/i.test(x)))throw new Error(`market label was not normalized to concept copy: ${metrics.markets.join(', ')}`);
+if(metrics.probabilityLabels.join('|')!=='64.2%|58.7%')throw new Error(`UNRESOLVED replaced probability text: ${metrics.probabilityLabels.join(', ')}`);
+if(metrics.probabilityFillWidths.some(x=>x<=0))throw new Error(`probability meter did not fill from real percentages: ${metrics.probabilityFillWidths.join(', ')}`);
+if(metrics.gameTimes.length!==2||metrics.gameTimeText.some(x=>!x))throw new Error(`game times are missing: ${metrics.gameTimeText.join(', ')}`);
+metrics.gameTimes.forEach((time,i)=>{const pair=metrics.teamPairs[i];if(!pair||time.x<pair.right-1||time.x-pair.right>12)throw new Error(`game time is not next to team logos on row ${i+1}`);});
+if(metrics.tuneCenterDelta==null||metrics.tuneCenterDelta>5)throw new Error(`Parlay Tune contents are not centered: ${metrics.tuneCenterDelta}`);
+if(metrics.saveCenterDelta==null||metrics.saveCenterDelta>5)throw new Error(`Save contents are not centered: ${metrics.saveCenterDelta}`);
 if(metrics.odds.some(x=>x!=='—'))throw new Error(`missing odds rendered incorrectly: ${metrics.odds.join(', ')}`);
 if(!metrics.teamImgs.some(x=>/\/mlb\/500\/tor\.png/.test(x||''))||!metrics.teamImgs.some(x=>/\/mlb\/500\/bal\.png/.test(x||'')))throw new Error(`Blue Jays/Orioles logos not resolved: ${metrics.teamImgs.join(', ')}`);
 if(!metrics.teamImgs.some(x=>/\/mlb\/500\/wsh\.png/.test(x||''))||!metrics.teamImgs.some(x=>/\/mlb\/500\/det\.png/.test(x||'')))throw new Error(`Nationals/Tigers logos not resolved: ${metrics.teamImgs.join(', ')}`);
