@@ -1,61 +1,76 @@
-/* Final visual corrections from rendered iPhone screenshot review. */
+/* Final visual corrections from rendered concept review. */
+
+/* Canonical approved ringless logo lockup. */
+.brand{position:relative}
+.brand .pp-brand-lockup{display:block;width:205px;max-width:100%;height:auto;max-height:62px;object-fit:contain;object-position:left center}
+.pp-brand-a11y{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
 
 /* The approved game header starts with the two teams, not a league shield. */
 .game-bar .sport-shield{display:none!important}
+.game-bar .game-time{margin-left:0!important;display:flex!important;align-items:center!important;gap:4px!important;color:#9cb3c2!important;font-size:9.5px!important;line-height:1!important;flex:0 0 auto!important}
+
+/* Tune + Save icons and labels are actually centered inside the button bounds. */
+.tune-button,.save-button{display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:6px!important;text-align:center!important}
+.tune-button svg,.save-button svg{margin:0!important;flex:0 0 auto!important;vertical-align:0!important}
+
+/* A reliable local sports/stadium background replaces the fragile remote hero image. */
+.concept-hero{
+  background-image:
+    linear-gradient(180deg,rgba(2,16,28,.08),rgba(1,12,20,.42)),
+    linear-gradient(90deg,rgba(3,18,30,.24),rgba(3,18,30,.03) 48%,rgba(3,18,30,.28)),
+    url('/parlayping-hero-stadium.svg')!important;
+  background-position:center 48%!important;
+  background-size:cover!important;
+}
+.concept-hero .hero-overlay{background:radial-gradient(circle at 17% 30%,rgba(26,137,185,.09),transparent 28%),linear-gradient(180deg,rgba(2,14,24,.01),rgba(2,14,24,.12))!important}
 
 @media(max-width:720px){
-  /* Fold source navigation into the top brand row so the concept starts immediately below nav. */
-  .pp-mobile-return-bar{display:none!important}
-  .pp-mobile-origin-controls{display:flex;align-items:center;gap:4px;margin-right:7px}
-  .pp-mobile-origin-controls .pp-return-control{position:static!important;inset:auto!important;margin:0!important;padding:0!important;box-shadow:none!important;background:#071b2c!important;border:1px solid #19465f!important;color:#dfeef6!important;font-family:Inter,system-ui,sans-serif!important}
-  .pp-mobile-origin-controls .pp-return-back{width:30px!important;height:30px!important;min-height:30px!important;border-radius:50%!important;display:grid!important;place-items:center!important;font-size:0!important}
-  .pp-mobile-origin-controls .pp-return-back:before{content:'←';font-size:15px;font-weight:800;line-height:1}
-  .pp-mobile-origin-controls .pp-return-close{width:30px!important;height:30px!important;border-radius:50%!important;display:grid!important;place-items:center!important;font-size:18px!important;line-height:1!important}
+  /* Source-return controls were intentionally removed from the approved builder. */
+  .pp-mobile-return-bar,.pp-mobile-origin-controls,.pp-return-control{display:none!important}
   .header-actions{gap:4px!important}
   .profile-button{margin-left:2px!important}
 
-  /* Make the stadium materially visible like the approved concept. */
-  .concept-hero{
-    margin-top:10px!important;
-    background-image:
-      linear-gradient(180deg,rgba(2,16,28,.04),rgba(1,12,20,.36)),
-      linear-gradient(90deg,rgba(3,18,30,.18),rgba(3,18,30,.02) 48%,rgba(3,18,30,.22)),
-      url('https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=1200&q=88')!important;
-    background-position:center 46%!important;
-    background-size:cover!important;
-  }
-  .concept-hero .hero-overlay{background:radial-gradient(circle at 17% 30%,rgba(26,137,185,.08),transparent 28%),linear-gradient(180deg,rgba(2,14,24,.02),rgba(2,14,24,.12))!important}
+  .brand{width:194px!important;flex-basis:auto!important;min-width:0!important}
+  .brand .pp-brand-lockup{width:188px!important;max-height:62px!important}
+
+  /* Keep the hero visually rich without relying on a third-party image request. */
+  .concept-hero{margin-top:10px!important;background-position:center 48%!important}
 
   /* No interaction toast floating over the approved Tune layout. */
   #toast{display:none!important}
 
-  /* With the sport shield removed, logos align exactly to the left edge of the game row. */
-  .game-bar{gap:7px!important}
+  /* Team logos, time, then matchup — all on the same game-info line. */
+  .game-bar{gap:6px!important}
   .team-pair{min-width:50px!important}
+  .game-bar .game-time{display:flex!important;font-size:8px!important;gap:0!important;white-space:nowrap!important;color:#b9c8d1!important}
+  .game-bar .game-time span:first-child,.game-bar .game-time i{display:none!important}
+  .game-bar .game-time span:last-child{display:inline!important}
+  .game-bar strong{font-size:9px!important}
 
-  /* Give names more room while keeping the probability/odds composition. */
-  .pick-main{grid-template-columns:minmax(0,1fr) 74px 36px 10px!important;gap:5px!important}
-  .probability-meter{grid-template-columns:44px 27px!important;gap:3px!important}
-  .meter-track{width:44px!important}
+  /* Give names room while keeping probability in its dedicated meter slot. */
+  .pick-main{grid-template-columns:minmax(0,1fr) 82px 36px 10px!important;gap:5px!important}
+  .probability-meter{grid-template-columns:49px 30px!important;gap:3px!important}
+  .meter-track{width:49px!important}
+  .pick-probability{font-size:8.5px!important;min-width:30px!important;text-align:right!important}
   .player-copy strong{font-size:11.5px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
   .pick-odds{font-size:12px!important;padding-left:4px!important}
   .kebab{font-size:18px!important}
 
-  /* Concept mini avatars should remain circles, never concatenate initials into KOCA text. */
+  .tune-button,.save-button{display:flex!important;align-items:center!important;justify-content:center!important;gap:6px!important;padding-left:10px!important;padding-right:10px!important}
+  .tune-button svg,.save-button svg{margin:0!important}
+
+  /* Concept mini avatars should remain circles, never concatenate initials into text. */
   .mini-avatars{display:flex!important;align-items:center!important;min-width:44px!important}
   .mini-avatars .team-token{width:27px!important;height:27px!important;flex:0 0 27px!important;border-radius:50%!important;border:2px solid #071a2a!important;background:#0c3048!important;color:#dff6ff!important;display:grid!important;place-items:center!important;font-size:7px!important;font-weight:850!important;letter-spacing:-.02em!important;overflow:hidden!important}
   .mini-avatars .team-token+.team-token{margin-left:-8px!important}
 
-  /* Keep lower-panel headings in the exact compact horizontal treatment. */
   .secondary-title h3{display:flex!important;align-items:center!important;gap:6px!important}
 }
 
 @media(max-width:390px){
-  .pp-mobile-origin-controls{gap:3px;margin-right:4px}
-  .pp-mobile-origin-controls .pp-return-back,.pp-mobile-origin-controls .pp-return-close{width:28px!important;height:28px!important;min-height:28px!important}
-  .brand .pp-brand-name{font-size:19px!important}
-  .brand .pp-brand-mark{width:42px!important;height:42px!important;flex-basis:42px!important}
-  .pick-main{grid-template-columns:minmax(0,1fr) 68px 34px 9px!important}
-  .probability-meter{grid-template-columns:40px 25px!important}
-  .meter-track{width:40px!important}
+  .brand{width:182px!important}
+  .brand .pp-brand-lockup{width:176px!important}
+  .pick-main{grid-template-columns:minmax(0,1fr) 76px 34px 9px!important}
+  .probability-meter{grid-template-columns:45px 28px!important}
+  .meter-track{width:45px!important}
 }

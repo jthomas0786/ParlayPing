@@ -8,8 +8,15 @@ on:
       - 'builder-precision.css'
       - 'builder-precision-runtime.js'
       - 'builder-concept-finish.js'
+      - 'builder-mobile-fix.css'
+      - 'builder-mobile-fix.js'
+      - 'builder-mobile-final.css'
+      - 'builder-mobile-final.js'
+      - 'parlayping-approved-lockup.svg'
+      - 'parlayping-hero-stadium.svg'
       - 'server/api/builder-page.js'
       - 'scripts/builder-visual-contract.mjs'
+      - 'tests/builder-concept.test.js'
       - '.github/workflows/builder-visual-contract.yml'
 
 permissions:
