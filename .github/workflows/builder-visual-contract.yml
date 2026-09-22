@@ -16,6 +16,7 @@ on:
       - 'parlayping-hero-stadium.svg'
       - 'server/api/builder-page.js'
       - 'scripts/builder-visual-contract.mjs'
+      - 'tests/builder-concept.test.js'
       - '.github/workflows/builder-visual-contract.yml'
 
 permissions:
