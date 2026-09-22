@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const { extractApiKey, apiAuth } = require('../lib/api-key-auth');
 const { canonicalSlip, encodeShareSlip, buildShareUrl, buildCardUrl } = require('../lib/share-slip');
+const { buildBuilderUrl } = require('../lib/builder-url');
 
 function parseBody(req) {
   if (req.body && typeof req.body === 'object') return req.body;
@@ -43,7 +44,8 @@ module.exports = async function handler(req, res) {
     });
     const token = encodeShareSlip(slip);
     const root = requestBaseUrl();
-    const shareUrl = buildShareUrl(token, root);
+    const slipUrl = buildShareUrl(token, root);
+    const launchUrl = buildBuilderUrl(token, root);
     const cardUrl = buildCardUrl(token, root);
     statusCode = 201;
     return res.status(201).json({
@@ -51,7 +53,9 @@ module.exports = async function handler(req, res) {
       requestId,
       share:{
         token,
-        url:shareUrl,
+        url:slipUrl,
+        launchUrl,
+        slipUrl,
         cardUrl,
         legCount:slip.legs.length,
         createdAt:slip.createdAt,

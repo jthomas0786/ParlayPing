@@ -32,7 +32,7 @@ function result(index, extra = {}) {
   };
 }
 
-test('X share bundle creates premade slip and x-reply card URL without posting', () => {
+test('X share bundle creates signed builder and x-reply card URL without posting', () => {
   const bundle = buildXShareBundle({
     parsedLegs:[parsedLeg(1),parsedLeg(2),parsedLeg(3)],
     analysis:{
@@ -45,11 +45,11 @@ test('X share bundle creates premade slip and x-reply card URL without posting',
     baseUrl:'https://parlayping.net',
   });
   assert.equal(bundle.ready,true);
-  assert.match(bundle.shareUrl,/^https:\/\/parlayping\.net\/slip\/s1\./);
+  assert.match(bundle.shareUrl,/^https:\/\/parlayping\.net\/build\/s\/s1\./);
   assert.match(bundle.cardUrl,/^https:\/\/parlayping\.net\/share\/s1\..+\.png$/);
   assert.match(bundle.xReplyCardUrl,/\.png\?context=x_reply$/);
   assert.match(bundle.replyText,/^🔔 ParlayPing Live/);
-  assert.match(bundle.replyText,/Open betslip → https:\/\/parlayping\.net\/slip\//);
+  assert.match(bundle.replyText,/Open betslip → https:\/\/parlayping\.net\/build\/s\//);
   assert.doesNotMatch(bundle.replyText,/Tail what's left/);
 });
 

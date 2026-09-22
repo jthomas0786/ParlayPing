@@ -9,6 +9,7 @@ const loaders={
   'billing-portal':()=>require('../server/api/account-router'),
   'share-card':()=>require('../server/api/share-card'),
   'share-page':()=>require('../server/api/share-page'),
+  'builder-page':()=>require('../server/api/builder-page'),
   'v1-analyze':()=>require('../server/api/v1/analyze'),
   'v1-build':()=>require('../server/api/v1/build'),
   'v1-share':()=>require('../server/api/v1/share'),

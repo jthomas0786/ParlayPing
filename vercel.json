@@ -18,6 +18,7 @@
     { "source": "/api/x-dry-run", "destination": "/api/index?__pp_route=x-dry-run" },
     { "source": "/api/x-scheduler", "destination": "/api/index?__pp_route=x-scheduler" },
     { "source": "/api/x-worker", "destination": "/api/index?__pp_route=x-worker" },
+    { "source": "/build/s/:token", "destination": "/api/index?__pp_route=builder-page&slip=:token" },
     { "source": "/slip/:token", "destination": "/api/index?__pp_route=share-page&slip=:token" },
     { "source": "/share/:token.png", "destination": "/api/index?__pp_route=share-card&slip=:token" }
   ],

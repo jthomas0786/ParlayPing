@@ -1,4 +1,5 @@
-const { canonicalSlip, mergeAnalysisIntoSlip, encodeShareSlip, buildShareUrl, buildCardUrl } = require('./share-slip');
+const { canonicalSlip, mergeAnalysisIntoSlip, encodeShareSlip, buildCardUrl } = require('./share-slip');
+const { buildBuilderUrl } = require('./builder-url');
 const { buildPublicReply } = require('./analysis-safety');
 
 function hasUnresolved(analysis) {
@@ -23,12 +24,12 @@ function buildXShareBundle({ parsedLegs, analysis, sourceReference, baseUrl, max
   });
   const hydrated = mergeAnalysisIntoSlip(saved, analysis);
   const token = encodeShareSlip(hydrated);
-  const shareUrl = buildShareUrl(token, baseUrl);
+  const shareUrl = buildBuilderUrl(token, baseUrl);
   const cardUrl = buildCardUrl(token, baseUrl);
   const xReplyCardUrl = `${cardUrl}?context=x_reply`;
 
   // Keep the existing, length-safe ParlayPing reply formatter and only swap its
-  // Tail destination for the canonical premade slip. This preserves the required
+  // Tail destination for the canonical premade builder. This preserves the required
   // "🔔 ParlayPing Live" heading and all existing correlation safeguards.
   const baseReply = buildPublicReply({ ...analysis, tailUrl: shareUrl }, { maxLegs: maxReplyLegs });
   const replyText = baseReply
