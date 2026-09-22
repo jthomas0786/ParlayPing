@@ -152,5 +152,7 @@ test('share page emits social preview metadata pointing to the canonical card', 
   assert.match(html,/twitter:card/);
   assert.match(html,/summary_large_image/);
   assert.match(html,/https:\/\/parlayping\.net\/share\/token\.png/);
-  assert.match(html,/Your Shared/);
+  assert.match(html,/Best Book for This Parlay/);
+  assert.match(html,/Your 3-Bet Parlay/);
+  assert.doesNotMatch(html,/Your Shared/);
 });
