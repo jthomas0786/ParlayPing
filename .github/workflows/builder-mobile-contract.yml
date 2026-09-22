@@ -1,0 +1,31 @@
+name: Builder Mobile Contract
+
+on:
+  pull_request:
+    paths:
+      - 'builder-mobile-fix.css'
+      - 'builder-mobile-fix.js'
+      - 'server/api/builder-page.js'
+      - 'scripts/builder-mobile-contract.mjs'
+      - '.github/workflows/builder-mobile-contract.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  mobile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install app dependencies
+        run: npm install --no-audit --no-fund
+      - name: Install Playwright
+        run: npm install --no-save --no-audit --no-fund playwright@1.55.0
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Verify iPhone concept fidelity
+        run: node scripts/builder-mobile-contract.mjs
