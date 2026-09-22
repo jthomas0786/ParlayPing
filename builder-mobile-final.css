@@ -1,53 +1,64 @@
 /* Final visual corrections from rendered concept review. */
 
-/* Canonical approved ringless logo lockup. */
+/* Exact approved logo asset supplied by the user. */
 .brand{position:relative}
-.brand .pp-brand-lockup{display:block;width:205px;max-width:100%;height:auto;max-height:62px;object-fit:contain;object-position:left center}
+.brand .pp-brand-lockup{display:block;width:230px;max-width:100%;height:auto;object-fit:contain;object-position:left center}
 .pp-brand-a11y{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
 
-/* The approved game header starts with the two teams, not a league shield. */
 .game-bar .sport-shield{display:none!important}
-.game-bar .game-time{margin-left:0!important;display:flex!important;align-items:center!important;gap:4px!important;color:#9cb3c2!important;font-size:9.5px!important;line-height:1!important;flex:0 0 auto!important}
+.game-bar .game-time{margin-left:0!important;display:flex!important;align-items:center!important;gap:4px!important;color:#9cb3c2!important;font-size:9.5px!important;line-height:1!important;flex:0 0 auto!important;white-space:nowrap!important}
+.game-bar .game-time[hidden]{display:none!important}
 
-/* Tune + Save icons and labels are actually centered inside the button bounds. */
 .tune-button,.save-button{display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:6px!important;text-align:center!important}
 .tune-button svg,.save-button svg{margin:0!important;flex:0 0 auto!important;vertical-align:0!important}
 
-/* A reliable local sports/stadium background replaces the fragile remote hero image. */
+/* Hero uses the actual approved logo as a large, faint, tilted watermark. */
 .concept-hero{
-  background-image:
-    linear-gradient(180deg,rgba(2,16,28,.08),rgba(1,12,20,.42)),
-    linear-gradient(90deg,rgba(3,18,30,.24),rgba(3,18,30,.03) 48%,rgba(3,18,30,.28)),
-    url('/parlayping-hero-stadium.svg')!important;
-  background-position:center 48%!important;
-  background-size:cover!important;
+  position:relative!important;
+  isolation:isolate!important;
+  overflow:hidden!important;
+  background:
+    radial-gradient(circle at 25% 18%,rgba(25,220,255,.08),transparent 33%),
+    radial-gradient(circle at 80% 82%,rgba(74,245,162,.06),transparent 31%),
+    linear-gradient(180deg,#071d2d 0%,#041421 100%)!important;
 }
-.concept-hero .hero-overlay{background:radial-gradient(circle at 17% 30%,rgba(26,137,185,.09),transparent 28%),linear-gradient(180deg,rgba(2,14,24,.01),rgba(2,14,24,.12))!important}
+.concept-hero::before{
+  content:"";
+  position:absolute;
+  z-index:0;
+  width:112%;
+  height:76%;
+  left:-6%;
+  top:18%;
+  background:url('/parlayping-approved-logo.png') center/contain no-repeat;
+  opacity:.095;
+  transform:rotate(-11deg) scale(1.08);
+  transform-origin:center;
+  pointer-events:none;
+  filter:saturate(.9) brightness(1.15);
+}
+.concept-hero .hero-overlay{position:absolute!important;inset:0!important;z-index:0!important;background:linear-gradient(180deg,rgba(2,14,24,.03),rgba(2,14,24,.18))!important}
+.concept-hero .hero-copy,.concept-hero .hero-tools,.concept-hero .hero-note{position:relative!important;z-index:2!important}
 
 @media(max-width:720px){
-  /* Source-return controls were intentionally removed from the approved builder. */
   .pp-mobile-return-bar,.pp-mobile-origin-controls,.pp-return-control{display:none!important}
   .header-actions{gap:4px!important}
   .profile-button{margin-left:2px!important}
 
-  .brand{width:194px!important;flex-basis:auto!important;min-width:0!important}
-  .brand .pp-brand-lockup{width:188px!important;max-height:62px!important}
+  .brand{width:214px!important;flex-basis:auto!important;min-width:0!important}
+  .brand .pp-brand-lockup{width:206px!important;max-height:62px!important}
 
-  /* Keep the hero visually rich without relying on a third-party image request. */
-  .concept-hero{margin-top:10px!important;background-position:center 48%!important}
-
-  /* No interaction toast floating over the approved Tune layout. */
+  .concept-hero{margin-top:10px!important}
+  .concept-hero::before{width:138%;height:64%;left:-19%;top:23%;opacity:.105;transform:rotate(-12deg) scale(1.12)}
   #toast{display:none!important}
 
-  /* Team logos, time, then matchup — all on the same game-info line. */
-  .game-bar{gap:6px!important}
-  .team-pair{min-width:50px!important}
-  .game-bar .game-time{display:flex!important;font-size:8px!important;gap:0!important;white-space:nowrap!important;color:#b9c8d1!important}
-  .game-bar .game-time span:first-child,.game-bar .game-time i{display:none!important}
-  .game-bar .game-time span:last-child{display:inline!important}
-  .game-bar strong{font-size:9px!important}
+  /* Team logos -> matchup -> date/time, matching the approved concept header row. */
+  .game-bar{gap:6px!important;overflow:hidden!important}
+  .team-pair{min-width:50px!important;flex:0 0 auto!important}
+  .game-bar strong{font-size:9px!important;flex:0 1 auto!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;min-width:0!important}
+  .game-bar .game-time{display:flex!important;font-size:7.8px!important;gap:3px!important;white-space:nowrap!important;color:#b9c8d1!important;flex:0 0 auto!important}
+  .game-bar .game-time[hidden]{display:none!important}
 
-  /* Give names room while keeping probability in its dedicated meter slot. */
   .pick-main{grid-template-columns:minmax(0,1fr) 82px 36px 10px!important;gap:5px!important}
   .probability-meter{grid-template-columns:49px 30px!important;gap:3px!important}
   .meter-track{width:49px!important}
@@ -59,7 +70,6 @@
   .tune-button,.save-button{display:flex!important;align-items:center!important;justify-content:center!important;gap:6px!important;padding-left:10px!important;padding-right:10px!important}
   .tune-button svg,.save-button svg{margin:0!important}
 
-  /* Concept mini avatars should remain circles, never concatenate initials into text. */
   .mini-avatars{display:flex!important;align-items:center!important;min-width:44px!important}
   .mini-avatars .team-token{width:27px!important;height:27px!important;flex:0 0 27px!important;border-radius:50%!important;border:2px solid #071a2a!important;background:#0c3048!important;color:#dff6ff!important;display:grid!important;place-items:center!important;font-size:7px!important;font-weight:850!important;letter-spacing:-.02em!important;overflow:hidden!important}
   .mini-avatars .team-token+.team-token{margin-left:-8px!important}
@@ -68,9 +78,12 @@
 }
 
 @media(max-width:390px){
-  .brand{width:182px!important}
-  .brand .pp-brand-lockup{width:176px!important}
+  .brand{width:202px!important}
+  .brand .pp-brand-lockup{width:194px!important}
   .pick-main{grid-template-columns:minmax(0,1fr) 76px 34px 9px!important}
   .probability-meter{grid-template-columns:45px 28px!important}
   .meter-track{width:45px!important}
+  .game-bar{gap:4px!important}
+  .game-bar strong{font-size:8.5px!important}
+  .game-bar .game-time{font-size:7.2px!important}
 }
