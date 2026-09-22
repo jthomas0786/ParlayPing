@@ -7,6 +7,8 @@ on:
       - 'builder-mobile-fix.js'
       - 'builder-mobile-final.css'
       - 'builder-mobile-final.js'
+      - 'parlayping-approved-lockup.svg'
+      - 'parlayping-hero-stadium.svg'
       - 'server/api/builder-page.js'
       - 'scripts/builder-mobile-contract.mjs'
       - '.github/workflows/builder-mobile-contract.yml'
