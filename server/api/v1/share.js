@@ -14,6 +14,10 @@ function requestBaseUrl() {
   return String(process.env.PUBLIC_BASE_URL || 'https://parlayping.net').replace(/\/+$/, '');
 }
 
+function buildLaunchUrl(token, root = requestBaseUrl()) {
+  return `${String(root).replace(/\/+$/, '')}/build/${encodeURIComponent(token)}`;
+}
+
 module.exports = async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -44,6 +48,7 @@ module.exports = async function handler(req, res) {
     const token = encodeShareSlip(slip);
     const root = requestBaseUrl();
     const shareUrl = buildShareUrl(token, root);
+    const launchUrl = buildLaunchUrl(token, root);
     const cardUrl = buildCardUrl(token, root);
     statusCode = 201;
     return res.status(201).json({
@@ -52,6 +57,8 @@ module.exports = async function handler(req, res) {
       share:{
         token,
         url:shareUrl,
+        slipUrl:shareUrl,
+        launchUrl,
         cardUrl,
         legCount:slip.legs.length,
         createdAt:slip.createdAt,
@@ -71,3 +78,4 @@ module.exports = async function handler(req, res) {
 
 module.exports.parseBody = parseBody;
 module.exports.requestBaseUrl = requestBaseUrl;
+module.exports.buildLaunchUrl = buildLaunchUrl;
