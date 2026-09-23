@@ -1,0 +1,22 @@
+name: MLB Final Staging CI
+
+on:
+  push:
+    branches: [mlb-no-reject-stage]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+      - name: Run full regression suite
+        run: npm test
