@@ -1,0 +1,55 @@
+name: Stage Functional Builder QA
+
+on:
+  push:
+    branches: [restore-builder-odds-probability-stage]
+
+permissions:
+  contents: read
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install app dependencies
+        run: npm install --no-audit --no-fund
+      - name: Verify exact sportsbook betslip composition
+        run: node scripts/sportsbook-link-compose-contract.mjs
+      - name: Verify live sportsbook-specific alt enrichment
+        run: node scripts/sportsbook-enrich-live-smoke.mjs
+      - name: Install Playwright
+        run: npm install --no-save --no-audit --no-fund playwright@1.55.0
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Verify desktop builder
+        run: node scripts/builder-visual-contract.mjs
+      - name: Verify mobile builder
+        run: node scripts/builder-mobile-contract.mjs
+      - name: Verify live share headshot resolution
+        run: node scripts/share-assets-live-smoke.mjs
+      - name: Render share card preview
+        run: node scripts/share-card-preview.mjs
+      - name: Copy approved share branding into QA artifact
+        if: always()
+        run: |
+          mkdir -p artifacts
+          cp parlayping-approved-logo.png artifacts/approved-share-logo.png
+          cp parlayping-approved-wordmark.webp artifacts/approved-share-wordmark.webp
+      - name: Upload staging QA screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stage-functional-qa
+          path: |
+            artifacts/builder-desktop-*.png
+            artifacts/builder-mobile-*.png
+            artifacts/share-card-preview-*.png
+            artifacts/approved-share-logo.png
+            artifacts/approved-share-wordmark.webp
+          if-no-files-found: error
+          retention-days: 3
