@@ -7,6 +7,9 @@ const APPROVED_WORDMARK_DATA_URI = require('./lib/approved-wordmark-data');
 
 const imageCache = new Map();
 let approvedShareWordmark = null;
+let shareFontPromise = null;
+const SHARE_FONT_PATH = '/tmp/parlayping-inter.ttf';
+const SHARE_FONT_URL = 'https://raw.githubusercontent.com/google/fonts/main/ofl/inter/Inter%5Bopsz%2Cwght%5D.ttf';
 
 function tokenFromRequest(req) {
   return String(req.query?.slip || req.query?.token || '').trim();
@@ -16,6 +19,37 @@ function requestBaseUrl(req) {
   const host = req.headers['x-forwarded-host'] || req.headers.host || 'parlayping.net';
   const proto = req.headers['x-forwarded-proto'] || 'https';
   return `${proto}://${host}`;
+}
+
+async function ensureShareFontFile() {
+  if (fs.existsSync(SHARE_FONT_PATH)) return SHARE_FONT_PATH;
+  if (shareFontPromise) return shareFontPromise;
+  shareFontPromise = (async () => {
+    const signal = typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(6000) : undefined;
+    const response = await fetch(SHARE_FONT_URL, {
+      signal,
+      headers: {
+        accept: 'font/ttf,application/octet-stream,*/*',
+        'user-agent': 'ParlayPing/1.0 (+https://parlayping.net)',
+      },
+      cache: 'force-cache',
+    });
+    if (!response.ok) throw new Error(`share font request failed (${response.status})`);
+    const bytes = Buffer.from(await response.arrayBuffer());
+    if (bytes.length < 50_000 || bytes.length > 2_000_000) throw new Error('share font payload is invalid');
+    fs.writeFileSync(SHARE_FONT_PATH, bytes);
+    return SHARE_FONT_PATH;
+  })().catch(error => {
+    shareFontPromise = null;
+    throw error;
+  });
+  return shareFontPromise;
+}
+
+function forceShareFont(svg) {
+  return String(svg || '')
+    .replace(/font-family="[^"]*"/gi, 'font-family="Inter"')
+    .replace(/font-family='[^']*'/gi, "font-family='Inter'");
 }
 
 async function imageDataUri(value) {
@@ -88,7 +122,7 @@ function inlineApprovedLockup(svg) {
       const width = Math.min(302, Math.max(286, Number(rawWidth) * 0.95));
       const height = width * (54 / 220);
       const taglineY = y + height + 12;
-      return `<g class="pp-approved-lockup"><image href="${href}" x="${x}" y="${y}" width="${width}" height="${height}" preserveAspectRatio="xMinYMid meet"/><text x="${x+4}" y="${taglineY}" font-family="Arial,sans-serif" font-size="11.5" font-weight="900" letter-spacing="3.05" fill="#a9bfcd">COMPARE • TAIL • WIN TOGETHER</text></g>`;
+      return `<g class="pp-approved-lockup"><image href="${href}" x="${x}" y="${y}" width="${width}" height="${height}" preserveAspectRatio="xMinYMid meet"/><text x="${x+4}" y="${taglineY}" font-family="Inter" font-size="11.5" font-weight="900" letter-spacing="3.05" fill="#a9bfcd">COMPARE • TAIL • WIN TOGETHER</text></g>`;
     },
   );
 }
@@ -128,23 +162,32 @@ async function prepareShareSvg({ slip, context, pageUrl }) {
   const embedded = await embedVisibleAssets(slip, context);
   const raw = renderShareSvg({ slip:embedded, context, pageUrl });
   const withLockup = inlineApprovedLockup(raw);
-  return rasterizeEmbeddedWebp(withLockup);
+  const rasterSafe = await rasterizeEmbeddedWebp(withLockup);
+  return forceShareFont(rasterSafe);
 }
 
 async function renderPng(svg) {
+  const source = forceShareFont(svg);
   try {
+    const fontFile = await ensureShareFontFile();
+    const { Resvg } = require('@resvg/resvg-js');
+    return Buffer.from(new Resvg(source, {
+      fitTo:{ mode:'width', value:1200 },
+      font:{
+        loadSystemFonts:false,
+        fontFiles:[fontFile],
+        defaultFontFamily:'Inter',
+        sansSerifFamily:'Inter',
+        serifFamily:'Inter',
+      },
+    }).render().asPng());
+  } catch (resvgError) {
+    console.error('ParlayPing deterministic Resvg renderer failed; falling back to sharp', resvgError);
     const sharp = require('sharp');
-    return await sharp(Buffer.from(String(svg), 'utf8'), { density:144 })
+    return await sharp(Buffer.from(source, 'utf8'), { density:144 })
       .resize({ width:1200, height:675, fit:'fill' })
       .png({ compressionLevel:9, adaptiveFiltering:true })
       .toBuffer();
-  } catch (sharpError) {
-    console.error('ParlayPing sharp SVG renderer failed; falling back to Resvg', sharpError);
-    const { Resvg } = require('@resvg/resvg-js');
-    return Buffer.from(new Resvg(svg, {
-      fitTo:{ mode:'width', value:1200 },
-      font:{ loadSystemFonts:true },
-    }).render().asPng());
   }
 }
 
@@ -187,3 +230,5 @@ module.exports.inlineApprovedLockup = inlineApprovedLockup;
 module.exports.prepareShareSvg = prepareShareSvg;
 module.exports.rasterizeEmbeddedWebp = rasterizeEmbeddedWebp;
 module.exports.renderPng = renderPng;
+module.exports.ensureShareFontFile = ensureShareFontFile;
+module.exports.forceShareFont = forceShareFont;
