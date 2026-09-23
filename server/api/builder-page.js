@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { decodeShareSlip, buildCardUrl } = require('./lib/share-slip');
 const { hydrateSharedSlip } = require('./lib/share-hydrate');
+const { enrichSportsbookMarkets } = require('./lib/sportsbook-enrich');
 
 const SHARE_CARD_VERSION = '20260923d';
 
@@ -70,7 +71,8 @@ module.exports = async function handler(req, res) {
     if (!token) throw new Error('Missing ParlayPing builder token.');
     const saved = decodeShareSlip(token);
     const hydrated = await hydrateSharedSlip(saved, { baseUrl: publicBaseUrl() });
-    const html = renderBuilderHtml({ slip: hydrated.slip, token, liveDataAvailable: hydrated.liveDataAvailable });
+    const sportsbookSlip = await enrichSportsbookMarkets(hydrated.slip);
+    const html = renderBuilderHtml({ slip: sportsbookSlip, token, liveDataAvailable: hydrated.liveDataAvailable });
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     if (req.method === 'HEAD') return res.status(200).send('');
