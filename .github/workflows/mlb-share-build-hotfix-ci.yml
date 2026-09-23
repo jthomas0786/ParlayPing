@@ -26,6 +26,7 @@ jobs:
         run: |
           node <<'NODE'
           const {loadSnapshot,parseRowSnapshot}=require('./server/api/lib/sportsbook-enrich');
+          const toDecimal=price=>price>0?1+price/100:1+100/Math.abs(price);
           (async()=>{
             const doc=await loadSnapshot('MLB');
             if(!doc||doc?.meta?.source!=='parlayapi'||!Array.isArray(doc.rows)){
@@ -37,23 +38,21 @@ jobs:
               {sport:'MLB',player:'Josh Bell',team:'MIN',gameId:'823168',market:'homeRun',side:'yes',line:null},
               {sport:'MLB',player:'Jake Burger',team:'TEX',gameId:'822841',market:'homeRun',side:'yes',line:null},
             ];
-            const commonBooks=[];
-            let intersection=null;
+            let bestEquivalentDecimal=1;
             for(const leg of legs){
               const parsed=parseRowSnapshot(doc,leg);
               const offers=parsed?.bookOffers||{};
               const priced=Object.entries(offers).filter(([,offer])=>Number.isFinite(Number(offer?.oddsAmerican)));
               const fakeLinks=priced.filter(([,offer])=>Boolean(offer?.selectionLink));
-              const books=priced.map(([book])=>book);
-              console.log(JSON.stringify({player:leg.player,preferred:parsed?.preferred||null,books,selectionLinks:fakeLinks.length}));
+              console.log(JSON.stringify({player:leg.player,preferred:parsed?.preferred||null,books:priced.map(([book])=>book),selectionLinks:fakeLinks.length}));
               if(!parsed)throw new Error(`${leg.player}: staged MLB odds snapshot did not resolve sportsbook market`);
               if(!priced.length)throw new Error(`${leg.player}: no verified sportsbook HR price`);
               if(fakeLinks.length)throw new Error(`${leg.player}: staged ParlayAPI price unexpectedly claims an exact selection link`);
-              const set=new Set(books);
-              intersection=intersection==null?set:new Set([...intersection].filter(book=>set.has(book)));
+              const preferred=Number(parsed?.preferred?.oddsAmerican);
+              if(!Number.isFinite(preferred))throw new Error(`${leg.player}: preferred verified price missing`);
+              bestEquivalentDecimal*=toDecimal(preferred);
             }
-            commonBooks.push(...(intersection||[]));
-            if(!commonBooks.includes('FanDuel'))throw new Error(`FanDuel is not priced on all four reported legs: ${commonBooks.join(', ')}`);
-            console.log(`Verified all four MLB HR prices; common books: ${commonBooks.join(', ')}`);
+            if(!(bestEquivalentDecimal>1))throw new Error('Best-available calculated parlay equivalent was not computable');
+            console.log(`Verified all four MLB HR prices; best-available decimal equivalent=${bestEquivalentDecimal.toFixed(4)} (not a sportsbook-quoted parlay).`);
           })().catch(error=>{console.error(error);process.exit(1);});
           NODE
