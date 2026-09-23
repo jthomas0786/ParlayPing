@@ -8,12 +8,14 @@ const { rasterizeEmbeddedWebp } = require('../server/api/share-card');
 
 const slip = {
   source:'X @ParlayPing',
+  combinedOddsAmerican:+645,
+  combinedOddsVerified:true,
   legs:[
-    { sport:'NCAAF', player:'Skinner', team:'LOU', market:'Receiving Yards', side:'over', line:39.5, oddsAmerican:-115, pregameProbability:.574, status:'MISS' },
-    { sport:'NCAAF', player:'Smith', team:'ORE', market:'Receiving Yards', side:'over', line:59.5, oddsAmerican:+105, pregameProbability:.512, status:'LIVE', liveProbability:.632, progressText:'44 / 60 yards' },
-    { sport:'NCAAF', player:'Harris', team:'MIA', market:'Receiving Yards', side:'over', line:29.5, oddsAmerican:-110, pregameProbability:.601, status:'HIT' },
-    { sport:'NCAAF', player:'Brooks', team:'TEX', market:'Rushing Yards', side:'over', line:74.5, oddsAmerican:+120, pregameProbability:.468, status:'PENDING' },
-    { sport:'NCAAF', player:'Carter', team:'OSU', market:'Anytime Touchdown', oddsAmerican:+165, pregameProbability:.377, status:'PENDING' },
+    { sport:'NFL', player:'Josh Allen', playerId:'3918298', playerImageUrl:'https://a.espncdn.com/i/headshots/nfl/players/full/3918298.png', team:'BUF', market:'Passing Yards', side:'over', line:249.5, oddsAmerican:-110, pregameProbability:.61, status:'LIVE', liveProbability:.72, progressText:'188 / 250 yards' },
+    { sport:'NFL', player:'Derrick Henry', playerId:'3043078', playerImageUrl:'https://a.espncdn.com/i/headshots/nfl/players/full/3043078.png', team:'BAL', market:'Rushing Yards', side:'over', line:84.5, oddsAmerican:-115, pregameProbability:.64, status:'LIVE', liveProbability:.69, progressText:'62 / 85 yards' },
+    { sport:'NFL', player:'James Cook', playerId:'4379399', playerImageUrl:'https://a.espncdn.com/i/headshots/nfl/players/full/4379399.png', team:'BUF', market:'Rushing Yards', side:'over', line:69.5, oddsAmerican:+105, pregameProbability:.57, status:'PENDING' },
+    { sport:'NFL', player:'Saquon Barkley', playerId:'3929630', playerImageUrl:'https://a.espncdn.com/i/headshots/nfl/players/full/3929630.png', team:'PHI', market:'Rushing Yards', side:'over', line:79.5, oddsAmerican:+120, pregameProbability:.54, status:'PENDING' },
+    { sport:'NFL', player:'Travis Kelce', playerId:'15847', playerImageUrl:'https://a.espncdn.com/i/headshots/nfl/players/full/15847.png', team:'KC', market:'Receiving Yards', side:'over', line:54.5, oddsAmerican:+135, pregameProbability:.49, status:'PENDING' },
   ],
 };
 
@@ -24,4 +26,9 @@ for (const width of [1200,506]) {
   const png = new Resvg(svg, { fitTo:{ mode:'width', value:width }, font:{ loadSystemFonts:true, defaultFontFamily:'Arial' } }).render().asPng();
   fs.writeFileSync(`artifacts/share-card-preview-${width}.png`, png);
 }
-console.log('Rendered ParlayPing share card previews with approved logos.');
+if(!svg.includes('parlayping-approved-lockup.svg') && !svg.includes('image/svg+xml')){
+  throw new Error('Approved ParlayPing lockup is not embedded in the share card.');
+}
+const avatarImages=(svg.match(/clip-path="url\(#avatar-/g)||[]).length;
+if(avatarImages!==5)throw new Error(`Expected 5 player headshots in share card SVG, got ${avatarImages}.`);
+console.log('Rendered ParlayPing share card previews with approved lockup and player headshots.');
