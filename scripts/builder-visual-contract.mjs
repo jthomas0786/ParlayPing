@@ -19,7 +19,7 @@ const slip={
 };
 const fixture=renderBuilderHtml({slip,token:'s1.visual.contract',liveDataAvailable:true});
 
-const types={'.css':'text/css','.js':'text/javascript','.svg':'image/svg+xml','.html':'text/html'};
+const types={'.css':'text/css','.js':'text/javascript','.svg':'image/svg+xml','.webp':'image/webp','.html':'text/html'};
 const server=http.createServer((req,res)=>{
   const url=new URL(req.url,'http://127.0.0.1:4173');
   if(url.pathname==='/visual-fixture'){res.writeHead(200,{'content-type':'text/html; charset=utf-8'});res.end(fixture);return;}
@@ -33,10 +33,12 @@ const browser=await chromium.launch({headless:true});
 const page=await browser.newPage({viewport:{width:1024,height:1900},deviceScaleFactor:1});
 await page.goto('http://127.0.0.1:4173/visual-fixture',{waitUntil:'domcontentloaded'});
 await page.waitForSelector('.pick-card');
-await page.waitForTimeout(350);
+await page.waitForFunction(()=>document.documentElement.dataset.ppApprovedAssets==='ready',{timeout:5000});
+await page.waitForTimeout(180);
 
 const before=await page.evaluate(()=>{
   const rect=s=>{const r=document.querySelector(s)?.getBoundingClientRect();return r?{x:r.x,y:r.y,width:r.width,height:r.height}:null};
+  const hero=document.querySelector('.concept-hero');
   return {
     shell:rect('main.app-shell'),header:rect('.app-header'),hero:rect('.concept-hero'),panel:rect('.parlay-panel'),
     card:rect('.pick-card'),game:rect('.pick-card .game-bar'),photo:rect('.pick-card .player-photo'),meter:rect('.pick-card .meter-track'),
@@ -45,7 +47,8 @@ const before=await page.evaluate(()=>{
     lower:[...document.querySelectorAll('.secondary-panel')].map(x=>x.getBoundingClientRect()).map(r=>({x:r.x,y:r.y,width:r.width,height:r.height})),
     cards:document.querySelectorAll('.pick-card').length,
     brand:document.querySelector('.pp-brand-name')?.textContent,
-    tagline:document.querySelector('.pp-brand-tag')?.textContent,
+    brandSrc:document.querySelector('.pp-brand-lockup')?.getAttribute('src')||'',
+    heroWatermark:getComputedStyle(hero,'::before').backgroundImage,
     rankNumbers:[...document.querySelectorAll('.pick-card')].some(c=>/^\s*[123]\s*$/.test(c.firstElementChild?.textContent||'')),
   };
 });
@@ -65,7 +68,8 @@ if(before.books.length!==6)throw new Error(`expected 6 sportsbook tiles, got ${b
 if(before.shares.length!==4)throw new Error(`expected 4 share actions, got ${before.shares.length}`);
 if(before.lower.length!==2)throw new Error(`expected 2 lower panels, got ${before.lower.length}`);
 if(before.brand!=='ParlayPing')throw new Error(`brand lockup mismatch: ${before.brand}`);
-if(before.tagline!=='BET SMARTER TOGETHER')throw new Error(`tagline mismatch: ${before.tagline}`);
+if(!/parlayping-approved-wordmark\.webp$/i.test(before.brandSrc))throw new Error(`approved header wordmark missing: ${before.brandSrc}`);
+if(!/parlayping-approved-hero\.webp/i.test(before.heroWatermark))throw new Error(`approved hero mark missing: ${before.heroWatermark}`);
 if(before.rankNumbers)throw new Error('rank numbers were reintroduced beside players');
 if(before.alt.height>1)throw new Error(`Alt Lines must be collapsed initially, got ${before.alt.height}px`);
 const bookY=before.books[0].y;if(before.books.some(b=>Math.abs(b.y-bookY)>1))throw new Error('sportsbook tiles are not one horizontal row');
