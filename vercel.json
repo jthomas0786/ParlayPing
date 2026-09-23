@@ -1,6 +1,10 @@
 {
   "cleanUrls": true,
   "trailingSlash": false,
+  "env": {
+    "X_AI_REPLY_APPROVED": "true",
+    "X_AUTOREPLY_ENABLED": "true"
+  },
   "rewrites": [
     { "source": "/api/analyze", "destination": "/api/index?__pp_route=analyze" },
     { "source": "/api/parse", "destination": "/api/index?__pp_route=parse" },
