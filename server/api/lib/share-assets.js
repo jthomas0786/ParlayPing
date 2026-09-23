@@ -1,5 +1,6 @@
 const CACHE_MS = 60_000;
 const summaryCache = new Map();
+const scoreboardCache = new Map();
 
 const SPORT_PATHS = {
   NFL:'football/nfl',
@@ -67,6 +68,26 @@ async function espnJson(url) {
   return response.json();
 }
 
+function dateKey(value) {
+  const date = new Date(value || Date.now());
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toISOString().slice(0,10).replace(/-/g,'');
+}
+
+async function loadScoreboard(sport, startTimeUTC) {
+  const upper = String(sport || '').toUpperCase();
+  const path = SPORT_PATHS[upper];
+  const date = dateKey(startTimeUTC);
+  if (!path || !date) return null;
+  const key = `${upper}:${date}`;
+  const cached = scoreboardCache.get(key);
+  if (cached && Date.now() - cached.ts < CACHE_MS) return cached.value;
+  const value = await espnJson(`https://site.api.espn.com/apis/site/v2/sports/${path}/scoreboard?dates=${date}&limit=100`);
+  if (scoreboardCache.size > 48) scoreboardCache.clear();
+  scoreboardCache.set(key, { ts:Date.now(), value });
+  return value;
+}
+
 async function loadSummary(sport, gameId) {
   const upper = String(sport || '').toUpperCase();
   const path = SPORT_PATHS[upper];
@@ -78,6 +99,71 @@ async function loadSummary(sport, gameId) {
   if (summaryCache.size > 96) summaryCache.clear();
   summaryCache.set(key, { ts:Date.now(), value });
   return value;
+}
+
+function eventTeams(event) {
+  const competition = event?.competitions?.[0];
+  return (competition?.competitors || []).map(competitor => {
+    const team = competitor?.team || {};
+    return [
+      team.abbreviation,
+      team.shortDisplayName,
+      team.displayName,
+      team.name,
+      team.location,
+    ].filter(Boolean).map(String);
+  });
+}
+
+function matchupTokens(value) {
+  return String(value || '')
+    .split(/\s+(?:@|vs\.?|v\.?|at)\s+/i)
+    .map(token => token.trim())
+    .filter(Boolean)
+    .slice(0,2);
+}
+
+function eventStart(event) {
+  const raw = event?.date || event?.competitions?.[0]?.date || null;
+  const ms = Date.parse(raw || '');
+  return Number.isFinite(ms) ? ms : null;
+}
+
+function eventMatchesLeg(event, leg) {
+  const teams = eventTeams(event);
+  const flat = teams.flat();
+  const tokens = matchupTokens(leg?.matchup);
+  if (tokens.length === 2) {
+    const both = tokens.every(token => flat.some(team => teamMatches(token, team)));
+    if (!both) return false;
+  } else if (leg?.team && !flat.some(team => teamMatches(leg.team, team))) {
+    return false;
+  }
+
+  const legStart = Date.parse(leg?.startTimeUTC || '');
+  const start = eventStart(event);
+  if (Number.isFinite(legStart) && Number.isFinite(start) && Math.abs(start - legStart) > 14 * 60 * 60 * 1000) return false;
+  return true;
+}
+
+async function resolveEspnGameId(leg) {
+  const supplied = String(leg?.gameId || '').trim();
+  if (/^\d{6,}$/.test(supplied)) return supplied;
+  const scoreboard = await loadScoreboard(leg?.sport, leg?.startTimeUTC);
+  const events = Array.isArray(scoreboard?.events) ? scoreboard.events : [];
+  const candidates = events.filter(event => eventMatchesLeg(event, leg));
+  if (!candidates.length) return null;
+  if (candidates.length === 1) return String(candidates[0].id || '');
+
+  const legStart = Date.parse(leg?.startTimeUTC || '');
+  candidates.sort((a,b) => {
+    const aStart = eventStart(a);
+    const bStart = eventStart(b);
+    const da = Number.isFinite(legStart) && Number.isFinite(aStart) ? Math.abs(aStart-legStart) : Number.MAX_SAFE_INTEGER;
+    const db = Number.isFinite(legStart) && Number.isFinite(bStart) ? Math.abs(bStart-legStart) : Number.MAX_SAFE_INTEGER;
+    return da-db;
+  });
+  return String(candidates[0]?.id || '') || null;
 }
 
 function parseSummaryPlayers(summary, sport) {
@@ -130,42 +216,41 @@ function findPlayer(parsed, leg) {
   return teamMatch || exact[0];
 }
 
+async function enrichOneLeg(leg) {
+  const upper = String(leg?.sport || '').toUpperCase();
+  if (!SPORT_PATHS[upper]) return leg;
+  try {
+    const espnGameId = await resolveEspnGameId(leg);
+    if (!espnGameId) return leg;
+    const summary = await loadSummary(upper, espnGameId);
+    const parsed = parseSummaryPlayers(summary, upper);
+    const player = findPlayer(parsed, leg);
+    if (player) {
+      return {
+        ...leg,
+        espnGameId,
+        playerId:player.id || leg.playerId,
+        playerImageUrl:player.headshot || leg.playerImageUrl,
+        team:player.team || leg.team,
+        teamLogoUrl:player.teamLogo || leg.teamLogoUrl,
+      };
+    }
+    const team = parsed.headerTeams.get(normTeam(leg.team));
+    return {
+      ...leg,
+      espnGameId,
+      team:team?.abbr || leg.team,
+      teamLogoUrl:team?.logo || leg.teamLogoUrl,
+    };
+  } catch (_) {
+    return leg;
+  }
+}
+
 async function enrichShareAssets(slip) {
   const legs = Array.isArray(slip?.legs) ? slip.legs.map(leg => ({ ...leg })) : [];
-  const groups = new Map();
-  legs.forEach((leg, index) => {
-    const sport = String(leg.sport || '').toUpperCase();
-    const gameId = String(leg.gameId || '').trim();
-    if (!SPORT_PATHS[sport] || !gameId) return;
-    const key = `${sport}:${gameId}`;
-    if (!groups.has(key)) groups.set(key, { sport, gameId, indexes:[] });
-    groups.get(key).indexes.push(index);
-  });
-
-  await Promise.all([...groups.values()].map(async group => {
-    try {
-      const summary = await loadSummary(group.sport, group.gameId);
-      const parsed = parseSummaryPlayers(summary, group.sport);
-      for (const index of group.indexes) {
-        const leg = legs[index];
-        const player = findPlayer(parsed, leg);
-        if (player) {
-          if (player.id) leg.playerId = player.id;
-          if (player.headshot) leg.playerImageUrl = player.headshot;
-          if (player.team) leg.team = player.team;
-          if (player.teamLogo) leg.teamLogoUrl = player.teamLogo;
-          continue;
-        }
-        const team = parsed.headerTeams.get(normTeam(leg.team));
-        if (team?.logo) leg.teamLogoUrl = team.logo;
-        if (team?.abbr) leg.team = team.abbr;
-      }
-    } catch (_) {
-      // Asset enrichment is best-effort. The signed slip remains usable without it.
-    }
-  }));
-
-  return { ...slip, legs };
+  const enriched = await Promise.all(legs.map(enrichOneLeg));
+  return { ...slip, legs:enriched };
 }
 
 module.exports = {
@@ -177,4 +262,7 @@ module.exports = {
   headshotUrl,
   parseSummaryPlayers,
   enrichShareAssets,
+  resolveEspnGameId,
+  eventMatchesLeg,
+  matchupTokens,
 };
