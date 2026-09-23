@@ -20,6 +20,8 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Verify exact sportsbook betslip composition
         run: node scripts/sportsbook-link-compose-contract.mjs
+      - name: Verify live sportsbook-specific alt enrichment
+        run: node scripts/sportsbook-enrich-live-smoke.mjs
       - name: Install Playwright
         run: npm install --no-save --no-audit --no-fund playwright@1.55.0
       - name: Install Chromium
