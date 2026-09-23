@@ -1,6 +1,6 @@
 const test=require('node:test');
 const assert=require('node:assert/strict');
-const {analyzeBasketballSlip}=require('../lib/basketball-adapter');
+const {analyzeBasketballSlip,exactBookOffers}=require('../lib/basketball-adapter');
 
 const snapshot={
   meta:{sport:'WNBA',fetchedAt:'2026-09-20T15:55:00.000Z'},
@@ -71,6 +71,19 @@ test('WNBA milestone and combo props preserve every matching sportsbook offer fo
     assert.equal(result.results.find(x=>x.player==='Angel Reese').bookOffers.bet365.oddsAmerican,-120);
     assert.equal(result.results.find(x=>x.player==='Breanna Stewart').bookOffers.DraftKings.oddsAmerican,-122);
   }finally{global.fetch=original;}
+});
+
+test('basketball offers preserve the exact side-specific sportsbook link and selection id',()=>{
+  const row={eventId:'evt-side',sport:'WNBA',commenceTime:'2026-09-24T00:00:00.000Z',player:'Test Player',market:'points',line:10.5,book:'DraftKings',overPrice:-105,underPrice:-115,overLink:'https://sportsbook.draftkings.com/over',underLink:'https://sportsbook.draftkings.com/under',overSid:'over-123',underSid:'under-456',snapshotTime:'2026-09-23T23:00:00.000Z'};
+  const odds={rows:[row]};
+  const over=exactBookOffers(odds,{sport:'WNBA',player:'Test Player',market:'points',side:'over',line:10.5},row).bookOffers.DraftKings;
+  const under=exactBookOffers(odds,{sport:'WNBA',player:'Test Player',market:'points',side:'under',line:10.5},row).bookOffers.DraftKings;
+  assert.equal(over.selectionLink,'https://sportsbook.draftkings.com/over');
+  assert.equal(over.selectionId,'over-123');
+  assert.equal(over.oddsAmerican,-105);
+  assert.equal(under.selectionLink,'https://sportsbook.draftkings.com/under');
+  assert.equal(under.selectionId,'under-456');
+  assert.equal(under.oddsAmerican,-115);
 });
 
 test('basketball adapter returns safe unresolved instead of throwing when ESPN blocks live grading',async()=>{
