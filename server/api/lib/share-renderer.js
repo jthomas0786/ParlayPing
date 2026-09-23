@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { finiteOrNull, probabilityOrNull } = require('./share-slip');
+const { isTrustedImageUrl } = require('./headshot-ensure');
 
 const WIDTH = 1200;
 const HEIGHT = 675;
@@ -160,15 +161,18 @@ function safeAssetUrl(value) {
     const host = url.hostname.toLowerCase();
     const allowed = [
       'parlayping.net','www.parlayping.net','thesportsoutpost.com','www.thesportsoutpost.com',
-      'a.espncdn.com','cdn.espn.com','static.www.nfl.com','static.nfl.com','cdn.nba.com',
-      'img.mlbstatic.com','images.ctfassets.net','assets.nhle.com','cms.nhl.bamgrid.com',
-      'raw.githubusercontent.com','avatars.githubusercontent.com'
+      'espncdn.com','espn.com','nfl.com','nba.com','wnba.com','mlbstatic.com','mlb.com','nhle.com','nhl.com',
+      'images.ctfassets.net','cms.nhl.bamgrid.com','raw.githubusercontent.com','avatars.githubusercontent.com'
     ];
     if (!allowed.some(domain => host === domain || host.endsWith(`.${domain}`))) return null;
     return url.toString();
   } catch {
     return null;
   }
+}
+
+function safePlayerImageUrl(value) {
+  return isTrustedImageUrl(value) ? safeAssetUrl(value) : null;
 }
 
 function initials(name) {
@@ -219,7 +223,7 @@ function wordmarkSvg(x, y, fontSize = 34) {
 }
 
 function avatarSvg(leg, x, y, size, clipId) {
-  const href = safeAssetUrl(leg.playerImageUrl);
+  const href = safePlayerImageUrl(leg.playerImageUrl);
   const r = size/2;
   if (href) {
     return `<defs><clipPath id="${clipId}"><circle cx="${x+r}" cy="${y+r}" r="${r}"/></clipPath></defs><circle cx="${x+r}" cy="${y+r}" r="${r}" fill="#102b3f" stroke="#255b73" stroke-width="2"/><image href="${esc(href)}" x="${x}" y="${y}" width="${size}" height="${size}" preserveAspectRatio="xMidYMid slice" clip-path="url(#${clipId})"/>`;
@@ -320,4 +324,4 @@ function renderShareSvg(input = {}) {
   return `<?xml version="1.0" encoding="UTF-8"?><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${WIDTH}" height="${HEIGHT}" viewBox="0 0 ${WIDTH} ${HEIGHT}"><defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#02111d"/><stop offset=".54" stop-color="#061c2c"/><stop offset="1" stop-color="#08263f"/></linearGradient><linearGradient id="cta" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#12dce3"/><stop offset="1" stop-color="#2af09b"/></linearGradient><filter id="glow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="7" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><rect width="1200" height="675" rx="32" fill="url(#bg)"/>${approvedHeroWatermarkSvg(825,-95,430,.08)}<path d="M820 -30 C970 70 1040 190 1190 240" fill="none" stroke="#0d5361" stroke-width="95" opacity=".12"/><rect x="30" y="24" width="1140" height="627" rx="28" fill="none" stroke="#16dfe0" stroke-width="2" opacity=".7"/>${approvedWordmarkSvg(55,34,315,72)}<text x="600" y="82" text-anchor="middle" font-family="Arial,sans-serif" font-size="38" font-weight="900" fill="#ffffff">${esc(title)}</text>${combinedOdds ? `<text x="1135" y="82" text-anchor="end" font-family="Arial,sans-serif" font-size="45" font-weight="900" fill="#20e8c1">${esc(combinedOdds)}</text>` : `<text x="1135" y="80" text-anchor="end" font-family="Arial,sans-serif" font-size="15" font-weight="900" letter-spacing="1.2" fill="#87a7ba">PARLAYPING SHARE CARD</text>`}${summaryBar}${rows}${hiddenStrip}<rect x="55" y="${footerY}" width="1090" height="50" rx="16" fill="url(#cta)" filter="url(#glow)"/><text x="600" y="${footerY+32}" text-anchor="middle" font-family="Arial,sans-serif" font-size="21" font-weight="900" letter-spacing=".5" fill="#041522">OPEN THIS BETSLIP ON PARLAYPING.NET</text><text x="1122" y="${footerY+32}" text-anchor="end" font-family="Arial,sans-serif" font-size="24" font-weight="900" fill="#041522">›</text><text x="55" y="658" font-family="Arial,sans-serif" font-size="12" font-weight="700" fill="#66859a">${esc(truncate(pageUrl,90))}</text><text x="1145" y="658" text-anchor="end" font-family="Arial,sans-serif" font-size="12" font-weight="800" fill="#66859a">ParlayPing • Live status when available</text></svg>`;
 }
 
-module.exports = { WIDTH, HEIGHT, pct, formatOdds, resolveLegDisplay, resolveSlipState, statusCounts, summaryText, selectVisibleLegs, renderShareSvg, safeAssetUrl, canonicalMarkSvg, wordmarkSvg, approvedWordmarkSvg, approvedHeroWatermarkSvg };
+module.exports = { WIDTH, HEIGHT, pct, formatOdds, resolveLegDisplay, resolveSlipState, statusCounts, summaryText, selectVisibleLegs, renderShareSvg, safeAssetUrl, safePlayerImageUrl, canonicalMarkSvg, wordmarkSvg, approvedWordmarkSvg, approvedHeroWatermarkSvg };
