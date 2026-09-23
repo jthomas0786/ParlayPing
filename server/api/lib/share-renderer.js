@@ -1,7 +1,10 @@
+const fs = require('fs');
+const path = require('path');
 const { finiteOrNull, probabilityOrNull } = require('./share-slip');
 
 const WIDTH = 1200;
 const HEIGHT = 675;
+const assetCache = new Map();
 
 function esc(value) {
   return String(value ?? '')
@@ -10,6 +13,20 @@ function esc(value) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&apos;');
+}
+
+function localAssetDataUri(fileName, mime) {
+  const key = `${fileName}:${mime}`;
+  if (assetCache.has(key)) return assetCache.get(key);
+  try {
+    const bytes = fs.readFileSync(path.join(process.cwd(), fileName));
+    const uri = `data:${mime};base64,${bytes.toString('base64')}`;
+    assetCache.set(key, uri);
+    return uri;
+  } catch {
+    assetCache.set(key, null);
+    return null;
+  }
 }
 
 function pct(value) {
@@ -135,8 +152,10 @@ function selectVisibleLegs(legs = [], context = 'share', limit = 6) {
 
 function safeAssetUrl(value) {
   if (!value) return null;
+  const raw = String(value);
+  if (/^data:image\/(?:png|jpe?g|webp);base64,/i.test(raw)) return raw;
   try {
-    const url = new URL(String(value));
+    const url = new URL(raw);
     if (url.protocol !== 'https:') return null;
     const host = url.hostname.toLowerCase();
     const allowed = [
@@ -173,67 +192,89 @@ function truncate(value, max) {
 }
 
 function statusColor(status) {
-  const map = { LIVE:'#22f0d2', HIT:'#49f59f', MISS:'#ff667d', PENDING:'#8fa9bf', PUSH:'#f2c86b', VOID:'#b5a7ff', UNRESOLVED:'#f2c86b' };
-  return map[normalizeStatus(status)] || '#8fa9bf';
+  const map = { LIVE:'#24efd5', HIT:'#49f59f', MISS:'#ff5571', PENDING:'#96adc0', PUSH:'#f2c86b', VOID:'#b5a7ff', UNRESOLVED:'#f2c86b' };
+  return map[normalizeStatus(status)] || '#96adc0';
+}
+
+function approvedWordmarkSvg(x, y, width = 318, height = 82) {
+  const href = localAssetDataUri('parlayping-approved-wordmark.webp', 'image/webp');
+  if (!href) return `<text x="${x}" y="${y+48}" font-family="Arial,sans-serif" font-size="42" font-weight="900" fill="#f7fbff">Parlay<tspan fill="#20e8c1">Ping</tspan></text>`;
+  return `<image href="${href}" x="${x}" y="${y}" width="${width}" height="${height}" preserveAspectRatio="xMinYMid meet"/>`;
+}
+
+function approvedHeroWatermarkSvg(x, y, size = 360, opacity = 0.10) {
+  const href = localAssetDataUri('parlayping-approved-hero.webp', 'image/webp');
+  if (!href) return '';
+  return `<image href="${href}" x="${x}" y="${y}" width="${size}" height="${size}" opacity="${opacity}" preserveAspectRatio="xMidYMid meet"/>`;
 }
 
 function canonicalMarkSvg(x, y, scale = 1) {
-  return `<g transform="translate(${x} ${y}) scale(${scale})">
-    <defs><linearGradient id="ppMarkGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4af5a2"/><stop offset="1" stop-color="#19dcff"/></linearGradient></defs>
-    <path d="M10 6 H42 C53 6 61 14 61 25 C61 35 55 43 46 46 H34 V57 H10 Z" fill="#071725" stroke="url(#ppMarkGrad)" stroke-width="3.2"/>
-    <path d="M16 15 H37 L34 48 L30 45 L26 49 L22 45 L18 49 L14 45 Z" fill="#f7fbff" stroke="#dff8ff" stroke-width="1.5"/>
-    <circle cx="21.5" cy="23" r="4" fill="#20dfa7"/><path d="M19.4 23.1 l1.5 1.6 3.2 -3.5" fill="none" stroke="#071725" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-    <circle cx="21.5" cy="32" r="4" fill="#20dfa7"/><path d="M19.4 32.1 l1.5 1.6 3.2 -3.5" fill="none" stroke="#071725" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-    <circle cx="21.5" cy="41" r="4" fill="#20dfa7"/><path d="M19.4 41.1 l1.5 1.6 3.2 -3.5" fill="none" stroke="#071725" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M29 22 H35 M29 31 H34 M29 40 H33" stroke="#91a8b8" stroke-width="2.4" stroke-linecap="round"/>
-    <circle cx="43" cy="28" r="5.4" fill="url(#ppMarkGrad)"/>
-    <path d="M47 19 C53 21 55 24 55 28 C55 33 52 36 47 38" fill="none" stroke="url(#ppMarkGrad)" stroke-width="3.2" stroke-linecap="round"/>
-    <path d="M49 13 C58 16 62 21 62 28 C62 36 58 41 49 44" fill="none" stroke="#f7fbff" stroke-width="3.2" stroke-linecap="round"/>
-  </g>`;
+  const size = 70 * scale;
+  const href = localAssetDataUri('parlayping-approved-hero.webp', 'image/webp');
+  return href ? `<image href="${href}" x="${x}" y="${y}" width="${size}" height="${size}" preserveAspectRatio="xMidYMid meet"/>` : '';
 }
 
 function wordmarkSvg(x, y, fontSize = 34) {
-  return `<text x="${x}" y="${y}" font-family="Inter,Arial,sans-serif" font-size="${fontSize}" font-weight="800" letter-spacing="-1.2"><tspan fill="#f7fbff">Parlay</tspan><tspan fill="#20e8c1">Ping</tspan></text>`;
+  return approvedWordmarkSvg(x, y - fontSize, fontSize * 7.6, fontSize * 2.05);
 }
 
 function avatarSvg(leg, x, y, size, clipId) {
-  const url = safeAssetUrl(leg.playerImageUrl);
+  const href = safeAssetUrl(leg.playerImageUrl);
   const r = size/2;
-  if (url) {
-    return `<defs><clipPath id="${clipId}"><circle cx="${x+r}" cy="${y+r}" r="${r}"/></clipPath></defs><circle cx="${x+r}" cy="${y+r}" r="${r}" fill="#102b3f" stroke="#1f5268" stroke-width="2"/><image href="${esc(url)}" x="${x}" y="${y}" width="${size}" height="${size}" preserveAspectRatio="xMidYMid slice" clip-path="url(#${clipId})"/>`;
+  if (href) {
+    return `<defs><clipPath id="${clipId}"><circle cx="${x+r}" cy="${y+r}" r="${r}"/></clipPath></defs><circle cx="${x+r}" cy="${y+r}" r="${r}" fill="#102b3f" stroke="#255b73" stroke-width="2"/><image href="${esc(href)}" x="${x}" y="${y}" width="${size}" height="${size}" preserveAspectRatio="xMidYMid slice" clip-path="url(#${clipId})"/>`;
   }
-  return `<circle cx="${x+r}" cy="${y+r}" r="${r}" fill="#102b3f" stroke="#1f5268" stroke-width="2"/><text x="${x+r}" y="${y+r+7}" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="19" font-weight="800" fill="#dff7ff">${esc(initials(leg.player))}</text>`;
+  return `<circle cx="${x+r}" cy="${y+r}" r="${r}" fill="#0f3046" stroke="#2a6279" stroke-width="2"/><text x="${x+r}" y="${y+r+9}" text-anchor="middle" font-family="Arial,sans-serif" font-size="${Math.round(size*.34)}" font-weight="900" fill="#e8f9ff">${esc(initials(leg.player))}</text>`;
 }
 
 function teamSvg(leg, x, y, size) {
-  const url = safeAssetUrl(leg.teamLogoUrl);
-  if (url) return `<image href="${esc(url)}" x="${x}" y="${y}" width="${size}" height="${size}" preserveAspectRatio="xMidYMid meet"/>`;
+  const href = safeAssetUrl(leg.teamLogoUrl);
+  if (href) return `<image href="${esc(href)}" x="${x}" y="${y}" width="${size}" height="${size}" preserveAspectRatio="xMidYMid meet"/>`;
   const team = truncate(leg.team || leg.sport || '', 4).toUpperCase();
-  return `<rect x="${x}" y="${y}" width="${size}" height="${size}" rx="10" fill="#0c2639" stroke="#1a536b"/><text x="${x+size/2}" y="${y+size/2+5}" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="12" font-weight="800" fill="#8fdff1">${esc(team)}</text>`;
+  return `<rect x="${x}" y="${y}" width="${size}" height="${size}" rx="10" fill="#0c2639" stroke="#24546a" stroke-width="1.5"/><text x="${x+size/2}" y="${y+size/2+5}" text-anchor="middle" font-family="Arial,sans-serif" font-size="13" font-weight="900" fill="#9eeaf4">${esc(team)}</text>`;
+}
+
+function statusChip(display, rightX, y) {
+  const accent = statusColor(display.status);
+  const label = display.status === 'PENDING' ? 'PREGAME' : display.badgeText;
+  const width = Math.max(72, 20 + label.length * 8);
+  return `<rect x="${rightX-width}" y="${y}" width="${width}" height="24" rx="12" fill="${accent}" opacity=".13" stroke="${accent}" stroke-width="1.3"/><text x="${rightX-width/2}" y="${y+17}" text-anchor="middle" font-family="Arial,sans-serif" font-size="12" font-weight="900" letter-spacing=".5" fill="${accent}">${esc(label)}</text>`;
 }
 
 function legRowSvg(leg, x, y, w, h, index, compact = true) {
   const display = resolveLegDisplay(leg);
   const accent = statusColor(display.status);
-  const avatar = Math.min(66, h - 22);
-  const avatarX = x + 14;
-  const avatarY = y + (h-avatar)/2;
-  const teamSize = 42;
-  const teamX = avatarX + avatar + 12;
-  const teamY = y + (h-teamSize)/2;
-  const textX = teamX + teamSize + 14;
-  const rightX = x + w - 18;
-  const playerMax = compact ? 23 : 34;
-  const marketMax = compact ? 29 : 46;
-  const nameSize = compact ? 20 : 23;
-  const marketSize = compact ? 15 : 17;
-  const oddsSize = compact ? 22 : 24;
-  const probSize = compact ? 15 : 17;
+  const avatar = compact ? 60 : Math.min(72, h - 24);
+  const avatarX = x + 16;
+  const avatarY = y + 15;
+  const teamSize = compact ? 34 : 40;
+  const teamX = avatarX + avatar + 10;
+  const teamY = y + 26;
+  const textX = teamX + teamSize + 12;
+  const rightX = x + w - 16;
+  const nameSize = compact ? 27 : 29;
+  const marketSize = compact ? 18 : 20;
+  const oddsSize = compact ? 28 : 31;
+  const probSize = compact ? 18 : 19;
   const probabilityLine = display.displayProbabilityCompact || (display.status === 'LIVE' ? '—' : null);
   const settled = ['HIT','MISS','PUSH','VOID','UNRESOLVED'].includes(display.status);
   const lower = settled ? display.badgeText : (display.displayProgressText || display.badgeText);
+  const playerMax = compact ? 18 : 32;
+  const marketMax = compact ? 25 : 42;
+  const oddsY = y + 42;
 
-  return `<g><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="18" fill="#091f31" stroke="#17455c" stroke-width="1.6"/><rect x="${x}" y="${y}" width="5" height="${h}" rx="3" fill="${accent}" opacity=".95"/>${avatarSvg(leg,avatarX,avatarY,avatar,`avatar-${index}`)}${teamSvg(leg,teamX,teamY,teamSize)}<text x="${textX}" y="${y+34}" font-family="Inter,Arial,sans-serif" font-size="${nameSize}" font-weight="800" fill="#f7fbff">${esc(truncate(leg.player || 'Leg',playerMax))}</text><text x="${textX}" y="${y+58}" font-family="Inter,Arial,sans-serif" font-size="${marketSize}" font-weight="500" fill="#9db8cf">${esc(truncate(displayMarket(leg),marketMax))}</text><text x="${rightX}" y="${y+33}" text-anchor="end" font-family="Inter,Arial,sans-serif" font-size="${oddsSize}" font-weight="900" fill="#f7fbff">${esc(display.displayOddsText)}</text>${probabilityLine ? `<text x="${rightX}" y="${y+56}" text-anchor="end" font-family="Inter,Arial,sans-serif" font-size="${probSize}" font-weight="800" fill="${display.probabilityKind==='live'?'#20e8c1':'#91b9d2'}">${esc(probabilityLine)}</text>` : ''}<text x="${textX}" y="${y+h-13}" font-family="Inter,Arial,sans-serif" font-size="13" font-weight="800" fill="${accent}" letter-spacing=".3">${esc(truncate(lower || '',48))}</text></g>`;
+  return `<g>
+    <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="18" fill="#082034" stroke="#1a4b62" stroke-width="1.8"/>
+    <rect x="${x}" y="${y}" width="6" height="${h}" rx="3" fill="${accent}"/>
+    ${avatarSvg(leg,avatarX,avatarY,avatar,`avatar-${index}`)}
+    ${teamSvg(leg,teamX,teamY,teamSize)}
+    <text x="${textX}" y="${y+36}" font-family="Arial,sans-serif" font-size="${nameSize}" font-weight="900" fill="#ffffff">${esc(truncate(leg.player || 'Leg',playerMax))}</text>
+    <text x="${textX}" y="${y+63}" font-family="Arial,sans-serif" font-size="${marketSize}" font-weight="700" fill="#b7cfdd">${esc(truncate(displayMarket(leg),marketMax))}</text>
+    <text x="${rightX}" y="${oddsY}" text-anchor="end" font-family="Arial,sans-serif" font-size="${oddsSize}" font-weight="900" fill="#ffffff">${esc(display.displayOddsText)}</text>
+    ${probabilityLine ? `<text x="${rightX}" y="${y+66}" text-anchor="end" font-family="Arial,sans-serif" font-size="${probSize}" font-weight="900" fill="${display.probabilityKind==='live'?'#24efd5':'#a7c9dc'}">${esc(probabilityLine)}</text>` : ''}
+    <text x="${textX}" y="${y+h-14}" font-family="Arial,sans-serif" font-size="15" font-weight="900" fill="${accent}">${esc(truncate(lower || '',40))}</text>
+    ${statusChip(display,rightX,y+h-33)}
+  </g>`;
 }
 
 function renderShareSvg(input = {}) {
@@ -247,13 +288,13 @@ function renderShareSvg(input = {}) {
   const summary = summaryText(legs);
   const combinedOdds = slip.combinedOddsVerified ? formatOdds(slip.combinedOddsAmerican) : null;
   const oneColumn = legs.length <= 3;
-  const top = state === 'pregame' ? 168 : 188;
-  const footerY = legs.length > 6 ? 600 : 585;
+  const top = state === 'pregame' ? 166 : 190;
+  const footerY = legs.length > 6 ? 598 : 590;
   const rowGap = 12;
   let rows = '';
 
   if (oneColumn) {
-    const rowH = legs.length === 1 ? 150 : legs.length === 2 ? 130 : 112;
+    const rowH = legs.length === 1 ? 154 : legs.length === 2 ? 132 : 112;
     for (let i=0;i<visible.length;i++) rows += legRowSvg(visible[i],55,top + i*(rowH+rowGap),1090,rowH,i,false);
   } else {
     const colW = 535;
@@ -269,14 +310,14 @@ function renderShareSvg(input = {}) {
   let hiddenStrip = '';
   if (hidden) {
     const stripY = top + 3*(106+rowGap);
-    hiddenStrip = `<rect x="55" y="${stripY}" width="1090" height="47" rx="15" fill="#081c2b" stroke="#17455c"/><text x="86" y="${stripY+31}" font-family="Inter,Arial,sans-serif" font-size="22" font-weight="900" fill="#20e8c1">•••</text><text x="145" y="${stripY+31}" font-family="Inter,Arial,sans-serif" font-size="20" font-weight="800" fill="#f7fbff">+${hidden} more ${hidden===1?'leg':'legs'}</text><text x="1120" y="${stripY+31}" text-anchor="end" font-family="Inter,Arial,sans-serif" font-size="13" font-weight="700" letter-spacing="1.5" fill="#7895aa">ADDITIONAL PICKS NOT SHOWN</text>`;
+    hiddenStrip = `<rect x="55" y="${stripY}" width="1090" height="47" rx="15" fill="#081c2b" stroke="#17455c"/><text x="86" y="${stripY+31}" font-family="Arial,sans-serif" font-size="22" font-weight="900" fill="#20e8c1">•••</text><text x="145" y="${stripY+31}" font-family="Arial,sans-serif" font-size="20" font-weight="900" fill="#f7fbff">+${hidden} more ${hidden===1?'leg':'legs'}</text><text x="1120" y="${stripY+31}" text-anchor="end" font-family="Arial,sans-serif" font-size="13" font-weight="800" letter-spacing="1.3" fill="#7895aa">ADDITIONAL PICKS NOT SHOWN</text>`;
   }
 
-  const summaryBar = state === 'pregame' ? '' : `<rect x="55" y="140" width="1090" height="34" rx="12" fill="#0a2639"/><circle cx="76" cy="157" r="5" fill="${state==='final'?'#49f59f':'#20e8c1'}"/><text x="91" y="163" font-family="Inter,Arial,sans-serif" font-size="16" font-weight="800" fill="#b9d5e5">${esc(summary)}</text>`;
+  const summaryBar = state === 'pregame' ? '' : `<rect x="55" y="142" width="1090" height="34" rx="12" fill="#0a2639"/><circle cx="76" cy="159" r="5" fill="${state==='final'?'#49f59f':'#20e8c1'}"/><text x="91" y="165" font-family="Arial,sans-serif" font-size="17" font-weight="900" fill="#d2e7f1">${esc(summary)}</text>`;
   const title = `${legs.length}-LEG PARLAY`;
   const pageUrl = input.pageUrl || 'https://parlayping.net';
 
-  return `<?xml version="1.0" encoding="UTF-8"?><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${WIDTH}" height="${HEIGHT}" viewBox="0 0 ${WIDTH} ${HEIGHT}"><defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#03121f"/><stop offset=".55" stop-color="#061b2a"/><stop offset="1" stop-color="#08233a"/></linearGradient><linearGradient id="cta" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#13d8df"/><stop offset="1" stop-color="#2af09b"/></linearGradient><filter id="glow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="8" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><rect width="1200" height="675" rx="32" fill="url(#bg)"/><path d="M820 -30 C970 70 1040 190 1190 240" fill="none" stroke="#0d5361" stroke-width="95" opacity=".16"/><rect x="30" y="24" width="1140" height="627" rx="28" fill="none" stroke="#16dfe0" stroke-width="2" opacity=".7"/>${canonicalMarkSvg(55,39,1.05)}${wordmarkSvg(132,84,38)}<text x="132" y="108" font-family="Inter,Arial,sans-serif" font-size="12" font-weight="700" letter-spacing="2.4" fill="#a9c7d8">COMPARE • TAIL • WIN TOGETHER</text><text x="600" y="78" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="36" font-weight="900" fill="#f7fbff">${esc(title)}</text>${combinedOdds ? `<text x="1135" y="80" text-anchor="end" font-family="Inter,Arial,sans-serif" font-size="43" font-weight="900" fill="#20e8c1">${esc(combinedOdds)}</text>` : `<text x="1135" y="78" text-anchor="end" font-family="Inter,Arial,sans-serif" font-size="15" font-weight="800" letter-spacing="1.3" fill="#7895aa">PARLAYPING SHARE CARD</text>`}${summaryBar}${rows}${hiddenStrip}<rect x="55" y="${footerY}" width="1090" height="50" rx="16" fill="url(#cta)" filter="url(#glow)"/><text x="600" y="${footerY+32}" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="20" font-weight="900" letter-spacing=".7" fill="#041522">OPEN THIS BETSLIP ON PARLAYPING.NET</text><text x="1122" y="${footerY+32}" text-anchor="end" font-family="Inter,Arial,sans-serif" font-size="24" font-weight="900" fill="#041522">›</text><text x="55" y="658" font-family="Inter,Arial,sans-serif" font-size="12" font-weight="600" fill="#66859a">${esc(truncate(pageUrl,90))}</text><text x="1145" y="658" text-anchor="end" font-family="Inter,Arial,sans-serif" font-size="12" font-weight="700" fill="#66859a">ParlayPing • Live status when available</text></svg>`;
+  return `<?xml version="1.0" encoding="UTF-8"?><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${WIDTH}" height="${HEIGHT}" viewBox="0 0 ${WIDTH} ${HEIGHT}"><defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#02111d"/><stop offset=".54" stop-color="#061c2c"/><stop offset="1" stop-color="#08263f"/></linearGradient><linearGradient id="cta" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#12dce3"/><stop offset="1" stop-color="#2af09b"/></linearGradient><filter id="glow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="7" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><rect width="1200" height="675" rx="32" fill="url(#bg)"/>${approvedHeroWatermarkSvg(825,-95,430,.08)}<path d="M820 -30 C970 70 1040 190 1190 240" fill="none" stroke="#0d5361" stroke-width="95" opacity=".12"/><rect x="30" y="24" width="1140" height="627" rx="28" fill="none" stroke="#16dfe0" stroke-width="2" opacity=".7"/>${approvedWordmarkSvg(55,37,300,76)}<text x="55" y="124" font-family="Arial,sans-serif" font-size="12" font-weight="800" letter-spacing="2.3" fill="#a9c7d8">COMPARE • TAIL • WIN TOGETHER</text><text x="600" y="82" text-anchor="middle" font-family="Arial,sans-serif" font-size="38" font-weight="900" fill="#ffffff">${esc(title)}</text>${combinedOdds ? `<text x="1135" y="82" text-anchor="end" font-family="Arial,sans-serif" font-size="45" font-weight="900" fill="#20e8c1">${esc(combinedOdds)}</text>` : `<text x="1135" y="80" text-anchor="end" font-family="Arial,sans-serif" font-size="15" font-weight="900" letter-spacing="1.2" fill="#87a7ba">PARLAYPING SHARE CARD</text>`}${summaryBar}${rows}${hiddenStrip}<rect x="55" y="${footerY}" width="1090" height="50" rx="16" fill="url(#cta)" filter="url(#glow)"/><text x="600" y="${footerY+32}" text-anchor="middle" font-family="Arial,sans-serif" font-size="21" font-weight="900" letter-spacing=".5" fill="#041522">OPEN THIS BETSLIP ON PARLAYPING.NET</text><text x="1122" y="${footerY+32}" text-anchor="end" font-family="Arial,sans-serif" font-size="24" font-weight="900" fill="#041522">›</text><text x="55" y="658" font-family="Arial,sans-serif" font-size="12" font-weight="700" fill="#66859a">${esc(truncate(pageUrl,90))}</text><text x="1145" y="658" text-anchor="end" font-family="Arial,sans-serif" font-size="12" font-weight="800" fill="#66859a">ParlayPing • Live status when available</text></svg>`;
 }
 
-module.exports = { WIDTH, HEIGHT, pct, formatOdds, resolveLegDisplay, resolveSlipState, statusCounts, summaryText, selectVisibleLegs, renderShareSvg, safeAssetUrl, canonicalMarkSvg, wordmarkSvg };
+module.exports = { WIDTH, HEIGHT, pct, formatOdds, resolveLegDisplay, resolveSlipState, statusCounts, summaryText, selectVisibleLegs, renderShareSvg, safeAssetUrl, canonicalMarkSvg, wordmarkSvg, approvedWordmarkSvg, approvedHeroWatermarkSvg };
