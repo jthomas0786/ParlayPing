@@ -3,15 +3,37 @@
   const state=window.__PARLAYPING_BUILDER__||{},legs=Array.isArray(state.slip?.legs)?state.slip.legs:[];
   const BOOK_ODDS_PREFIX='PP_BOOK_ODDS:';
 
-  /* Use the exact user-approved ParlayPing artwork, not a reconstructed lockup. */
+  /* Use the exact user-approved ParlayPing wordmark and circular receipt/radar hero mark. */
   const brand=q('.brand');
   if(brand){
-    brand.innerHTML='<img class="pp-brand-lockup" src="/parlayping-approved-logo.png" alt="ParlayPing — Bet Smarter Together"/><span class="pp-brand-name pp-brand-a11y">ParlayPing</span><span class="pp-brand-tag pp-brand-a11y">BET SMARTER TOGETHER</span>';
+    brand.innerHTML='<img class="pp-brand-lockup" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" alt="ParlayPing"/><span class="pp-brand-name pp-brand-a11y">ParlayPing</span>';
     brand.href='#top';
   }
+  const loadApprovedBrandAssets=async()=>{
+    const [wordRes,heroRes]=await Promise.all([
+      fetch('/pp-wordmark-approved.b64',{cache:'force-cache'}),
+      fetch('/pp-hero-approved.b64',{cache:'force-cache'}),
+    ]);
+    if(!wordRes.ok||!heroRes.ok)throw new Error('approved ParlayPing artwork unavailable');
+    const [word64,hero64]=await Promise.all([wordRes.text(),heroRes.text()]);
+    const logo=q('.pp-brand-lockup');
+    if(logo)logo.src=`data:image/webp;base64,${word64.trim()}`;
+    const hero=q('.concept-hero');
+    if(hero)hero.style.setProperty('--pp-hero-image',`url("data:image/webp;base64,${hero64.trim()}")`);
+    document.documentElement.dataset.ppApprovedAssets='ready';
+  };
+  loadApprovedBrandAssets().catch(()=>{document.documentElement.dataset.ppApprovedAssets='error';});
 
   qa('.sport-shield').forEach(el=>el.remove());
   qa('.pp-return-control,.pp-mobile-return-bar,.pp-mobile-origin-controls').forEach(el=>el.remove());
+
+  /* The builder no longer advertises sportsbook linking in the hero. */
+  qa('.hero-tool').forEach(tool=>{
+    const label=q('strong',tool)?.textContent?.trim()||'';
+    if(/^Link to Sportsbooks$/i.test(label))tool.remove();
+  });
+  const heroCopy=q('.hero-copy p');
+  if(heroCopy)heroCopy.textContent='Find value. Adjust alt lines. Share with the community. Track and compare.';
 
   const safeProbability=value=>{
     if(value===null||value===undefined||value==='')return null;
@@ -42,7 +64,8 @@
   };
   function selectedBookPrice(leg,book){
     const normalized=normalizeBook(book),map=bookOddsMap(leg);
-    const mapped=Number(map[normalized]);
+    const mappedEntry=Object.entries(map).find(([key])=>normalizeBook(key)===normalized);
+    const mapped=mappedEntry?Number(mappedEntry[1]):NaN;
     if(Number.isFinite(mapped)&&mapped!==0)return mapped;
     if(normalizeBook(leg?.sportsbook)===normalized){
       const own=Number(leg?.oddsAmerican);if(Number.isFinite(own)&&own!==0)return own;
@@ -91,20 +114,18 @@
       if(over)market.textContent=`Over ${over[1]}${over[2]?` ${over[2].trim()}`:''}`;
     }
 
+    /* Probability is independent of grading state. Always show a real percentage or —%. */
     const status=String(leg.status||'PENDING').toUpperCase();
-    const settled=['HIT','MISS','PUSH','VOID'].includes(status);
     const probability=status==='LIVE'
       ? (safeProbability(leg.liveProbability)??safeProbability(leg.pregameProbability))
       : safeProbability(leg.pregameProbability);
     const label=q('.pick-probability',card),fill=q('.meter-track i',card);
-    if(!settled){
-      if(probability!=null){
-        if(label){label.textContent=`${(probability*100).toFixed(1)}%`;label.classList.remove('status-label');}
-        if(fill)fill.style.setProperty('--meter',`${probability*100}%`);
-      }else{
-        if(label){label.textContent='—%';label.classList.remove('status-label');}
-        if(fill)fill.style.setProperty('--meter','0%');
-      }
+    if(probability!=null){
+      if(label){label.textContent=`${(probability*100).toFixed(1)}%`;label.classList.remove('status-label');}
+      if(fill)fill.style.setProperty('--meter',`${probability*100}%`);
+    }else{
+      if(label){label.textContent='—%';label.classList.remove('status-label');}
+      if(fill)fill.style.setProperty('--meter','0%');
     }
   });
 

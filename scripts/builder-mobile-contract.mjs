@@ -27,7 +27,7 @@ const slip={
   ],
 };
 const fixture=renderBuilderHtml({slip,token:'s1.mobile.contract',liveDataAvailable:false});
-const types={'.css':'text/css','.js':'text/javascript','.svg':'image/svg+xml','.png':'image/png','.html':'text/html'};
+const types={'.css':'text/css','.js':'text/javascript','.svg':'image/svg+xml','.png':'image/png','.webp':'image/webp','.html':'text/html'};
 const server=http.createServer((req,res)=>{
   const url=new URL(req.url,'http://127.0.0.1:4174');
   if(url.pathname==='/fixture'){
@@ -46,7 +46,8 @@ const browser=await chromium.launch({headless:true});
 const page=await browser.newPage({viewport:{width:393,height:852},deviceScaleFactor:1,isMobile:true,hasTouch:true});
 await page.goto('http://127.0.0.1:4174/fixture',{waitUntil:'domcontentloaded'});
 await page.waitForSelector('.pick-card');
-await page.waitForTimeout(650);
+await page.waitForFunction(()=>document.documentElement.dataset.ppApprovedAssets==='ready',{timeout:5000});
+await page.waitForTimeout(180);
 
 const metrics=await page.evaluate(()=>{
   const rect=s=>{const r=document.querySelector(s)?.getBoundingClientRect();return r?{x:r.x,y:r.y,width:r.width,height:r.height,right:r.right,bottom:r.bottom}:null};
@@ -89,10 +90,10 @@ const metrics=await page.evaluate(()=>{
 
 const near=(actual,expected,tol,label)=>{if(Math.abs(actual-expected)>tol)throw new Error(`${label}: expected ${expected}±${tol}, got ${actual}`);};
 near(metrics.header.height,148,2,'mobile header height');
-near(metrics.hero.height,326,2,'mobile hero height');
+near(metrics.hero.height,238,2,'mobile hero height');
 if(metrics.returnControls!==0)throw new Error(`source Back/X controls still render: ${metrics.returnControls}`);
-if(!/parlayping-approved-logo\.png$/i.test(metrics.brandSrc))throw new Error(`exact approved logo asset is not in the header: ${metrics.brandSrc}`);
-if(!/parlayping-approved-logo\.png/i.test(metrics.heroWatermark))throw new Error(`approved-logo hero watermark is missing: ${metrics.heroWatermark}`);
+if(!/parlayping-approved-wordmark\.webp$/i.test(metrics.brandSrc))throw new Error(`exact approved wordmark asset is not in the header: ${metrics.brandSrc}`);
+if(!/parlayping-approved-hero\.webp/i.test(metrics.heroWatermark))throw new Error(`approved circular hero watermark is missing: ${metrics.heroWatermark}`);
 if(!(Number(metrics.heroWatermarkOpacity)>0&&Number(metrics.heroWatermarkOpacity)<.2))throw new Error(`hero watermark opacity is wrong: ${metrics.heroWatermarkOpacity}`);
 if(!metrics.heroWatermarkTransform||metrics.heroWatermarkTransform==='none')throw new Error('hero watermark is not tilted');
 if(metrics.sportShields!==0)throw new Error(`league shields were reintroduced ahead of team logos: ${metrics.sportShields}`);

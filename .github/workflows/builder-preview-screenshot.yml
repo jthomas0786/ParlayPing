@@ -1,0 +1,34 @@
+name: Builder Preview Screenshots
+
+on:
+  push:
+    branches:
+      - builder-hero-prob-preview-stage
+
+permissions:
+  contents: read
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install app dependencies
+        run: npm install --no-audit --no-fund
+      - name: Install Playwright
+        run: npm install --no-save --no-audit --no-fund playwright@1.55.0
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Render approval screenshots
+        run: node scripts/builder-preview-screenshot.mjs
+      - name: Upload approval screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: builder-preview-screenshots
+          path: artifacts/preview/*.png
+          if-no-files-found: error
+          retention-days: 3
