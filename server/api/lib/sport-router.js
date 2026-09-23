@@ -1,6 +1,6 @@
 const { analyzeSlip: analyzeNflSlip, normalizeLeg, encodeSlip } = require('./parlay-engine');
 const { analyzeNcaafSlip } = require('./ncaaf-engine');
-const { analyzeMlbSlip } = require('./mlb-engine');
+const { analyzeMlbSlip } = require('./mlb-engine-v2');
 const { analyzeNhlSlip } = require('./nhl-engine');
 const { applyCorrelationSafety } = require('./analysis-safety');
 const { analyzeBasketballSlip } = require('../../lib/basketball-adapter');
@@ -58,7 +58,7 @@ function chunks(rows,size=ADAPTER_BATCH_SIZE){
 async function analyzeSportBatch(sport,sportLegs,options){
   if(sport==='NFL') return analyzeNflSlip(sportLegs,{baseUrl:options.baseUrl});
   if(sport==='NCAAF') return analyzeNcaafSlip(sportLegs);
-  if(sport==='MLB') return analyzeMlbSlip(sportLegs,{referenceTime:options.referenceTime});
+  if(sport==='MLB') return analyzeMlbSlip(sportLegs,{referenceTime:options.referenceTime,now:options.now});
   if(sport==='NHL') return analyzeNhlSlip(sportLegs,{referenceTime:options.referenceTime});
   if(['NBA','NCAAB','WNBA'].includes(sport)) return analyzeBasketballSlip(sport,sportLegs,{referenceTime:options.referenceTime});
   if(sport==='MMA') return analyzeMmaSlip(sportLegs,{referenceTime:options.referenceTime,now:options.now});
@@ -105,6 +105,7 @@ async function analyzeMultiSport(rawLegs,options={}){
       miss:results.filter(r=>r.status==='MISS').length,
       live:results.filter(r=>r.status==='LIVE').length,
       pending:pending.length,
+      void:results.filter(r=>r.status==='VOID').length,
       unresolved:results.filter(r=>r.status==='UNRESOLVED').length
     },
     combinedTailProbability,
