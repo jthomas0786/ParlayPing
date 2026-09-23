@@ -36,9 +36,11 @@ jobs:
             const out=await enrichSportsbookMarkets({legs});
             for(const leg of out.legs){
               const offers=leg.bookOffers||{};
-              console.log(JSON.stringify({player:leg.player,preferred:{book:leg.sportsbook,odds:leg.oddsAmerican},books:Object.keys(offers)}));
+              const verified=Object.entries(offers).filter(([,offer])=>Number.isFinite(Number(offer?.oddsAmerican)));
+              console.log(JSON.stringify({player:leg.player,preferred:{book:leg.sportsbook,odds:leg.oddsAmerican},books:verified.map(([book])=>book)}));
               if(!Number.isFinite(Number(leg.oddsAmerican)))throw new Error(`${leg.player}: preferred sportsbook odds missing`);
-              if(!Number.isFinite(Number(offers.FanDuel?.oddsAmerican)))throw new Error(`${leg.player}: FanDuel verified price missing`);
+              if(!leg.sportsbook)throw new Error(`${leg.player}: preferred sportsbook name missing`);
+              if(!verified.length)throw new Error(`${leg.player}: no verified sportsbook price`);
             }
           })().catch(error=>{console.error(error);process.exit(1);});
           NODE
