@@ -1,6 +1,8 @@
 const CACHE_MS = 60_000;
 const summaryCache = new Map();
 const scoreboardCache = new Map();
+const imageProbeCache = new Map();
+const nhlPlayerCache = new Map();
 
 const SPORT_PATHS = {
   NFL:'football/nfl',
@@ -34,7 +36,7 @@ function normName(value) {
 }
 
 function normTeam(value) {
-  return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+  return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g,'');
 }
 
 function teamMatches(a, b) {
@@ -47,6 +49,95 @@ function teamMatches(a, b) {
 function headshotUrl(sport, id) {
   const slug = HEADSHOT_SLUGS[String(sport || '').toUpperCase()];
   return slug && id ? `https://a.espncdn.com/i/headshots/${slug}/players/full/${encodeURIComponent(String(id))}.png` : null;
+}
+
+function isHttpUrl(value) {
+  try {
+    const url = new URL(String(value || ''));
+    return url.protocol === 'https:' || url.protocol === 'http:';
+  } catch {
+    return false;
+  }
+}
+
+async function probeImage(url) {
+  if (!isHttpUrl(url)) return false;
+  const cached = imageProbeCache.get(url);
+  if (cached && Date.now() - cached.ts < CACHE_MS) return cached.ok;
+  let ok = false;
+  try {
+    const response = await fetch(url, {
+      method:'GET',
+      headers:{ accept:'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8', 'user-agent':'Mozilla/5.0 ParlayPing/1.0' },
+      redirect:'follow',
+      cache:'no-store',
+      signal:AbortSignal.timeout(3500),
+    });
+    const type = String(response.headers.get('content-type') || '').toLowerCase();
+    ok = response.ok && type.startsWith('image/');
+    try { await response.body?.cancel(); } catch (_) {}
+  } catch (_) {}
+  if (imageProbeCache.size > 256) imageProbeCache.clear();
+  imageProbeCache.set(url, { ts:Date.now(), ok });
+  return ok;
+}
+
+async function firstWorkingImage(candidates) {
+  for (const candidate of [...new Set((candidates || []).filter(isHttpUrl))]) {
+    if (await probeImage(candidate)) return candidate;
+  }
+  return null;
+}
+
+function officialImageCandidates(sport, id) {
+  const upper = String(sport || '').toUpperCase();
+  const playerId = String(id || '').trim();
+  if (!playerId) return [];
+  if (upper === 'NBA') {
+    return [`https://cdn.nba.com/headshots/nba/latest/1040x760/${encodeURIComponent(playerId)}.png`];
+  }
+  if (upper === 'WNBA') {
+    return [`https://cdn.wnba.com/headshots/wnba/latest/1040x760/${encodeURIComponent(playerId)}.png`];
+  }
+  if (upper === 'MLB') {
+    return [`https://img.mlbstatic.com/mlb-photos/image/upload/w_426,d_people:generic:headshot:silo:current.png,q_auto:best,f_auto/v1/people/${encodeURIComponent(playerId)}/headshot/silo/current`];
+  }
+  return [];
+}
+
+async function nhlOfficialHeadshot(id) {
+  const playerId = String(id || '').trim();
+  if (!/^\d+$/.test(playerId)) return null;
+  const cached = nhlPlayerCache.get(playerId);
+  if (cached && Date.now() - cached.ts < CACHE_MS) return cached.value;
+  let value = null;
+  try {
+    const response = await fetch(`https://api-web.nhle.com/v1/player/${encodeURIComponent(playerId)}/landing`, {
+      headers:{ accept:'application/json', 'user-agent':'Mozilla/5.0 ParlayPing/1.0' },
+      cache:'no-store',
+      signal:AbortSignal.timeout(4000),
+    });
+    if (response.ok) {
+      const body = await response.json();
+      value = body?.headshot || body?.heroImage || null;
+    }
+  } catch (_) {}
+  if (nhlPlayerCache.size > 128) nhlPlayerCache.clear();
+  nhlPlayerCache.set(playerId, { ts:Date.now(), value });
+  return value;
+}
+
+async function resolveHeadshotCandidates(sport, ids, extra = []) {
+  const upper = String(sport || '').toUpperCase();
+  const candidates = [...extra];
+  for (const rawId of ids || []) {
+    const id = String(rawId || '').trim();
+    if (!id) continue;
+    candidates.push(headshotUrl(upper, id));
+    candidates.push(...officialImageCandidates(upper, id));
+    if (upper === 'NHL') candidates.push(await nhlOfficialHeadshot(id));
+  }
+  return firstWorkingImage(candidates);
 }
 
 async function espnJson(url) {
@@ -122,13 +213,7 @@ function eventTeams(event) {
   const competition = event?.competitions?.[0];
   return (competition?.competitors || []).map(competitor => {
     const team = competitor?.team || {};
-    return [
-      team.abbreviation,
-      team.shortDisplayName,
-      team.displayName,
-      team.name,
-      team.location,
-    ].filter(Boolean).map(String);
+    return [team.abbreviation, team.shortDisplayName, team.displayName, team.name, team.location].filter(Boolean).map(String);
   });
 }
 
@@ -156,16 +241,33 @@ function eventMatchesLeg(event, leg) {
   } else if (leg?.team && !flat.some(team => teamMatches(leg.team, team))) {
     return false;
   }
-
   const legStart = Date.parse(leg?.startTimeUTC || '');
   const start = eventStart(event);
   if (Number.isFinite(legStart) && Number.isFinite(start) && Math.abs(start - legStart) > 14 * 60 * 60 * 1000) return false;
   return true;
 }
 
+function summaryEvent(summary) {
+  const competition = summary?.header?.competitions?.[0];
+  if (!competition) return null;
+  return { date:competition.date, competitions:[competition] };
+}
+
+async function suppliedEspnGameIsValid(leg, gameId) {
+  try {
+    const summary = await loadSummary(leg?.sport, gameId);
+    const parsed = parseSummaryPlayers(summary, leg?.sport);
+    if (leg?.player && findPlayer(parsed, leg)) return true;
+    const event = summaryEvent(summary);
+    return Boolean(event && eventMatchesLeg(event, leg));
+  } catch (_) {
+    return false;
+  }
+}
+
 async function resolveEspnGameId(leg) {
-  const supplied = String(leg?.gameId || '').trim();
-  if (/^\d{6,}$/.test(supplied)) return supplied;
+  const supplied = String(leg?.espnGameId || leg?.gameId || '').trim();
+  if (/^\d{6,}$/.test(supplied) && await suppliedEspnGameIsValid(leg, supplied)) return supplied;
   const scoreboards = await loadScoreboards(leg?.sport, leg?.startTimeUTC);
   const byId = new Map();
   for (const scoreboard of scoreboards) {
@@ -176,7 +278,6 @@ async function resolveEspnGameId(leg) {
   const candidates = [...byId.values()].filter(event => eventMatchesLeg(event, leg));
   if (!candidates.length) return null;
   if (candidates.length === 1) return String(candidates[0].id || '');
-
   const legStart = Date.parse(leg?.startTimeUTC || '');
   candidates.sort((a,b) => {
     const aStart = eventStart(a);
@@ -186,6 +287,20 @@ async function resolveEspnGameId(leg) {
     return da-db;
   });
   return String(candidates[0]?.id || '') || null;
+}
+
+function pushAthlete(players, athlete, teamAbbr, teamLogo, sport) {
+  if (!athlete) return;
+  const id = String(athlete.id || athlete.uid || '').trim();
+  const name = String(athlete.displayName || athlete.fullName || athlete.shortName || '').trim();
+  if (!name) return;
+  players.push({
+    id,
+    name,
+    team:teamAbbr,
+    teamLogo,
+    headshot:athlete.headshot?.href || athlete.headshot || headshotUrl(sport, id),
+  });
 }
 
 function parseSummaryPlayers(summary, sport) {
@@ -206,26 +321,22 @@ function parseSummaryPlayers(summary, sport) {
     const teamAbbr = String(team.abbreviation || team.shortDisplayName || team.displayName || '').trim();
     const teamLogo = team.logo || team.logos?.[0]?.href || headerTeams.get(normTeam(teamAbbr))?.logo || null;
     for (const section of group?.statistics || []) {
-      for (const row of section?.athletes || []) {
-        const athlete = row?.athlete || {};
-        const id = String(athlete.id || '').trim();
-        const name = String(athlete.displayName || athlete.fullName || athlete.shortName || '').trim();
-        if (!name) continue;
-        players.push({
-          id,
-          name,
-          team:teamAbbr,
-          teamLogo,
-          headshot:athlete.headshot?.href || athlete.headshot || headshotUrl(sport, id),
-        });
-      }
+      for (const row of section?.athletes || []) pushAthlete(players, row?.athlete, teamAbbr, teamLogo, sport);
     }
+  }
+
+  for (const roster of summary?.rosters || []) {
+    const team = roster?.team || {};
+    const teamAbbr = String(team.abbreviation || team.shortDisplayName || team.displayName || '').trim();
+    const teamLogo = team.logo || team.logos?.[0]?.href || headerTeams.get(normTeam(teamAbbr))?.logo || null;
+    for (const entry of roster?.roster || roster?.athletes || []) pushAthlete(players, entry?.athlete || entry, teamAbbr, teamLogo, sport);
   }
 
   const deduped = new Map();
   for (const player of players) {
     const key = `${normName(player.name)}|${normTeam(player.team)}`;
-    if (!deduped.has(key)) deduped.set(key, player);
+    const existing = deduped.get(key);
+    if (!existing || (!existing.headshot && player.headshot)) deduped.set(key, player);
   }
   return { players:[...deduped.values()], headerTeams };
 }
@@ -238,29 +349,37 @@ function findPlayer(parsed, leg) {
   return teamMatch || exact[0];
 }
 
+async function bestHeadshotForLeg(leg, player) {
+  const ids = [player?.id, leg?.playerId, leg?.espnPlayerId].filter(Boolean);
+  const extras = [player?.headshot, leg?.playerImageUrl, leg?.headshotUrl].filter(Boolean);
+  return resolveHeadshotCandidates(leg?.sport, ids, extras);
+}
+
 async function enrichOneLeg(leg) {
   const upper = String(leg?.sport || '').toUpperCase();
   if (!SPORT_PATHS[upper]) return leg;
   try {
     const espnGameId = await resolveEspnGameId(leg);
-    if (!espnGameId) return leg;
-    const summary = await loadSummary(upper, espnGameId);
-    const parsed = parseSummaryPlayers(summary, upper);
+    let parsed = { players:[], headerTeams:new Map() };
+    if (espnGameId) {
+      try { parsed = parseSummaryPlayers(await loadSummary(upper, espnGameId), upper); } catch (_) {}
+    }
     const player = findPlayer(parsed, leg);
-    if (player) {
+    const playerImageUrl = await bestHeadshotForLeg(leg, player);
+    if (player || playerImageUrl) {
       return {
         ...leg,
-        espnGameId,
-        playerId:player.id || leg.playerId,
-        playerImageUrl:player.headshot || leg.playerImageUrl,
-        team:player.team || leg.team,
-        teamLogoUrl:player.teamLogo || leg.teamLogoUrl,
+        espnGameId:espnGameId || leg.espnGameId,
+        playerId:player?.id || leg.playerId,
+        playerImageUrl:playerImageUrl || leg.playerImageUrl,
+        team:player?.team || leg.team,
+        teamLogoUrl:player?.teamLogo || leg.teamLogoUrl,
       };
     }
     const team = parsed.headerTeams.get(normTeam(leg.team));
     return {
       ...leg,
-      espnGameId,
+      espnGameId:espnGameId || leg.espnGameId,
       team:team?.abbr || leg.team,
       teamLogoUrl:team?.logo || leg.teamLogoUrl,
     };
@@ -282,6 +401,10 @@ module.exports = {
   normTeam,
   teamMatches,
   headshotUrl,
+  officialImageCandidates,
+  nhlOfficialHeadshot,
+  probeImage,
+  firstWorkingImage,
   parseSummaryPlayers,
   enrichShareAssets,
   resolveEspnGameId,
@@ -289,4 +412,6 @@ module.exports = {
   matchupTokens,
   scoreboardDateKeys,
   loadScoreboards,
+  bestHeadshotForLeg,
+  suppliedEspnGameIsValid,
 };
