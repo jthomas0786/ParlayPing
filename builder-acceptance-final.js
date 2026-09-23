@@ -6,8 +6,34 @@
   const qa=(s,r=document)=>[...r.querySelectorAll(s)];
   const esc=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 
+  function fmtOdds(value){
+    const n=Number(value);
+    if(!Number.isFinite(n))return '—';
+    return n>0?`+${Math.round(n)}`:`${Math.round(n)}`;
+  }
+
+  function impliedFromAmerican(value){
+    const n=Number(value);
+    if(!Number.isFinite(n)||n===0)return null;
+    return n>0?100/(n+100):(-n)/((-n)+100);
+  }
+
   function initials(name){
     return String(name||'?').trim().split(/\s+/).filter(Boolean).slice(0,2).map(part=>part[0]?.toUpperCase()).join('')||'?';
+  }
+
+  function probabilityState(leg){
+    const status=String(leg?.status||'PENDING').toUpperCase();
+    if(status==='LIVE'&&Number.isFinite(Number(leg?.liveProbability))){
+      const value=Number(leg.liveProbability);
+      return {value,label:`${(value*100).toFixed(1)}%`};
+    }
+    if(Number.isFinite(Number(leg?.pregameProbability))){
+      const value=Number(leg.pregameProbability);
+      return {value,label:`${(value*100).toFixed(1)}%`};
+    }
+    if(['HIT','MISS','PUSH','VOID'].includes(status))return {value:null,label:status};
+    return {value:null,label:'—'};
   }
 
   const headshotSport={NFL:'nfl',NBA:'nba',WNBA:'wnba',NCAAB:'mens-college-basketball',NCAAF:'college-football',MLB:'mlb',NHL:'nhl'};
@@ -121,9 +147,34 @@
     return `<header class="pp-game-header"><div class="pp-game-logos">${tokens}</div><div class="pp-game-copy"><strong>${esc(matchup)}</strong>${start?`<span>${esc(start)}</span>`:''}</div><div class="pp-game-count">${group.legs.length} leg${group.legs.length===1?'':'s'}</div></header>`;
   }
 
+  function altRows(leg){
+    const rows=Array.isArray(leg.altLines)?leg.altLines.filter(row=>row&&row.line!=null):[];
+    const current={line:leg.line,oddsAmerican:leg.oddsAmerican,probability:leg.pregameProbability,current:true};
+    if(leg.line!=null&&!rows.some(row=>String(row.line)===String(leg.line)))rows.unshift(current);
+    return rows.slice(0,6);
+  }
+
+  function altLabel(leg,line){
+    if(!leg?.side)return String(line);
+    const side=String(leg.side).toLowerCase()==='under'?'Under':'Over';
+    return `${side} ${line}`;
+  }
+
+  function renderAltLines(leg){
+    const rows=altRows(leg);
+    if(!rows.length)return '<div class="pp-leg-alts pp-leg-alts-empty" hidden><span>No verified alt lines available.</span></div>';
+    return `<div class="pp-leg-alts" hidden><div class="pp-alt-heading">Alt Lines</div><div class="pp-alt-options">${rows.map((alt,index)=>{
+      const selected=alt.current||String(alt.line)===String(leg.line);
+      const probability=Number(alt.probability);
+      return `<button class="pp-alt-option${selected?' selected':''}" type="button" data-line="${esc(alt.line)}" data-odds="${esc(alt.oddsAmerican??'')}" data-prob="${Number.isFinite(probability)?probability:''}"><span>${esc(altLabel(leg,alt.line))}</span><strong>${esc(fmtOdds(alt.oddsAmerican))}</strong></button>`;
+    }).join('')}</div></div>`;
+  }
+
   function renderLeg(leg){
     const status=statusText(leg);
-    return `<div class="pp-leg-row ${esc(statusClass(leg))}" data-leg-id="${esc(leg.id||'')}"><div class="pp-leg-player">${playerPhoto(leg)}<div class="pp-leg-copy"><strong>${esc(leg.player||'Selection')}</strong><span>${esc(marketText(leg))}</span></div></div><div class="pp-leg-status"><span>${esc(status)}</span></div><button class="pp-leg-more" type="button" aria-label="${esc(leg.player||'Bet')} options">⋮</button></div>`;
+    const prob=probabilityState(leg);
+    const meter=prob.value==null?0:Math.max(0,Math.min(100,prob.value*100));
+    return `<div class="pp-leg-item ${esc(statusClass(leg))}" data-leg-id="${esc(leg.id||'')}"><div class="pp-leg-row ${esc(statusClass(leg))}"><div class="pp-leg-player">${playerPhoto(leg)}<div class="pp-leg-copy"><strong>${esc(leg.player||'Selection')}</strong><span class="pp-leg-market">${esc(marketText(leg))}</span></div></div><div class="pp-leg-probability" aria-label="Probability ${esc(prob.label)}"><span class="pp-prob-track"><i class="pp-prob-fill" style="--pp-prob:${meter}%"></i></span><strong class="pp-prob-label">${esc(prob.label)}</strong></div><div class="pp-leg-odds">${esc(fmtOdds(leg.oddsAmerican))}</div><div class="pp-leg-status"><span>${esc(status)}</span></div><button class="pp-leg-more" type="button" aria-label="${esc(leg.player||'Bet')} options">⋮</button></div>${renderAltLines(leg)}</div>`;
   }
 
   function renderPicks(){
@@ -150,21 +201,43 @@
       if(/^Link to Sportsbooks$/i.test(label))tool.remove();
     });
     const copy=q('.hero-copy p',hero);
-    if(copy)copy.textContent='Build your slip. Keep every game organized. Tune only verified lines. Share it cleanly.';
+    if(copy)copy.textContent='Build your slip. Compare the numbers. Tune verified lines. Share it cleanly.';
   }
 
-  function stripProbabilityAndOdds(){
-    q('.odds-pill')?.remove();
-    q('.probability-pill')?.remove();
-    qa('.probability-meter,.pick-odds,.alt-lines').forEach(node=>node.remove());
+  function restoreSummaryMetrics(){
     const legCount=q('#legCount');
+    const combinedOdds=q('#combinedOdds');
+    const impliedProbability=q('#impliedProbability');
     if(legCount)legCount.textContent=String(legs.length);
+    if(combinedOdds)combinedOdds.textContent=slip.combinedOddsVerified?fmtOdds(slip.combinedOddsAmerican):'—';
+    if(impliedProbability){
+      const p=slip.combinedOddsVerified?impliedFromAmerican(slip.combinedOddsAmerican):null;
+      impliedProbability.textContent=p!=null?`${(p*100).toFixed(1)}%`:'—';
+    }
   }
 
-  function tuneContent(){
-    const rows=legs.map(leg=>({leg,alts:Array.isArray(leg.altLines)?leg.altLines.filter(row=>row&&row.line!=null):[]})).filter(row=>row.alts.length);
-    if(!rows.length)return '<div class="pp-tune-empty"><strong>No verified alternate lines available.</strong><span>Parlay Tune will only show alternate lines after they are verified for this exact slip. No odds or model probabilities are shown here.</span></div>';
-    return `<div class="pp-tune-list">${rows.map(({leg,alts})=>`<div class="pp-tune-row"><strong>${esc(leg.player||'Selection')}</strong><div>${alts.slice(0,6).map(alt=>`<button type="button" class="pp-tune-line">${esc(alt.line)}</button>`).join('')}</div></div>`).join('')}</div>`;
+  function updateSelectedAlt(button){
+    const item=button.closest('.pp-leg-item');
+    if(!item)return;
+    qa('.pp-alt-option',item).forEach(node=>node.classList.remove('selected'));
+    button.classList.add('selected');
+    const leg=legs.find(row=>String(row.id||'')===String(item.dataset.legId||''))||legs[Number(item.dataset.legIndex)||0];
+    const probability=Number(button.dataset.prob);
+    const odds=button.dataset.odds;
+    const label=q('.pp-prob-label',item);
+    const fill=q('.pp-prob-fill',item);
+    const price=q('.pp-leg-odds',item);
+    const market=q('.pp-leg-market',item);
+    if(Number.isFinite(probability)&&probability>=0&&probability<=1){
+      if(label)label.textContent=`${(probability*100).toFixed(1)}%`;
+      if(fill)fill.style.setProperty('--pp-prob',`${probability*100}%`);
+    }
+    if(odds&&price)price.textContent=fmtOdds(odds);
+    if(leg&&market)market.textContent=marketText({...leg,line:button.dataset.line});
+    const combinedOdds=q('#combinedOdds');
+    const impliedProbability=q('#impliedProbability');
+    if(combinedOdds)combinedOdds.textContent='CUSTOM';
+    if(impliedProbability)impliedProbability.textContent='Repricing';
   }
 
   function installTune(){
@@ -175,20 +248,20 @@
     original.replaceWith(button);
     button.classList.remove('active');
     button.setAttribute('aria-expanded','false');
-    const tune=document.createElement('section');
-    tune.id='ppAcceptanceTune';
-    tune.className='pp-acceptance-tune';
-    tune.hidden=true;
-    tune.innerHTML=`<div class="pp-tune-head"><div><strong>Parlay Tune</strong><span>Verified alternate lines only</span></div><button type="button" class="pp-tune-close" aria-label="Close Parlay Tune">×</button></div>${tuneContent()}`;
-    q('.parlay-toolbar',panel)?.insertAdjacentElement('afterend',tune);
-    const setOpen=open=>{tune.hidden=!open;button.classList.toggle('active',open);button.setAttribute('aria-expanded',String(open));};
-    button.addEventListener('click',()=>setOpen(tune.hidden));
-    q('.pp-tune-close',tune)?.addEventListener('click',()=>setOpen(false));
+    const setOpen=open=>{
+      panel.classList.toggle('pp-tune-open',open);
+      button.classList.toggle('active',open);
+      button.setAttribute('aria-expanded',String(open));
+      qa('.pp-leg-alts').forEach(node=>node.hidden=!open);
+    };
+    button.addEventListener('click',()=>setOpen(!panel.classList.contains('pp-tune-open')));
+    qa('.pp-alt-option').forEach(node=>node.addEventListener('click',()=>updateSelectedAlt(node)));
+    setOpen(false);
   }
 
   installBrand();
   cleanHero();
-  stripProbabilityAndOdds();
+  restoreSummaryMetrics();
   renderPicks();
   installTune();
   document.documentElement.dataset.ppAcceptance='ready';
