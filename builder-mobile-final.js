@@ -3,12 +3,26 @@
   const state=window.__PARLAYPING_BUILDER__||{},legs=Array.isArray(state.slip?.legs)?state.slip.legs:[];
   const BOOK_ODDS_PREFIX='PP_BOOK_ODDS:';
 
-  /* Use the exact user-approved ringless ParlayPing artwork, not a reconstructed lockup. */
+  /* Use the exact user-approved ParlayPing wordmark and circular receipt/radar hero mark. */
   const brand=q('.brand');
   if(brand){
-    brand.innerHTML='<img class="pp-brand-lockup" src="/parlayping-approved-exact.webp" alt="ParlayPing"/><span class="pp-brand-name pp-brand-a11y">ParlayPing</span><span class="pp-brand-tag pp-brand-a11y">BET SMARTER TOGETHER</span>';
+    brand.innerHTML='<img class="pp-brand-lockup" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" alt="ParlayPing"/><span class="pp-brand-name pp-brand-a11y">ParlayPing</span>';
     brand.href='#top';
   }
+  const loadApprovedBrandAssets=async()=>{
+    const [wordRes,heroRes]=await Promise.all([
+      fetch('/pp-wordmark-approved.b64',{cache:'force-cache'}),
+      fetch('/pp-hero-approved.b64',{cache:'force-cache'}),
+    ]);
+    if(!wordRes.ok||!heroRes.ok)throw new Error('approved ParlayPing artwork unavailable');
+    const [word64,hero64]=await Promise.all([wordRes.text(),heroRes.text()]);
+    const logo=q('.pp-brand-lockup');
+    if(logo)logo.src=`data:image/webp;base64,${word64.trim()}`;
+    const hero=q('.concept-hero');
+    if(hero)hero.style.setProperty('--pp-hero-image',`url("data:image/webp;base64,${hero64.trim()}")`);
+    document.documentElement.dataset.ppApprovedAssets='ready';
+  };
+  loadApprovedBrandAssets().catch(()=>{document.documentElement.dataset.ppApprovedAssets='error';});
 
   qa('.sport-shield').forEach(el=>el.remove());
   qa('.pp-return-control,.pp-mobile-return-bar,.pp-mobile-origin-controls').forEach(el=>el.remove());
