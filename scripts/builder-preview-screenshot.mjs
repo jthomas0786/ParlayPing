@@ -26,7 +26,7 @@ const slip={
   ],
 };
 const fixture=renderBuilderHtml({slip,token:'s1.preview.fixture',liveDataAvailable:false});
-const types={'.css':'text/css','.js':'text/javascript','.svg':'image/svg+xml','.png':'image/png','.html':'text/html'};
+const types={'.css':'text/css','.js':'text/javascript','.svg':'image/svg+xml','.png':'image/png','.b64':'text/plain; charset=utf-8','.html':'text/html'};
 const server=http.createServer((req,res)=>{
   const url=new URL(req.url,'http://127.0.0.1:4176');
   if(url.pathname==='/fixture'){
@@ -45,18 +45,31 @@ const browser=await chromium.launch({headless:true});
 const page=await browser.newPage({viewport:{width:393,height:852},deviceScaleFactor:1,isMobile:true,hasTouch:true});
 await page.goto('http://127.0.0.1:4176/fixture',{waitUntil:'domcontentloaded'});
 await page.waitForSelector('.pick-card');
-await page.waitForTimeout(700);
+await page.waitForFunction(()=>document.documentElement.dataset.ppApprovedAssets==='ready',{timeout:5000});
+await page.waitForTimeout(180);
 
-const visual=await page.evaluate(()=>({
-  heroTools:[...document.querySelectorAll('.hero-tool')].map(el=>el.querySelector('strong')?.textContent?.trim()),
-  linkHeroCount:[...document.querySelectorAll('.hero-tool strong')].filter(el=>el.textContent?.trim()==='Link to Sportsbooks').length,
-  heroHeight:document.querySelector('.concept-hero')?.getBoundingClientRect().height,
-  probabilityLabels:[...document.querySelectorAll('.pick-probability')].map(el=>el.textContent.trim()),
-  probabilityTracks:[...document.querySelectorAll('.meter-track')].map(el=>({width:el.getBoundingClientRect().width,height:el.getBoundingClientRect().height})),
-  probabilityFills:[...document.querySelectorAll('.meter-track i')].map(el=>el.getBoundingClientRect().width),
-  draftKingsOdds:[...document.querySelectorAll('.pick-odds')].map(el=>el.textContent.trim()),
-  heroCopy:document.querySelector('.hero-copy p')?.textContent?.trim(),
-}));
+const visual=await page.evaluate(()=>{
+  const copy=document.querySelector('.hero-copy')?.getBoundingClientRect();
+  const tools=document.querySelector('.hero-tools')?.getBoundingClientRect();
+  const brand=document.querySelector('.pp-brand-lockup');
+  const hero=document.querySelector('.concept-hero');
+  return {
+    approvedAssets:document.documentElement.dataset.ppApprovedAssets||'',
+    headerLogoIsApprovedData:Boolean(brand?.src?.startsWith('data:image/webp;base64,')),
+    heroLogoIsApprovedData:Boolean(hero?.style.getPropertyValue('--pp-hero-image')?.includes('data:image/webp;base64,')),
+    heroContentGap:copy&&tools?Math.round((tools.top-copy.bottom)*10)/10:null,
+    heroTools:[...document.querySelectorAll('.hero-tool')].map(el=>el.querySelector('strong')?.textContent?.trim()),
+    linkHeroCount:[...document.querySelectorAll('.hero-tool strong')].filter(el=>el.textContent?.trim()==='Link to Sportsbooks').length,
+    heroHeight:hero?.getBoundingClientRect().height,
+    probabilityLabels:[...document.querySelectorAll('.pick-probability')].map(el=>el.textContent.trim()),
+    probabilityTracks:[...document.querySelectorAll('.meter-track')].map(el=>({width:el.getBoundingClientRect().width,height:el.getBoundingClientRect().height})),
+    probabilityFills:[...document.querySelectorAll('.meter-track i')].map(el=>el.getBoundingClientRect().width),
+    draftKingsOdds:[...document.querySelectorAll('.pick-odds')].map(el=>el.textContent.trim()),
+    heroCopy:document.querySelector('.hero-copy p')?.textContent?.trim(),
+  };
+});
+if(visual.approvedAssets!=='ready'||!visual.headerLogoIsApprovedData||!visual.heroLogoIsApprovedData)throw new Error(`approved logo assets not loaded: ${JSON.stringify(visual)}`);
+if(visual.heroContentGap==null||visual.heroContentGap<4)throw new Error(`hero copy/tools overlap or are too close: ${visual.heroContentGap}`);
 if(visual.heroTools.join('|')!=='Adjust Alt Lines|Share & Get Tails|Track & Compare')throw new Error(`hero tools mismatch: ${visual.heroTools.join(', ')}`);
 if(visual.linkHeroCount!==0)throw new Error('Link to Sportsbooks still exists in the rendered builder.');
 if(visual.heroHeight>270)throw new Error(`hero is still too tall: ${visual.heroHeight}`);
