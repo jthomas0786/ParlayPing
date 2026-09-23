@@ -30,6 +30,12 @@ jobs:
         run: node scripts/share-assets-live-smoke.mjs
       - name: Render share card preview
         run: node scripts/share-card-preview.mjs
+      - name: Copy approved share branding into QA artifact
+        if: always()
+        run: |
+          mkdir -p artifacts
+          cp parlayping-approved-logo.png artifacts/approved-share-logo.png
+          cp parlayping-approved-wordmark.webp artifacts/approved-share-wordmark.webp
       - name: Upload staging QA screenshots
         if: always()
         uses: actions/upload-artifact@v4
@@ -39,5 +45,7 @@ jobs:
             artifacts/builder-desktop-*.png
             artifacts/builder-mobile-*.png
             artifacts/share-card-preview-*.png
+            artifacts/approved-share-logo.png
+            artifacts/approved-share-wordmark.webp
           if-no-files-found: error
           retention-days: 3
