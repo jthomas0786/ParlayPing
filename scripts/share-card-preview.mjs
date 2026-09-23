@@ -4,6 +4,7 @@ import { Resvg } from '@resvg/resvg-js';
 
 const require = createRequire(import.meta.url);
 const { renderShareSvg } = require('../server/api/lib/share-renderer');
+const { rasterizeEmbeddedWebp } = require('../server/api/share-card');
 
 const slip = {
   source:'X @ParlayPing',
@@ -16,11 +17,11 @@ const slip = {
   ],
 };
 
-const svg = renderShareSvg({ slip, context:'x_reply', pageUrl:'https://parlayping.net/build/demo' });
+const svg = await rasterizeEmbeddedWebp(renderShareSvg({ slip, context:'x_reply', pageUrl:'https://parlayping.net/build/demo' }));
 fs.mkdirSync('artifacts', { recursive:true });
 fs.writeFileSync('artifacts/share-card-preview.svg', svg);
 for (const width of [1200,506]) {
   const png = new Resvg(svg, { fitTo:{ mode:'width', value:width }, font:{ loadSystemFonts:true, defaultFontFamily:'Arial' } }).render().asPng();
   fs.writeFileSync(`artifacts/share-card-preview-${width}.png`, png);
 }
-console.log('Rendered ParlayPing share card previews.');
+console.log('Rendered ParlayPing share card previews with approved logos.');
