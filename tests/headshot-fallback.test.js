@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 
 const shareAssets = require('../server/api/lib/share-assets');
 const headshots = require('../server/api/lib/headshot-ensure');
+const { renderShareSvg } = require('../server/api/lib/share-renderer');
 
 function jsonResponse(body, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -89,6 +90,9 @@ test('global ESPN player search supplies a trusted headshot when game data has n
   }, async () => {
     const result = await headshots.ensureHeadshots({ legs:[{ sport:'NFL', player:'Test Player' }] });
     assert.equal(result.legs[0].playerImageUrl, 'https://a.espncdn.com/i/headshots/nfl/players/full/12345.png');
+    const svg = renderShareSvg({ slip:result });
+    assert.match(svg, /a\.espncdn\.com\/i\/headshots\/nfl\/players\/full\/12345\.png/);
+    assert.doesNotMatch(svg, />TP<\/text>/);
   });
 });
 
@@ -160,6 +164,9 @@ test('WNBA official player index uses WNBA person ids instead of ESPN ids', asyn
   }, async () => {
     const result = await headshots.ensureHeadshots({ legs:[{ sport:'WNBA', player:'League Guard', team:'LVA', playerId:'4065000' }] });
     assert.equal(result.legs[0].playerImageUrl, 'https://cdn.wnba.com/headshots/wnba/latest/260x190/989898.png');
+    const svg = renderShareSvg({ slip:result });
+    assert.match(svg, /cdn\.wnba\.com\/headshots\/wnba\/latest\/260x190\/989898\.png/);
+    assert.doesNotMatch(svg, />LG<\/text>/);
   });
 });
 
@@ -168,4 +175,23 @@ test('random third-party portrait URLs are never accepted as trusted player head
   assert.equal(headshots.isTrustedImageUrl('https://a.espncdn.com/i/headshots/nfl/players/full/12345.png'), true);
   assert.equal(headshots.isTrustedImageUrl('https://cdn.nba.com/headshots/nba/latest/1040x760/123.png'), true);
   assert.equal(headshots.isTrustedImageUrl('https://img.mlbstatic.com/mlb-photos/image/upload/test.png'), true);
+});
+
+test('initials render only after ESPN and official league headshot sources fail', async () => {
+  await withFetch(async url => {
+    const href = String(url);
+    if (href.includes('site.web.api.espn.com/apis/') && href.includes('No%20Photo')) return jsonResponse({ results:[] });
+    if (href.includes('statsapi.mlb.com/api/v1/people/search')) return jsonResponse({ people:[] });
+    throw new Error(`Unexpected fetch ${href}`);
+  }, async () => {
+    const result = await headshots.ensureHeadshots({ legs:[{
+      sport:'MLB',
+      player:'No Photo',
+      team:'SEA',
+      playerImageUrl:'https://random-example.com/no-photo.png',
+    }] });
+    const svg = renderShareSvg({ slip:result });
+    assert.doesNotMatch(svg, /random-example\.com/);
+    assert.match(svg, />NP<\/text>/);
+  });
 });
