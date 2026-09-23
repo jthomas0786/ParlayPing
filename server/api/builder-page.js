@@ -3,7 +3,7 @@ const path = require('path');
 const { decodeShareSlip, buildCardUrl } = require('./lib/share-slip');
 const { hydrateSharedSlip } = require('./lib/share-hydrate');
 
-const SHARE_CARD_VERSION = '20260923b';
+const SHARE_CARD_VERSION = '20260923c';
 
 function tokenFromRequest(req) {
   return String(req.query?.slip || req.query?.token || '').trim();
