@@ -15,6 +15,15 @@ const EXTENDED_SPORTS=new Set(['SOCCER','TENNIS','MMA','ESPORTS','TABLE_TENNIS',
 const SUPPORTED_ANALYSIS = new Set(['NFL','NCAAF','MLB','NHL','NBA','NCAAB','WNBA',...EXTENDED_SPORTS]);
 const MAX_ANALYSIS_LEGS=25;
 const ADAPTER_BATCH_SIZE=20;
+const MLB_FIRST_NAME_GROUPS=[
+  ['leonardo','leo'],['michael','mike'],['matthew','matt'],['nicholas','nick'],['christopher','chris'],['jonathan','jon'],
+  ['alexander','alex'],['joseph','joe'],['william','will','bill'],['robert','rob','bob'],['benjamin','ben'],['joshua','josh'],
+  ['jacob','jake'],['nathaniel','nate'],['zachary','zach'],['timothy','tim'],['daniel','dan'],['samuel','sam'],['theodore','theo'],
+  ['gregory','greg'],['stephen','steven','steve'],['ronald','ron'],['anthony','tony'],['edward','ed','eddie'],['andrew','andy'],
+  ['thomas','tom','tommy'],['james','jim','jimmy'],['richard','rick','ricky'],['charles','charlie'],['patrick','pat'],['kenneth','ken','kenny']
+];
+const MLB_FIRST_ALIAS_MAP=new Map();
+for(const group of MLB_FIRST_NAME_GROUPS)for(const name of group)MLB_FIRST_ALIAS_MAP.set(name,group);
 
 function pct(v){ return Number.isFinite(v) ? Math.round(v*1000)/10 : null; }
 function normalizeSport(value){
@@ -55,10 +64,39 @@ function chunks(rows,size=ADAPTER_BATCH_SIZE){
   for(let i=0;i<rows.length;i+=size)out.push(rows.slice(i,i+size));
   return out;
 }
+function mlbIdentityCandidates(player){
+  const raw=String(player||'').trim();if(!raw)return [];
+  const parts=raw.split(/\s+/);if(parts.length<2)return [raw];
+  const first=parts[0].toLowerCase().replace(/[^a-z]/g,'');const group=MLB_FIRST_ALIAS_MAP.get(first);if(!group)return [raw];
+  const rest=parts.slice(1).join(' '),seen=new Set(),out=[];
+  for(const candidateFirst of [parts[0],...group]){
+    const candidate=`${candidateFirst} ${rest}`.trim();const key=candidate.toLowerCase();if(seen.has(key))continue;seen.add(key);out.push(candidate);
+  }
+  return out;
+}
+function retryableMlbIdentityMiss(result){return String(result?.status||'').toUpperCase()==='UNRESOLVED'&&String(result?.resolutionReason||'')==='mlb-player-not-found-in-model-or-official-sources';}
+async function analyzeMlbWithAliases(sportLegs,options={}){
+  const analyzerOptions={referenceTime:options.referenceTime,now:options.now};
+  const analysis=await analyzeMlbSlip(sportLegs,analyzerOptions);
+  const results=[...(analysis?.results||[])];
+  for(let i=0;i<results.length;i++){
+    const result=results[i],leg=sportLegs.find(row=>String(row?.id||'')===String(result?.id||''))||sportLegs[i];
+    if(!leg||!retryableMlbIdentityMiss(result))continue;
+    const candidates=mlbIdentityCandidates(leg.player).slice(1);
+    for(const alias of candidates){
+      const retry=await analyzeMlbSlip([{...leg,player:alias}],analyzerOptions);
+      const matched=retry?.results?.[0];
+      if(!matched||String(matched.status||'').toUpperCase()==='UNRESOLVED')continue;
+      results[i]={...matched,id:leg.id,player:leg.player,originalText:leg.originalText,matchedPlayerName:matched.player||alias,identityAlias:alias};
+      break;
+    }
+  }
+  return {...analysis,results};
+}
 async function analyzeSportBatch(sport,sportLegs,options){
   if(sport==='NFL') return analyzeNflSlip(sportLegs,{baseUrl:options.baseUrl});
   if(sport==='NCAAF') return analyzeNcaafSlip(sportLegs);
-  if(sport==='MLB') return analyzeMlbSlip(sportLegs,{referenceTime:options.referenceTime,now:options.now});
+  if(sport==='MLB') return analyzeMlbWithAliases(sportLegs,options);
   if(sport==='NHL') return analyzeNhlSlip(sportLegs,{referenceTime:options.referenceTime});
   if(['NBA','NCAAB','WNBA'].includes(sport)) return analyzeBasketballSlip(sport,sportLegs,{referenceTime:options.referenceTime});
   if(sport==='MMA') return analyzeMmaSlip(sportLegs,{referenceTime:options.referenceTime,now:options.now});
@@ -114,4 +152,4 @@ async function analyzeMultiSport(rawLegs,options={}){
   });
 }
 
-module.exports={ analyzeMultiSport, normalizeSport, normalizeUniversalLeg, SUPPORTED_ANALYSIS, EXTENDED_SPORTS, MAX_ANALYSIS_LEGS, ADAPTER_BATCH_SIZE, chunks };
+module.exports={ analyzeMultiSport, analyzeMlbWithAliases, mlbIdentityCandidates, normalizeSport, normalizeUniversalLeg, SUPPORTED_ANALYSIS, EXTENDED_SPORTS, MAX_ANALYSIS_LEGS, ADAPTER_BATCH_SIZE, chunks };
