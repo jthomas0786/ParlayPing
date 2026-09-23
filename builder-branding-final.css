@@ -1,13 +1,22 @@
 /* Final branding pass requested by JT. Loaded after all other builder layers. */
 
+.brand,
+.brand::before,
+.brand::after{
+  filter:none!important;
+  mix-blend-mode:normal!important;
+}
 .brand .pp-acceptance-lockup{
-  content:url('/parlayping-approved-wordmark.webp')!important;
+  content:url('/parlayping-approved-builder-header.webp')!important;
   width:268px!important;
   max-width:46vw!important;
   height:auto!important;
   object-fit:contain!important;
   object-position:left center!important;
-  filter:drop-shadow(0 3px 8px rgba(0,0,0,.28))!important;
+  opacity:1!important;
+  filter:none!important;
+  mix-blend-mode:normal!important;
+  isolation:isolate!important;
 }
 
 .concept-hero.pp-acceptance-hero{position:relative!important;isolation:isolate!important}
