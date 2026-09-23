@@ -1,11 +1,6 @@
 {
   "cleanUrls": true,
   "trailingSlash": false,
-  "git": {
-    "deploymentEnabled": {
-      "builder-hero-prob-preview-stage": false
-    }
-  },
   "rewrites": [
     { "source": "/api/analyze", "destination": "/api/index?__pp_route=analyze" },
     { "source": "/api/parse", "destination": "/api/index?__pp_route=parse" },
