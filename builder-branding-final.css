@@ -1,0 +1,49 @@
+/* Final branding pass requested by JT. Loaded after all other builder layers. */
+
+.brand .pp-acceptance-lockup{
+  content:url('/parlayping-approved-wordmark.webp')!important;
+  width:268px!important;
+  max-width:46vw!important;
+  height:auto!important;
+  object-fit:contain!important;
+  object-position:left center!important;
+  filter:drop-shadow(0 3px 8px rgba(0,0,0,.28))!important;
+}
+
+.concept-hero.pp-acceptance-hero{position:relative!important;isolation:isolate!important}
+.concept-hero.pp-acceptance-hero .pp-approved-hero-watermark{
+  position:absolute!important;
+  left:50%!important;
+  top:50%!important;
+  width:min(560px,62vw)!important;
+  height:auto!important;
+  transform:translate(-50%,-50%) scale(1.08)!important;
+  opacity:.105!important;
+  pointer-events:none!important;
+  user-select:none!important;
+  z-index:0!important;
+  object-fit:contain!important;
+  object-position:center!important;
+  filter:saturate(.95) brightness(.9) contrast(1.04)!important;
+}
+.concept-hero.pp-acceptance-hero .hero-overlay{z-index:1!important}
+.concept-hero.pp-acceptance-hero .hero-copy,
+.concept-hero.pp-acceptance-hero .hero-tools{z-index:2!important}
+
+@media(max-width:720px){
+  .brand .pp-acceptance-lockup{
+    width:205px!important;
+    max-width:55vw!important;
+  }
+  .concept-hero.pp-acceptance-hero .pp-approved-hero-watermark{
+    width:min(390px,104vw)!important;
+    left:54%!important;
+    opacity:.09!important;
+    transform:translate(-50%,-50%) scale(1.08)!important;
+  }
+}
+
+@media(max-width:390px){
+  .brand .pp-acceptance-lockup{width:188px!important;max-width:58vw!important}
+  .concept-hero.pp-acceptance-hero .pp-approved-hero-watermark{width:370px!important;opacity:.085!important}
+}
