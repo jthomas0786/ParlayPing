@@ -20,3 +20,27 @@ jobs:
       - run: npm install --no-audit --no-fund
       - name: Run full regression suite
         run: npm test
+      - name: Verify current MLB odds and selection links for reported slip
+        run: |
+          node <<'NODE'
+          const {loadSnapshot,parseMlbPublicSlate}=require('./server/api/lib/sportsbook-enrich');
+          (async()=>{
+            const doc=await loadSnapshot('MLB');
+            if(!doc||!Array.isArray(doc.games))throw new Error('Current Sports Outpost MLB public slate unavailable');
+            const legs=[
+              {sport:'MLB',player:'Riley Greene',team:'DET',market:'homeRun',side:'yes',line:null},
+              {sport:'MLB',player:'Coby Mayo',team:'BAL',market:'homeRun',side:'yes',line:null},
+              {sport:'MLB',player:'Josh Bell',team:'MIN',market:'homeRun',side:'yes',line:null},
+              {sport:'MLB',player:'Jake Burger',team:'TEX',market:'homeRun',side:'yes',line:null},
+            ];
+            for(const leg of legs){
+              const parsed=parseMlbPublicSlate(doc,leg);
+              const offers=parsed?.bookOffers||{};
+              const linked=Object.entries(offers).filter(([,offer])=>offer?.selectionLink&&Number.isFinite(Number(offer?.oddsAmerican)));
+              console.log(JSON.stringify({player:leg.player,gameId:parsed?.gameId||null,preferred:parsed?.preferred||null,books:Object.keys(offers),linkedBooks:linked.map(([book])=>book)}));
+              if(!parsed)throw new Error(`${leg.player}: current MLB slate did not resolve sportsbook market`);
+              if(!Object.keys(offers).length)throw new Error(`${leg.player}: no current sportsbook HR price`);
+              if(!linked.length)throw new Error(`${leg.player}: no verified sportsbook selection link`);
+            }
+          })().catch(error=>{console.error(error);process.exit(1);});
+          NODE
