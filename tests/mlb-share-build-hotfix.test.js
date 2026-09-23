@@ -101,13 +101,13 @@ test('builder can calculate best-available verified odds when one MLB leg lacks 
   const context={
     window:{__PARLAYPING_BUILDER__:{slip:{legs}}},
     document:{readyState:'complete',querySelector:()=>null,querySelectorAll:()=>[],addEventListener:()=>{},documentElement:{}},
-    MutationObserver:class{observe(){}},requestAnimationFrame:()=>0,setTimeout:()=>0,console,
+    requestAnimationFrame:()=>0,setTimeout:()=>0,console,
   };
   vm.createContext(context);vm.runInContext(source,context);
   const api=context.window.__PP_SUMMARY_ODDS_HOTFIX_TEST__;
   assert.ok(api);
   assert.equal(api.independentGames(),true);
-  const combined=api.combinedForBook(api.BEST);
+  const combined=api.combinedFor(api.BEST);
   assert.ok(combined);
   assert.ok(Number.isFinite(combined.american));
   assert.ok(combined.implied>0&&combined.implied<1);
