@@ -1,19 +1,25 @@
 const SNAPSHOT_BASE=String(process.env.SPORTS_OUTPOST_BASE_URL||'https://thesportsoutpost.com').replace(/\/$/,'');
 const CACHE_MS=45_000;
 const cache=new Map();
-const SOURCES={NFL:'slates/nfl-odds.json',NBA:'slates/nba-odds.json',WNBA:'slates/wnba-odds.json',NCAAB:'slates/ncaab-odds.json',NHL:'slates/nhl-odds.json',MLB:'public/slate.json'};
+const SOURCES={NFL:'slates/nfl-odds.json',NBA:'slates/nba-odds.json',WNBA:'slates/wnba-odds.json',NCAAB:'slates/ncaab-odds.json',NHL:'slates/nhl-odds.json',MLB:'slates/mlb-odds.json'};
 
 const finite=v=>v===null||v===undefined||v===''?null:(Number.isFinite(Number(v))?Number(v):null);
 const norm=s=>String(s||'').toLowerCase().normalize('NFKD').replace(/[.'’]/g,'').replace(/\b(jr|sr|ii|iii|iv|v)\b/g,'').replace(/[^a-z0-9]+/g,' ').trim().replace(/\s+/g,' ');
 const compact=s=>norm(s).replace(/\s+/g,'');
+const MLB_INTERNAL_MARKETS={
+  homerun:'hr',hits:'hits',totalbases:'tb',rbi:'rbi',hrr:'hrr',stolenbases:'sb',runs:'runs',singles:'singles',doubles:'doubles',triples:'triples',walks:'walks',
+  batterstrikeouts:'batterStrikeouts',hitsruns:'hitsRuns',hitsrbi:'hitsRbi',runsrbi:'runsRbi',extrabasehits:'extraBaseHits',
+  pitcherstrikeouts:'pitcherStrikeouts',pitchingouts:'pitchingOuts',hitsallowed:'hitsAllowed',earnedruns:'earnedRuns',walksallowed:'walksAllowed',homerunsallowed:'homeRunsAllowed',pitcherwin:'pitcherWin'
+};
 function normBook(value){
   const raw=String(value||'').trim(),key=raw.toLowerCase().replace(/[^a-z0-9]/g,'');
-  const map={draftkings:'DraftKings',dk:'DraftKings',fanduel:'FanDuel',fd:'FanDuel',bet365:'bet365','365':'bet365',caesars:'Caesars',williamhill:'Caesars',caesarssportsbook:'Caesars',thescorebet:'theScore Bet',thescore:'theScore Bet',betmgm:'BetMGM',mgm:'BetMGM',fanatics:'Fanatics',fanaticssportsbook:'Fanatics',espnbet:'ESPN BET',espn:'ESPN BET'};
+  const map={draftkings:'DraftKings',dk:'DraftKings',fanduel:'FanDuel',fd:'FanDuel',bet365:'bet365','365':'bet365',caesars:'Caesars',williamhill:'Caesars',caesarssportsbook:'Caesars',thescorebet:'theScore Bet',thescore:'theScore Bet',betmgm:'BetMGM',mgm:'BetMGM',fanatics:'Fanatics',fanaticssportsbook:'Fanatics',espnbet:'ESPN BET',espn:'ESPN BET',hardrock:'Hard Rock',hardrockbet:'Hard Rock',betrivers:'BetRivers',pinnacle:'Pinnacle',parx:'Parx',bovada:'Bovada'};
   return map[key]||raw||null;
 }
 function sideOf(leg){const side=String(leg?.side||'over').toLowerCase();return side==='under'||side==='no'?'under':'over';}
 function marketKey(leg){
   const key=compact(leg?.market||leg?.displayMarket||'');
+  if(MLB_INTERNAL_MARKETS[key])return MLB_INTERNAL_MARKETS[key];
   if(/passingyards|passyards|passyds/.test(key))return 'passYds';
   if(/rushingyards|rushyards|rushyds/.test(key))return 'rushYds';
   if(/receivingyards|recyards|recyds/.test(key))return 'recYds';
@@ -29,12 +35,16 @@ function marketKey(leg){
   if(/pointsrebounds|ptsrebs/.test(key))return 'ptsRebs';
   if(/reboundsassists|rebsasts/.test(key))return 'rebsAsts';
   if(/points/.test(key))return 'points';
-  if(/pitcherstrikeouts|strikeouts|pitcherks/.test(key))return 'strikeouts';
+  if(/pitcherstrikeouts|pitcherks/.test(key))return 'pitcherStrikeouts';
   if(/totalbases|battertotalbases|\btb\b/.test(key))return 'tb';
   if(/stolenbases|batterstolenbases|\bsb\b/.test(key))return 'sb';
   if(/runsbattedin|batterrbis|\brbi/.test(key))return 'rbi';
-  if(/runs|battersrunsscored/.test(key))return 'runs';
   if(/homerun|batterhomeruns|\bhr\b/.test(key))return 'hr';
+  if(/hitsrunsrbis|hitsrunsrbi/.test(key))return 'hrr';
+  if(/hitsallowed/.test(key))return 'hitsAllowed';
+  if(/earnedruns/.test(key))return 'earnedRuns';
+  if(/pitchingouts|pitcherouts/.test(key))return 'pitchingOuts';
+  if(/runs|battersrunsscored/.test(key))return 'runs';
   if(/hits/.test(key))return 'hits';
   if(/shotsongoal|sog/.test(key))return 'shots';
   if(/anytimegoal|atg/.test(key))return 'atg';
@@ -42,18 +52,19 @@ function marketKey(leg){
 }
 function teamMatches(a,b){const x=compact(a),y=compact(b);return Boolean(x&&y&&(x===y||x.includes(y)||y.includes(x)));}
 function sameEvent(row,leg){
-  const a=String(row?.eventId||row?.gameId||row?.gamePk||row?.game_pk||''),b=String(leg?.gameId||'');
-  if(a&&b&&a===b)return true;
+  const ids=[row?.eventId,row?.gameId,row?.gamePk,row?.game_pk,row?.providerEventId].filter(v=>v!=null&&String(v));
+  const b=String(leg?.gameId||'');
+  if(b&&ids.some(a=>String(a)===b))return true;
   const rowMatch=norm(`${row?.awayTeam||row?.away?.abbr||row?.away?.name||''} @ ${row?.homeTeam||row?.home?.abbr||row?.home?.name||''}`),legMatch=norm(leg?.matchup||'');
   if(rowMatch&&legMatch&&(rowMatch===legMatch||rowMatch.replace(/ at /g,' ')===legMatch.replace(/ at /g,' ')))return true;
   const rt=Date.parse(row?.commenceTime||row?.startTimeUTC||row?.startTime||''),lt=Date.parse(leg?.startTimeUTC||'');
-  return Number.isFinite(rt)&&Number.isFinite(lt)&&Math.abs(rt-lt)<=8*3600_000;
+  return Number.isFinite(rt)&&Number.isFinite(lt)&&Math.abs(rt-lt)<=20*60_000;
 }
 async function loadSnapshot(sport){
   const upper=String(sport||'').toUpperCase(),path=SOURCES[upper];if(!path)return null;
   const hit=cache.get(upper);if(hit&&Date.now()-hit.ts<CACHE_MS)return hit.value;
   try{
-    const response=await fetch(`${SNAPSHOT_BASE}/${path}`,{headers:{accept:'application/json','user-agent':'ParlayPing/1.1'},cache:'no-store',signal:AbortSignal.timeout(5000)});
+    const response=await fetch(`${SNAPSHOT_BASE}/${path}`,{headers:{accept:'application/json','user-agent':'ParlayPing/1.2'},cache:'no-store',signal:AbortSignal.timeout(5000)});
     if(!response.ok)return null;
     const value=await response.json();cache.set(upper,{ts:Date.now(),value});return value;
   }catch{return null;}
@@ -63,20 +74,27 @@ function pushAlt(out,book,row){
   if(!out[name])out[name]=[];
   const side=String(row?.side||'').toLowerCase()||null;
   if(out[name].some(x=>x.line===line&&(x.side||null)===(side||null)))return;
-  out[name].push({line,oddsAmerican:odds,probability:finite(row?.probability),side,selectionLink:row?.selectionLink||row?.link||null,sportsbook:name});
+  out[name].push({line,oddsAmerican:odds,probability:finite(row?.probability),side,selectionLink:row?.selectionLink||row?.link||null,sportsbook:name,snapshotTime:row?.snapshotTime||null,preserved:Boolean(row?.preserved)});
 }
+function binaryMarket(market){return ['atd','atg','hr','firstTd','pitcherWin'].includes(market);}
 function parseRowSnapshot(doc,leg){
   const rows=Array.isArray(doc?.rows)?doc.rows:[];if(!rows.length)return null;
   const name=norm(leg.player),market=marketKey(leg),side=sideOf(leg),altLinesByBook={},bookOffers={};
+  let preferred=null;
   const hits=rows.filter(row=>norm(row?.player)===name&&marketKey({market:row?.market||row?.marketKey})===market&&sameEvent(row,leg));
   for(const row of hits){
     const book=normBook(row.book||row.sportsbook);if(!book)continue;
     const line=finite(row.line),price=finite(side==='under'?row.underPrice:row.overPrice);
-    if(line!=null&&price!=null)pushAlt(altLinesByBook,book,{line,oddsAmerican:price,side});
-    const binaryMatch=leg.line==null&&['atd','atg','hr','firstTd'].includes(market);
-    if(line!=null&&(binaryMatch||(finite(leg.line)!=null&&Math.abs(line-Number(leg.line))<1e-7))&&price!=null)bookOffers[book]={...(bookOffers[book]||{}),oddsAmerican:price,selectionLink:row.deepLink||row.selectionLink||null,betslipUrl:null};
+    if(line!=null&&price!=null)pushAlt(altLinesByBook,book,{line,oddsAmerican:price,side,snapshotTime:row.snapshotTime,preserved:row.preserved});
+    const binaryMatch=leg.line==null&&binaryMarket(market);
+    const exact=binaryMatch||(line!=null&&finite(leg.line)!=null&&Math.abs(line-Number(leg.line))<1e-7);
+    if(exact&&price!=null){
+      const offer={oddsAmerican:price,selectionLink:row.deepLink||row.selectionLink||null,betslipUrl:null,snapshotTime:row.snapshotTime||null,preserved:Boolean(row.preserved),priceKind:row.preserved?'last-verified-pregame':'verified-snapshot'};
+      bookOffers[book]={...(bookOffers[book]||{}),...offer};
+      if(!preferred||price>preferred.oddsAmerican)preferred={sportsbook:book,oddsAmerican:price,sportsbookLink:offer.selectionLink,snapshotTime:offer.snapshotTime,preserved:offer.preserved};
+    }
   }
-  return Object.keys(bookOffers).length||Object.keys(altLinesByBook).length?{altLinesByBook,bookOffers}:null;
+  return Object.keys(bookOffers).length||Object.keys(altLinesByBook).length?{altLinesByBook,bookOffers,preferred}:null;
 }
 function allOffers(branch){
   if(!branch)return[];const rows=[];if(branch.best)rows.push(branch.best);if(Array.isArray(branch.all))rows.push(...branch.all);return rows;
@@ -93,13 +111,13 @@ function findNestedPlayer(doc,leg){
 function parseNestedSnapshot(doc,leg){
   const hit=findNestedPlayer(doc,leg);if(!hit)return null;
   const slot=hit.player?.odds?.[marketKey(leg)];if(!slot)return null;
-  const side=sideOf(leg),altLinesByBook={},bookOffers={};
+  const side=sideOf(leg),altLinesByBook={},bookOffers={};let preferred=null;
   const source=Array.isArray(slot.alternates)&&slot.alternates.length?slot.alternates:(finite(slot.line)!=null?[{line:Number(slot.line),over:slot.over,under:slot.under}]:[]);
   for(const row of source){
     const line=finite(row?.line);if(line==null)continue;
-    for(const offer of allOffers(row?.[side])){const book=normBook(offer?.book||offer?.sportsbook);const price=finite(offer?.price??offer?.oddsAmerican);if(!book||price==null)continue;pushAlt(altLinesByBook,book,{line,oddsAmerican:price,side,selectionLink:offer?.link||offer?.deepLink||null});const binaryMatch=leg.line==null&&['atd','atg','hr','firstTd'].includes(marketKey(leg));if(binaryMatch||(finite(leg.line)!=null&&Math.abs(line-Number(leg.line))<1e-7))bookOffers[book]={oddsAmerican:price,selectionLink:offer?.link||offer?.deepLink||null,betslipUrl:null};}
+    for(const offer of allOffers(row?.[side])){const book=normBook(offer?.book||offer?.sportsbook);const price=finite(offer?.price??offer?.oddsAmerican);if(!book||price==null)continue;pushAlt(altLinesByBook,book,{line,oddsAmerican:price,side,selectionLink:offer?.link||offer?.deepLink||null});const binaryMatch=leg.line==null&&binaryMarket(marketKey(leg));if(binaryMatch||(finite(leg.line)!=null&&Math.abs(line-Number(leg.line))<1e-7)){bookOffers[book]={oddsAmerican:price,selectionLink:offer?.link||offer?.deepLink||null,betslipUrl:null};if(!preferred||price>preferred.oddsAmerican)preferred={sportsbook:book,oddsAmerican:price,sportsbookLink:offer?.link||offer?.deepLink||null};}}
   }
-  return Object.keys(bookOffers).length||Object.keys(altLinesByBook).length?{altLinesByBook,bookOffers}:null;
+  return Object.keys(bookOffers).length||Object.keys(altLinesByBook).length?{altLinesByBook,bookOffers,preferred}:null;
 }
 function mlbGameMatches(game,leg){
   if(!game)return false;
@@ -112,10 +130,7 @@ function mlbGameMatches(game,leg){
 }
 function parseMlbPublicSlate(doc,leg){
   const games=Array.isArray(doc?.games)?doc.games:[];if(!games.length)return null;
-  const wanted=norm(leg?.player),market=marketKey(leg);if(!wanted)return null;
-  // The Sports Outpost MLB slate currently stores the OVER/YES price returned by
-  // the odds feed. Never reuse that quote for an Under/No selection.
-  if(sideOf(leg)==='under')return null;
+  const wanted=norm(leg?.player),market=marketKey(leg);if(!wanted||sideOf(leg)==='under')return null;
   let found=null;
   for(const game of games){
     if(!mlbGameMatches(game,leg))continue;
@@ -127,18 +142,6 @@ function parseMlbPublicSlate(doc,leg){
     }
     if(found)break;
   }
-  if(!found){
-    for(const game of games){
-      for(const side of ['away','home']){
-        const team=game?.[side]||{};
-        const player=(team.lineup||[]).find(row=>norm(row?.name)===wanted);
-        if(!player)continue;
-        if(leg?.team&&!teamMatches(leg.team,team.name)&&!teamMatches(leg.team,team.abbr)&&!teamMatches(leg.team,team.abbreviation))continue;
-        found={game,team,side,player};break;
-      }
-      if(found)break;
-    }
-  }
   if(!found)return null;
   const slot=found.player?.odds?.[market];if(!slot)return null;
   const line=finite(slot.line)??(['hr'].includes(market)?0.5:null);if(line==null)return null;
@@ -148,8 +151,8 @@ function parseMlbPublicSlate(doc,leg){
     const book=normBook(offer?.bookTitle||offer?.book||offer?.sportsbook),price=finite(offer?.price??offer?.oddsAmerican),selectionLink=offer?.link||offer?.deepLink||offer?.selectionLink||null;
     if(!book||price==null)continue;
     const dedupe=`${book}|${price}|${selectionLink||''}`;if(seen.has(dedupe))continue;seen.add(dedupe);
-    const side=market==='hr'?'yes':'over';
-    pushAlt(altLinesByBook,book,{line,oddsAmerican:price,side,selectionLink});
+    const offerSide=market==='hr'?'yes':'over';
+    pushAlt(altLinesByBook,book,{line,oddsAmerican:price,side:offerSide,selectionLink});
     bookOffers[book]={oddsAmerican:price,selectionLink,betslipUrl:null};
     if(!preferred||price>preferred.oddsAmerican)preferred={sportsbook:book,oddsAmerican:price,sportsbookLink:selectionLink};
   }
@@ -159,11 +162,12 @@ function parseMlbPublicSlate(doc,leg){
 function mergeMaps(existing={},fresh={}){const out={...existing};for(const [key,value] of Object.entries(fresh||{})){if(Array.isArray(value)){out[key]=value;}else if(value&&typeof value==='object'){out[key]={...(out[key]||{}),...value};}else out[key]=value;}return out;}
 async function enrichLeg(leg){
   const doc=await loadSnapshot(leg?.sport);if(!doc)return leg;
-  const parsed=String(leg?.sport||'').toUpperCase()==='MLB'?parseMlbPublicSlate(doc,leg):(parseRowSnapshot(doc,leg)||parseNestedSnapshot(doc,leg));if(!parsed)return leg;
+  const isMlb=String(leg?.sport||'').toUpperCase()==='MLB';
+  const parsed=isMlb?(parseRowSnapshot(doc,leg)||parseMlbPublicSlate(doc,leg)):(parseRowSnapshot(doc,leg)||parseNestedSnapshot(doc,leg));if(!parsed)return leg;
   const preferred=parsed.preferred||null;
   return {
     ...leg,
-    ...(preferred?{oddsAmerican:preferred.oddsAmerican,sportsbook:preferred.sportsbook,sportsbookLink:preferred.sportsbookLink||leg.sportsbookLink||null}:{}),
+    ...(preferred?{oddsAmerican:preferred.oddsAmerican,sportsbook:preferred.sportsbook,sportsbookLink:preferred.sportsbookLink||leg.sportsbookLink||null,oddsSnapshotTime:preferred.snapshotTime||leg.oddsSnapshotTime||null,oddsPreserved:Boolean(preferred.preserved)}:{}),
     gameId:leg.gameId||parsed.gameId||null,
     startTimeUTC:leg.startTimeUTC||parsed.startTimeUTC||null,
     bookOffers:mergeMaps(leg.bookOffers,parsed.bookOffers),
@@ -175,4 +179,4 @@ async function enrichSportsbookMarkets(slip){
   const enriched=await Promise.all(legs.map(enrichLeg));
   return {...slip,legs:enriched};
 }
-module.exports={enrichSportsbookMarkets,enrichLeg,loadSnapshot,parseRowSnapshot,parseNestedSnapshot,parseMlbPublicSlate,marketKey,normBook,mlbGameMatches};
+module.exports={enrichSportsbookMarkets,enrichLeg,loadSnapshot,parseRowSnapshot,parseNestedSnapshot,parseMlbPublicSlate,marketKey,normBook,mlbGameMatches,sameEvent};
