@@ -77,6 +77,36 @@ function cleanBookOffers(value) {
   return out;
 }
 
+function cleanAltLinesByBook(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  const out = {};
+  for (const [rawBook, rawRows] of Object.entries(value)) {
+    if (Object.keys(out).length >= 16) break;
+    const book = normalizeSportsbookName(rawBook);
+    if (!book || !Array.isArray(rawRows)) continue;
+    const seen = new Set();
+    const rows = [];
+    for (const raw of rawRows) {
+      if (rows.length >= 12 || !raw || typeof raw !== 'object' || Array.isArray(raw)) continue;
+      const line = finiteOrNull(raw.line ?? raw.threshold ?? raw.point);
+      const oddsAmerican = finiteOrNull(raw.oddsAmerican ?? raw.price ?? raw.odds);
+      const probability = probabilityOrNull(raw.probability ?? raw.modelProbability ?? raw.pregameProbability);
+      const sideRaw = cleanText(raw.side ?? raw.selection, 24);
+      const side = sideRaw ? sideRaw.toLowerCase() : null;
+      const selectionLink = cleanUrl(raw.selectionLink ?? raw.deepLink ?? raw.link);
+      if (line == null || oddsAmerican == null) continue;
+      if (side && !['over','under','yes','no'].includes(side)) continue;
+      const key = `${side || ''}|${line}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      rows.push({ line, oddsAmerican, probability, side, selectionLink, sportsbook:book });
+    }
+    rows.sort((a,b) => a.line - b.line || String(a.side || '').localeCompare(String(b.side || '')));
+    if (rows.length) out[book] = rows;
+  }
+  return out;
+}
+
 function allowedReturnOrigins(value = process.env.PARLAYPING_ALLOWED_RETURN_ORIGINS) {
   const configured = String(value || '').split(',').map(x => x.trim()).filter(Boolean);
   const source = configured.length ? configured : DEFAULT_RETURN_ORIGINS;
@@ -145,6 +175,7 @@ function canonicalLeg(input = {}, index = 0) {
     sportsbook: normalizeSportsbookName(input.sportsbook ?? input.book ?? input.bookName),
     sportsbookLink: cleanUrl(input.sportsbookLink ?? input.link ?? input.deepLink),
     bookOffers: cleanBookOffers(input.bookOffers ?? input.sportsbookOffers ?? input.offersByBook),
+    altLinesByBook: cleanAltLinesByBook(input.altLinesByBook ?? input.sportsbookAltLines ?? input.altLinesBySportsbook),
     status,
     pregameProbability,
     liveProbability,
@@ -336,4 +367,5 @@ module.exports = {
   normalizeSportsbookName,
   cleanSportsbookLinks,
   cleanBookOffers,
+  cleanAltLinesByBook,
 };
