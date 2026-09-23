@@ -1,5 +1,7 @@
 const test=require('node:test');
 const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const vm=require('node:vm');
 const {preserveDisplayProbabilities}=require('../api/lib/share-hydrate');
 const {parseRowSnapshot,parseMlbPublicSlate}=require('../api/lib/sportsbook-enrich');
 const {renderShareSvg}=require('../api/lib/share-renderer');
@@ -86,4 +88,27 @@ test('builder HTML installs sportsbook composition before summary odds hotfix',(
   const summary=html.indexOf('/builder-summary-odds-hotfix.js');
   assert.ok(prep>=0);
   assert.ok(summary>prep);
+});
+
+test('builder can calculate best-available verified odds when one MLB leg lacks a provider game id',()=>{
+  const source=fs.readFileSync(require.resolve('../builder-summary-odds-hotfix.js'),'utf8');
+  const legs=[
+    {id:'riley',sport:'MLB',player:'Riley Greene',gameId:'824223',matchup:'WSH @ DET',startTimeUTC:'2026-09-23T17:10:00Z',oddsAmerican:1000,bookOffers:{FanDuel:{oddsAmerican:1000}}},
+    {id:'mayo',sport:'MLB',player:'Coby Mayo',matchup:'BAL @ TOR',startTimeUTC:'2026-09-23T17:35:00Z',oddsAmerican:425,bookOffers:{Caesars:{oddsAmerican:425}}},
+    {id:'bell',sport:'MLB',player:'Josh Bell',gameId:'823168',matchup:'MIN @ SF',startTimeUTC:'2026-09-23T19:45:00Z',oddsAmerican:600,bookOffers:{bet365:{oddsAmerican:600}}},
+    {id:'burger',sport:'MLB',player:'Jake Burger',gameId:'822841',matchup:'TEX @ NYM',startTimeUTC:'2026-09-24T00:05:00Z',oddsAmerican:710,bookOffers:{Pinnacle:{oddsAmerican:710}}},
+  ];
+  const context={
+    window:{__PARLAYPING_BUILDER__:{slip:{legs}}},
+    document:{readyState:'complete',querySelector:()=>null,querySelectorAll:()=>[],addEventListener:()=>{},documentElement:{}},
+    MutationObserver:class{observe(){}},requestAnimationFrame:()=>0,setTimeout:()=>0,console,
+  };
+  vm.createContext(context);vm.runInContext(source,context);
+  const api=context.window.__PP_SUMMARY_ODDS_HOTFIX_TEST__;
+  assert.ok(api);
+  assert.equal(api.independentGames(),true);
+  const combined=api.combinedForBook(api.BEST);
+  assert.ok(combined);
+  assert.ok(Number.isFinite(combined.american));
+  assert.ok(combined.implied>0&&combined.implied<1);
 });
