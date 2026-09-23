@@ -18,8 +18,8 @@ test('NFL roster fallback resolves an NFL-hosted headshot by exact player and te
   const bills = 'https://static.www.nfl.com/image/upload/f_auto,q_auto/league/testbills';
   const csv = [
     'season,team,full_name,headshot_url',
-    `2026,BUF,Roster Receiver,${bills}`,
-    `2026,KC,Roster Receiver,${chiefs}`,
+    `2026,BUF,Roster Receiver,"${bills}"`,
+    `2026,KC,Roster Receiver,"${chiefs}"`,
   ].join('\n');
 
   await withFetch(async url => {
