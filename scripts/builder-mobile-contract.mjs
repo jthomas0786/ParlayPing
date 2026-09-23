@@ -23,7 +23,7 @@ const slip={
   },
   legs:[
     {id:'wilson-reb',sport:'WNBA',player:"A'ja Wilson",playerId:'3149391',playerImageUrl:'https://a.espncdn.com/i/headshots/wnba/players/full/3149391.png',team:'LVA',gameId:'game-1',matchup:'SEA @ LVA',market:'rebounds',displayMarket:'Over 8 Rebounds',side:'over',line:8,oddsAmerican:-125,status:'LIVE',progressText:'7 / 8 rebounds',startTimeUTC:start,pregameProbability:.71,liveProbability:.82,altLines:[{line:7,oddsAmerican:-165,probability:.79},{line:8,oddsAmerican:-125,probability:.71},{line:9,oddsAmerican:+105,probability:.52}]},
-    {id:'young-ast',sport:'WNBA',player:'Jackie Young',playerId:'4398917',playerImageUrl:'https://a.espncdn.com/i/headshots/wnba/players/full/4398917.png',team:'LVA',gameId:'game-1',matchup:'SEA @ LVA',market:'assists',displayMarket:'Over 8 Assists',side:'over',line:8,oddsAmerican:110,status:'LIVE',progressText:'5 / 8 assists',startTimeUTC:start,pregameProbability:.58,liveProbability:.46,altLines:[{line:6,oddsAmerican:-155,probability:.68},{line:7,oddsAmerican:-110,probability:.59},{line:8,oddsAmerican:+110,probability:.48}]},
+    {id:'young-ast',sport:'WNBA',player:'Jackie Young',playerId:'4065870',playerImageUrl:'https://a.espncdn.com/i/headshots/wnba/players/full/4065870.png',team:'LVA',gameId:'game-1',matchup:'SEA @ LVA',market:'assists',displayMarket:'Over 8 Assists',side:'over',line:8,oddsAmerican:110,status:'LIVE',progressText:'5 / 8 assists',startTimeUTC:start,pregameProbability:.58,liveProbability:.46,altLines:[{line:6,oddsAmerican:-155,probability:.68},{line:7,oddsAmerican:-110,probability:.59},{line:8,oddsAmerican:+110,probability:.48}]},
   ],
 };
 
@@ -46,7 +46,6 @@ await page.waitForSelector('.pp-game-group');
 await page.waitForTimeout(250);
 
 const metrics=await page.evaluate(()=>{
-  const rect=s=>{const r=document.querySelector(s)?.getBoundingClientRect();return r?{x:r.x,y:r.y,width:r.width,height:r.height,right:r.right,bottom:r.bottom}:null};
   const visible=s=>[...document.querySelectorAll(s)].filter(el=>{const style=getComputedStyle(el),r=el.getBoundingClientRect();return style.display!=='none'&&style.visibility!=='hidden'&&r.width>0&&r.height>0;});
   return {
     acceptance:document.documentElement.dataset.ppAcceptance,brandSrc:document.querySelector('.pp-acceptance-lockup')?.getAttribute('src')||'',legacyBrand:document.querySelectorAll('.pp-brand-lockup').length,
