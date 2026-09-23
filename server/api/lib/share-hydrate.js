@@ -1,13 +1,17 @@
 const { analyzeMultiSport } = require('./sport-router');
 const { mergeAnalysisIntoSlip } = require('./share-slip');
 const { enrichShareAssets } = require('./share-assets');
+const { ensureHeadshots } = require('./headshot-ensure');
 
 async function withAssets(slip) {
+  let enriched = slip;
   try {
-    return await enrichShareAssets(slip);
-  } catch (_) {
-    return slip;
-  }
+    enriched = await enrichShareAssets(enriched);
+  } catch (_) {}
+  try {
+    enriched = await ensureHeadshots(enriched);
+  } catch (_) {}
+  return enriched;
 }
 
 async function hydrateSharedSlip(slip, options = {}) {
@@ -29,9 +33,9 @@ async function hydrateSharedSlip(slip, options = {}) {
     const merged = mergeAnalysisIntoSlip(slip, {});
     return {
       slip: await withAssets(merged),
-      analysis: null,
-      liveDataAvailable: false,
-      error: error?.message || 'Live analysis unavailable.',
+      analysis:null,
+      liveDataAvailable:false,
+      error:error?.message || 'Live analysis unavailable.',
     };
   }
 }
