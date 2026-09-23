@@ -74,18 +74,35 @@ function dateKey(value) {
   return date.toISOString().slice(0,10).replace(/-/g,'');
 }
 
-async function loadScoreboard(sport, startTimeUTC) {
+function scoreboardDateKeys(value) {
+  const center = new Date(value || Date.now());
+  if (Number.isNaN(center.getTime())) return [];
+  return [-1,0,1].map(offset => {
+    const date = new Date(center.getTime() + offset * 24 * 60 * 60 * 1000);
+    return dateKey(date);
+  }).filter(Boolean);
+}
+
+async function loadScoreboardByDate(sport, date) {
   const upper = String(sport || '').toUpperCase();
   const path = SPORT_PATHS[upper];
-  const date = dateKey(startTimeUTC);
   if (!path || !date) return null;
   const key = `${upper}:${date}`;
   const cached = scoreboardCache.get(key);
   if (cached && Date.now() - cached.ts < CACHE_MS) return cached.value;
   const value = await espnJson(`https://site.api.espn.com/apis/site/v2/sports/${path}/scoreboard?dates=${date}&limit=100`);
-  if (scoreboardCache.size > 48) scoreboardCache.clear();
+  if (scoreboardCache.size > 64) scoreboardCache.clear();
   scoreboardCache.set(key, { ts:Date.now(), value });
   return value;
+}
+
+async function loadScoreboards(sport, startTimeUTC) {
+  const dates = scoreboardDateKeys(startTimeUTC);
+  const rows = await Promise.all(dates.map(async date => {
+    try { return await loadScoreboardByDate(sport, date); }
+    catch { return null; }
+  }));
+  return rows.filter(Boolean);
 }
 
 async function loadSummary(sport, gameId) {
@@ -149,9 +166,14 @@ function eventMatchesLeg(event, leg) {
 async function resolveEspnGameId(leg) {
   const supplied = String(leg?.gameId || '').trim();
   if (/^\d{6,}$/.test(supplied)) return supplied;
-  const scoreboard = await loadScoreboard(leg?.sport, leg?.startTimeUTC);
-  const events = Array.isArray(scoreboard?.events) ? scoreboard.events : [];
-  const candidates = events.filter(event => eventMatchesLeg(event, leg));
+  const scoreboards = await loadScoreboards(leg?.sport, leg?.startTimeUTC);
+  const byId = new Map();
+  for (const scoreboard of scoreboards) {
+    for (const event of Array.isArray(scoreboard?.events) ? scoreboard.events : []) {
+      if (event?.id) byId.set(String(event.id), event);
+    }
+  }
+  const candidates = [...byId.values()].filter(event => eventMatchesLeg(event, leg));
   if (!candidates.length) return null;
   if (candidates.length === 1) return String(candidates[0].id || '');
 
@@ -265,4 +287,6 @@ module.exports = {
   resolveEspnGameId,
   eventMatchesLeg,
   matchupTokens,
+  scoreboardDateKeys,
+  loadScoreboards,
 };
