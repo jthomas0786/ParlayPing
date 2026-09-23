@@ -1,9 +1,12 @@
+const fs = require('fs');
+const path = require('path');
 const { hydrateSharedSlip } = require('./lib/share-hydrate');
 const { decodeShareSlip, buildShareUrl } = require('./lib/share-slip');
 const { renderShareSvg, safeAssetUrl, selectVisibleLegs } = require('./lib/share-renderer');
 const APPROVED_WORDMARK_DATA_URI = require('./lib/approved-wordmark-data');
 
 const imageCache = new Map();
+let approvedLockupInner = null;
 
 function tokenFromRequest(req) {
   return String(req.query?.slip || req.query?.token || '').trim();
@@ -20,8 +23,15 @@ async function imageDataUri(value) {
   if (!url || url.startsWith('data:image/')) return url;
   if (imageCache.has(url)) return imageCache.get(url);
   try {
-    const signal = typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(1600) : undefined;
-    const response = await fetch(url, { signal, headers:{ accept:'image/avif,image/webp,image/png,image/jpeg,*/*' } });
+    const signal = typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(3500) : undefined;
+    const response = await fetch(url, {
+      signal,
+      headers:{
+        accept:'image/avif,image/webp,image/png,image/jpeg,*/*',
+        'user-agent':'Mozilla/5.0 (compatible; ParlayPing/1.0; +https://parlayping.net)',
+        referer:'https://www.espn.com/',
+      },
+    });
     if (!response.ok) throw new Error(`image ${response.status}`);
     const type = String(response.headers.get('content-type') || '').split(';')[0].toLowerCase();
     if (!['image/png','image/jpeg','image/jpg','image/webp'].includes(type)) throw new Error('unsupported image type');
@@ -31,7 +41,8 @@ async function imageDataUri(value) {
     if (imageCache.size > 96) imageCache.clear();
     imageCache.set(url, uri);
     return uri;
-  } catch {
+  } catch (error) {
+    console.error('ParlayPing share-card asset embed failed', url, error?.message || error);
     imageCache.set(url, null);
     return null;
   }
@@ -51,6 +62,37 @@ async function embedVisibleAssets(slip, context) {
     legs[index].teamLogoUrl = teamLogoUrl;
   }));
   return { ...slip, legs };
+}
+
+function approvedLockupMarkup() {
+  if (approvedLockupInner != null) return approvedLockupInner;
+  try {
+    const raw = fs.readFileSync(path.join(process.cwd(), 'parlayping-approved-lockup.svg'), 'utf8');
+    approvedLockupInner = raw
+      .replace(/^\s*<svg[^>]*>/i, '')
+      .replace(/<\/svg>\s*$/i, '')
+      .replace(/<title[\s\S]*?<\/title>/gi, '')
+      .replace(/<desc[\s\S]*?<\/desc>/gi, '')
+      .trim();
+  } catch (error) {
+    console.error('ParlayPing approved lockup read failed', error);
+    approvedLockupInner = '';
+  }
+  return approvedLockupInner;
+}
+
+function inlineApprovedLockup(svg) {
+  const source = String(svg || '');
+  const inner = approvedLockupMarkup();
+  if (!inner) return source;
+  return source.replace(
+    /<image\s+href="data:image\/svg\+xml;base64,[^"]+"\s+x="([^"]+)"\s+y="([^"]+)"\s+width="([^"]+)"\s+height="([^"]+)"[^>]*\/>/gi,
+    (_match, x, y, width, height) => {
+      const sx = Number(width) / 420;
+      const sy = Number(height) / 96;
+      return `<g class="pp-approved-lockup" transform="translate(${Number(x)} ${Number(y)}) scale(${sx} ${sy})">${inner}</g>`;
+    },
+  );
 }
 
 async function rasterizeEmbeddedWebp(svg) {
@@ -84,6 +126,13 @@ async function rasterizeEmbeddedWebp(svg) {
   return output;
 }
 
+async function prepareShareSvg({ slip, context, pageUrl }) {
+  const embedded = await embedVisibleAssets(slip, context);
+  const raw = renderShareSvg({ slip:embedded, context, pageUrl });
+  const withLockup = inlineApprovedLockup(raw);
+  return rasterizeEmbeddedWebp(withLockup);
+}
+
 async function renderPng(svg) {
   try {
     const sharp = require('sharp');
@@ -111,9 +160,8 @@ module.exports = async function handler(req, res) {
     const slip = decodeShareSlip(token);
     const hydratedResult = await hydrateSharedSlip(slip, { baseUrl });
     const context = String(req.query?.context || '') === 'x_reply' ? 'x_reply' : 'share';
-    const hydrated = await embedVisibleAssets(hydratedResult.slip, context);
     const pageUrl = buildShareUrl(token, baseUrl);
-    const svg = await rasterizeEmbeddedWebp(renderShareSvg({ slip:hydrated, context, pageUrl }));
+    const svg = await prepareShareSvg({ slip:hydratedResult.slip, context, pageUrl });
 
     res.setHeader('Cache-Control', 'public, max-age=20, s-maxage=20, stale-while-revalidate=40');
     res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -137,5 +185,7 @@ module.exports = async function handler(req, res) {
 module.exports.tokenFromRequest = tokenFromRequest;
 module.exports.imageDataUri = imageDataUri;
 module.exports.embedVisibleAssets = embedVisibleAssets;
+module.exports.inlineApprovedLockup = inlineApprovedLockup;
+module.exports.prepareShareSvg = prepareShareSvg;
 module.exports.rasterizeEmbeddedWebp = rasterizeEmbeddedWebp;
 module.exports.renderPng = renderPng;
