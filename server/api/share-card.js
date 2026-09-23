@@ -52,6 +52,30 @@ async function embedVisibleAssets(slip, context) {
   return { ...slip, legs };
 }
 
+async function rasterizeEmbeddedWebp(svg) {
+  const source = String(svg || '');
+  const webpUris = [...new Set(source.match(/data:image\/webp;base64,[A-Za-z0-9+/=]+/g) || [])];
+  if (!webpUris.length) return source;
+  let sharp;
+  try {
+    sharp = require('sharp');
+  } catch (error) {
+    console.error('ParlayPing WebP converter unavailable', error);
+    return source;
+  }
+  let output = source;
+  for (const dataUri of webpUris) {
+    try {
+      const bytes = Buffer.from(dataUri.slice('data:image/webp;base64,'.length), 'base64');
+      const png = await sharp(bytes).png({ compressionLevel:9, adaptiveFiltering:true }).toBuffer();
+      output = output.split(dataUri).join(`data:image/png;base64,${png.toString('base64')}`);
+    } catch (error) {
+      console.error('ParlayPing WebP conversion failed', error);
+    }
+  }
+  return output;
+}
+
 module.exports = async function handler(req, res) {
   if (req.method !== 'GET' && req.method !== 'HEAD') return res.status(405).send('Use GET.');
   const token = tokenFromRequest(req);
@@ -64,7 +88,7 @@ module.exports = async function handler(req, res) {
     const context = String(req.query?.context || '') === 'x_reply' ? 'x_reply' : 'share';
     const hydrated = await embedVisibleAssets(hydratedResult.slip, context);
     const pageUrl = buildShareUrl(token, baseUrl);
-    const svg = renderShareSvg({ slip:hydrated, context, pageUrl });
+    const svg = await rasterizeEmbeddedWebp(renderShareSvg({ slip:hydrated, context, pageUrl }));
 
     res.setHeader('Cache-Control', 'public, max-age=20, s-maxage=20, stale-while-revalidate=40');
     res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -99,3 +123,4 @@ module.exports = async function handler(req, res) {
 module.exports.tokenFromRequest = tokenFromRequest;
 module.exports.imageDataUri = imageDataUri;
 module.exports.embedVisibleAssets = embedVisibleAssets;
+module.exports.rasterizeEmbeddedWebp = rasterizeEmbeddedWebp;
