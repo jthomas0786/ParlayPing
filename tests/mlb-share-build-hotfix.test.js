@@ -4,7 +4,7 @@ const {preserveDisplayProbabilities}=require('../api/lib/share-hydrate');
 const {parseMlbPublicSlate}=require('../api/lib/sportsbook-enrich');
 const {renderShareSvg}=require('../api/lib/share-renderer');
 const shareCard=require('../api/share-card');
-const builderPage=require('../api/builder-page');
+const builderPage=require('../server/api/builder-page');
 
 test('live MLB model probability survives hydration as a pregame fallback',()=>{
   const slip={legs:[{id:'mlb-1',sport:'MLB',player:'Riley Greene',market:'homeRun',status:'LIVE',pregameProbability:null,liveProbability:null}]};
@@ -34,6 +34,11 @@ test('MLB public slate hydrates HR odds and exact selection links for builder co
   assert.equal(parsed.bookOffers.DraftKings.oddsAmerican,500);
   assert.match(parsed.bookOffers.DraftKings.selectionLink,/outcomes=333/);
   assert.equal(parsed.altLinesByBook.FanDuel[0].line,0.5);
+});
+
+test('MLB public slate never reuses over-only odds for under/no selections',()=>{
+  const doc={sport:'mlb',games:[{gamePk:824223,home:{name:'Detroit Tigers',abbr:'DET',lineup:[{name:'Riley Greene',odds:{hr:{line:0.5,best:{book:'fanduel',price:520,link:'https://sportsbook.fanduel.com/addToBetslip?marketId=111&selectionId=222'},all:[]}}}]},away:{name:'Washington Nationals',abbr:'WSH',lineup:[]}}]};
+  assert.equal(parseMlbPublicSlate(doc,{sport:'MLB',player:'Riley Greene',team:'DET',gameId:'824223',market:'homeRun',side:'no',line:null}),null);
 });
 
 test('share card renderer shows MLB headshot, odds and live pregame probability fallback',()=>{
