@@ -84,6 +84,23 @@ async function rasterizeEmbeddedWebp(svg) {
   return output;
 }
 
+async function renderPng(svg) {
+  try {
+    const sharp = require('sharp');
+    return await sharp(Buffer.from(String(svg), 'utf8'), { density:144 })
+      .resize({ width:1200, height:675, fit:'fill' })
+      .png({ compressionLevel:9, adaptiveFiltering:true })
+      .toBuffer();
+  } catch (sharpError) {
+    console.error('ParlayPing sharp SVG renderer failed; falling back to Resvg', sharpError);
+    const { Resvg } = require('@resvg/resvg-js');
+    return Buffer.from(new Resvg(svg, {
+      fitTo:{ mode:'width', value:1200 },
+      font:{ loadSystemFonts:true },
+    }).render().asPng());
+  }
+}
+
 module.exports = async function handler(req, res) {
   if (req.method !== 'GET' && req.method !== 'HEAD') return res.status(405).send('Use GET.');
   const token = tokenFromRequest(req);
@@ -106,18 +123,7 @@ module.exports = async function handler(req, res) {
       return req.method === 'HEAD' ? res.status(200).end() : res.status(200).send(svg);
     }
 
-    let Resvg;
-    try {
-      ({ Resvg } = require('@resvg/resvg-js'));
-    } catch (error) {
-      console.error('ParlayPing share-card PNG renderer unavailable', error);
-      return res.status(503).send('PNG renderer is unavailable.');
-    }
-    const rendered = new Resvg(svg, {
-      fitTo:{ mode:'width', value:1200 },
-      font:{ loadSystemFonts:true, defaultFontFamily:'Arial' },
-    });
-    const png = rendered.render().asPng();
+    const png = await renderPng(svg);
     res.setHeader('Content-Type', 'image/png');
     res.setHeader('Content-Length', String(png.length));
     return req.method === 'HEAD' ? res.status(200).end() : res.status(200).send(png);
@@ -132,3 +138,4 @@ module.exports.tokenFromRequest = tokenFromRequest;
 module.exports.imageDataUri = imageDataUri;
 module.exports.embedVisibleAssets = embedVisibleAssets;
 module.exports.rasterizeEmbeddedWebp = rasterizeEmbeddedWebp;
+module.exports.renderPng = renderPng;
