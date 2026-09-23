@@ -1,7 +1,7 @@
 const { canonicalSlip, mergeAnalysisIntoSlip, encodeShareSlip, buildCardUrl } = require('./share-slip');
 const { buildPublicReply } = require('./analysis-safety');
 
-const X_SHARE_CARD_VERSION = '20260923d';
+const X_SHARE_CARD_VERSION = '20260923e';
 
 function hasUnresolved(analysis) {
   return (Array.isArray(analysis?.results) ? analysis.results : []).some(row => row?.status === 'UNRESOLVED');
