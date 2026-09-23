@@ -1,7 +1,7 @@
 const test=require('node:test');
 const assert=require('node:assert/strict');
 const {preserveDisplayProbabilities}=require('../api/lib/share-hydrate');
-const {parseMlbPublicSlate}=require('../api/lib/sportsbook-enrich');
+const {parseRowSnapshot,parseMlbPublicSlate}=require('../api/lib/sportsbook-enrich');
 const {renderShareSvg}=require('../api/lib/share-renderer');
 const shareCard=require('../api/share-card');
 const builderPage=require('../server/api/builder-page');
@@ -21,6 +21,27 @@ test('explicit live probability stays live rather than being relabeled pregame',
   const out=preserveDisplayProbabilities(slip,analysis);
   assert.equal(out.legs[0].liveProbability,0.22);
   assert.equal(out.legs[0].pregameProbability,null);
+});
+
+test('MLB ParlayAPI row snapshot hydrates verified HR prices without inventing selection links',()=>{
+  const doc={meta:{source:'parlayapi'},rows:[
+    {eventId:'824223',providerEventId:'a4acff502e336420',sport:'MLB',commenceTime:'2026-09-23T17:10:00Z',homeTeam:'Detroit Tigers',awayTeam:'Washington Nationals',player:'Riley Greene',market:'homeRun',marketKey:'player_home_runs',line:0.5,book:'FanDuel',overPrice:1000,underPrice:null,deepLink:null,snapshotTime:'2026-09-23T18:24:00Z',preserved:false},
+    {eventId:'824223',providerEventId:'a4acff502e336420',sport:'MLB',commenceTime:'2026-09-23T17:10:00Z',homeTeam:'Detroit Tigers',awayTeam:'Washington Nationals',player:'Riley Greene',market:'homeRun',marketKey:'player_home_runs',line:0.5,book:'Caesars',overPrice:500,underPrice:null,deepLink:null,snapshotTime:'2026-09-23T18:20:00Z',preserved:true},
+  ]};
+  const parsed=parseRowSnapshot(doc,{sport:'MLB',player:'Riley Greene',team:'DET',gameId:'824223',market:'homeRun',side:'yes',line:null});
+  assert.ok(parsed);
+  assert.equal(parsed.preferred.sportsbook,'FanDuel');
+  assert.equal(parsed.preferred.oddsAmerican,1000);
+  assert.equal(parsed.bookOffers.FanDuel.oddsAmerican,1000);
+  assert.equal(parsed.bookOffers.FanDuel.selectionLink,null);
+  assert.equal(parsed.bookOffers.FanDuel.priceKind,'verified-snapshot');
+  assert.equal(parsed.bookOffers.Caesars.priceKind,'last-verified-pregame');
+  assert.equal(parsed.altLinesByBook.FanDuel[0].line,0.5);
+});
+
+test('MLB ParlayAPI row snapshot never turns an over-only HR price into a no/under price',()=>{
+  const doc={meta:{source:'parlayapi'},rows:[{eventId:'824223',sport:'MLB',player:'Riley Greene',market:'homeRun',line:0.5,book:'FanDuel',overPrice:1000,underPrice:null}]};
+  assert.equal(parseRowSnapshot(doc,{sport:'MLB',player:'Riley Greene',gameId:'824223',market:'homeRun',side:'no',line:null}),null);
 });
 
 test('MLB public slate hydrates HR odds and exact selection links for builder composition',()=>{
