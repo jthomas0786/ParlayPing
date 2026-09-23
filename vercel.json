@@ -24,7 +24,8 @@
     { "source": "/api/x-worker", "destination": "/api/index?__pp_route=x-worker" },
     { "source": "/build/:token", "destination": "/api/index?__pp_route=builder-page&slip=:token" },
     { "source": "/slip/:token", "destination": "/api/index?__pp_route=share-page&slip=:token" },
-    { "source": "/share/:token.png", "destination": "/api/index?__pp_route=share-card&slip=:token" }
+    { "source": "/share/:token.png", "destination": "/api/index?__pp_route=share-card&slip=:token" },
+    { "source": "/share/:token", "destination": "/api/index?__pp_route=share-page&slip=:token" }
   ],
   "headers": [
     {
