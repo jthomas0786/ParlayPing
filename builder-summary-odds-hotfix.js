@@ -4,121 +4,98 @@
   const legs=Array.isArray(slip.legs)?slip.legs:[];
   if(!legs.length)return;
 
-  const q=s=>document.querySelector(s);
-  const qa=s=>[...document.querySelectorAll(s)];
+  const q=(s,r=document)=>r.querySelector(s);
+  const qa=(s,r=document)=>[...r.querySelectorAll(s)];
   const esc=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
   const num=v=>v===null||v===undefined||v===''?null:(Number.isFinite(Number(v))?Number(v):null);
   const BEST='Best Available';
-  const BOOK_ORDER=['DraftKings','FanDuel','bet365','Caesars','BetMGM','Fanatics','ESPN BET','Hard Rock','BetRivers','Pinnacle','Parx'];
-  const BOOK_CLASS={'DraftKings':'dk','FanDuel':'fd','bet365':'b365','Caesars':'cz','BetMGM':'mgm','Fanatics':'fanatics','ESPN BET':'espn','Hard Rock':'more','BetRivers':'more','Pinnacle':'more','Parx':'more'};
-  const BOOK_MARK={'DraftKings':'DK','FanDuel':'F','bet365':'bet','Caesars':'C','BetMGM':'M','Fanatics':'F','ESPN BET':'E','Hard Rock':'HR','BetRivers':'BR','Pinnacle':'P','Parx':'PX'};
-  const normalizeBook=value=>{const raw=String(value||'').trim();if(raw===BEST)return BEST;const key=raw.toLowerCase().replace(/[^a-z0-9]/g,'');const aliases={draftkings:'DraftKings',dk:'DraftKings',fanduel:'FanDuel',fd:'FanDuel',bet365:'bet365','365':'bet365',caesars:'Caesars',williamhill:'Caesars',caesarssportsbook:'Caesars',betmgm:'BetMGM',mgm:'BetMGM',fanatics:'Fanatics',fanaticssportsbook:'Fanatics',espnbet:'ESPN BET',espn:'ESPN BET',hardrock:'Hard Rock',hardrockbet:'Hard Rock',betrivers:'BetRivers',pinnacle:'Pinnacle',parx:'Parx',parxcasino:'Parx'};return aliases[key]||raw||null;};
+  const BOOK_ORDER=['DraftKings','FanDuel','bet365','Caesars','BetMGM','Fanatics','ESPN BET','Hard Rock','BetRivers','Pinnacle','Parx','Bovada'];
+  const BOOK_CLASS={'DraftKings':'dk','FanDuel':'fd','bet365':'b365','Caesars':'cz','BetMGM':'mgm','Fanatics':'fanatics','ESPN BET':'espn'};
+  const BOOK_MARK={'DraftKings':'DK','FanDuel':'F','bet365':'bet','Caesars':'C','BetMGM':'M','Fanatics':'F','ESPN BET':'E','Hard Rock':'HR','BetRivers':'BR','Pinnacle':'P','Parx':'PX','Bovada':'B'};
+  const normalizeBook=value=>{const raw=String(value||'').trim();if(raw===BEST)return BEST;const key=raw.toLowerCase().replace(/[^a-z0-9]/g,'');const aliases={draftkings:'DraftKings',dk:'DraftKings',fanduel:'FanDuel',fd:'FanDuel',bet365:'bet365','365':'bet365',caesars:'Caesars',williamhill:'Caesars',caesarssportsbook:'Caesars',betmgm:'BetMGM',mgm:'BetMGM',fanatics:'Fanatics',fanaticssportsbook:'Fanatics',espnbet:'ESPN BET',espn:'ESPN BET',hardrock:'Hard Rock',hardrockbet:'Hard Rock',betrivers:'BetRivers',pinnacle:'Pinnacle',parx:'Parx',parxcasino:'Parx',bovada:'Bovada'};return aliases[key]||raw||null;};
   const americanToDecimal=price=>{const n=num(price);if(n==null||n===0)return null;return n>0?1+n/100:1+100/Math.abs(n);};
-  const decimalToAmerican=decimal=>{const d=num(decimal);if(d==null||d<=1)return null;return d>=2?Math.round((d-1)*100):Math.round(-100/(d-1));};
+  const impliedFromAmerican=price=>{const d=americanToDecimal(price);return d&&d>1?1/d:null;};
+  const decimalToAmerican=d=>{const n=num(d);if(n==null||n<=1)return null;return n>=2?Math.round((n-1)*100):Math.round(-100/(n-1));};
   const fmtOdds=value=>{const n=num(value);if(n==null||n===0)return '—';const r=Math.round(n);return r>0?`+${r}`:String(r);};
-  const fmtPct=value=>{const p=num(value);if(p==null)return '—';const percent=p*100;if(percent>0&&percent<0.01)return '<0.01%';if(percent<0.1)return `${percent.toFixed(2)}%`;return `${percent.toFixed(1)}%`;};
-  const offerFor=(leg,book)=>{const offers=leg?.bookOffers&&typeof leg.bookOffers==='object'?leg.bookOffers:{};for(const [raw,value] of Object.entries(offers)){if(normalizeBook(raw)===book)return value&&typeof value==='object'?value:{};}return {};};
-  const validPrice=(leg,book)=>book===BEST?num(leg?.oddsAmerican):num(offerFor(leg,book).oddsAmerican);
-  const unionBooks=()=>{
-    const found=new Set();
-    for(const leg of legs)for(const raw of Object.keys(leg?.bookOffers||{})){const book=normalizeBook(raw);if(book)found.add(book);}
-    const rows=[...found];
-    return [...BOOK_ORDER.filter(book=>rows.includes(book)),...rows.filter(book=>!BOOK_ORDER.includes(book)).sort()];
-  };
-  const bookCoverage=book=>legs.filter(leg=>validPrice(leg,book)!=null).length;
-  const hasBestAvailable=()=>legs.every(leg=>num(leg?.oddsAmerican)!=null);
-  const commonBooks=()=>unionBooks().filter(book=>bookCoverage(book)===legs.length);
-  const selectedBook=()=>{
-    const active=normalizeBook(q('.book-card.active')?.dataset?.book);
-    if(active===BEST&&hasBestAvailable())return BEST;
-    const books=unionBooks();
-    if(active&&books.includes(active))return active;
-    const requested=normalizeBook(slip.sportsbook);
-    if(requested&&books.includes(requested))return requested;
-    if(hasBestAvailable())return BEST;
-    return [...books].sort((a,b)=>bookCoverage(b)-bookCoverage(a))[0]||null;
-  };
-  const gameIdentity=leg=>{
-    const sport=String(leg?.sport||'').trim().toUpperCase();
-    const matchup=String(leg?.matchup||'').trim().toUpperCase().replace(/\s+/g,' ');
-    const start=String(leg?.startTimeUTC||'').trim();
-    const day=start&&Number.isFinite(Date.parse(start))?new Date(start).toISOString().slice(0,10):'';
-    if(matchup)return `match:${sport}:${matchup}:${day}`;
-    const id=String(leg?.gameId||'').trim();
-    return id?`id:${sport}:${id}`:'';
-  };
-  const independentGames=()=>{
-    const ids=legs.map(gameIdentity);
-    return ids.every(Boolean)&&new Set(ids).size===ids.length;
-  };
-  const combinedForBook=book=>{
-    if(!book||!independentGames())return null;
-    let decimal=1;
-    for(const leg of legs){const d=americanToDecimal(validPrice(leg,book));if(d==null)return null;decimal*=d;}
-    return {american:decimalToAmerican(decimal),implied:decimal>1?1/decimal:null};
-  };
-  function updateLegOdds(book){
+  const fmtPct=value=>{const p=num(value);if(p==null)return '—';return `${(p*100).toFixed(1)}%`;};
+  const offerFor=(leg,book)=>{for(const [raw,value] of Object.entries(leg?.bookOffers||{})){if(normalizeBook(raw)===book)return value&&typeof value==='object'?value:{};}return {};};
+  const bestPrice=leg=>{const direct=num(leg?.oddsAmerican);if(direct!=null)return direct;let best=null;for(const raw of Object.keys(leg?.bookOffers||{})){const price=num(offerFor(leg,normalizeBook(raw)).oddsAmerican);if(price!=null&&(best==null||price>best))best=price;}return best;};
+  const priceFor=(leg,book)=>book===BEST?bestPrice(leg):num(offerFor(leg,book).oddsAmerican);
+  const unionBooks=()=>{const found=new Set();for(const leg of legs)for(const raw of Object.keys(leg?.bookOffers||{})){const book=normalizeBook(raw);if(book)found.add(book);}const rows=[...found];return [...BOOK_ORDER.filter(book=>rows.includes(book)),...rows.filter(book=>!BOOK_ORDER.includes(book)).sort()];};
+  const coverage=book=>legs.filter(leg=>priceFor(leg,book)!=null).length;
+  const hasBest=()=>legs.every(leg=>bestPrice(leg)!=null);
+  const gameIdentity=leg=>{const sport=String(leg?.sport||'').toUpperCase();const matchup=String(leg?.matchup||'').trim().toUpperCase().replace(/\s+/g,' ');const start=String(leg?.startTimeUTC||'').trim();const day=start&&Number.isFinite(Date.parse(start))?new Date(start).toISOString().slice(0,10):'';if(matchup)return `${sport}|${matchup}|${day}`;const id=String(leg?.gameId||'').trim();return id?`${sport}|${id}`:'';};
+  const independentGames=()=>{const ids=legs.map(gameIdentity);return ids.every(Boolean)&&new Set(ids).size===ids.length;};
+  const combinedFor=book=>{if(!book||!independentGames())return null;let decimal=1;for(const leg of legs){const d=americanToDecimal(priceFor(leg,book));if(d==null)return null;decimal*=d;}return {american:decimalToAmerican(decimal),implied:1/decimal};};
+  let activeBook=null;
+
+  function injectStyles(){
+    if(document.getElementById('pp-sportsbook-polish'))return;
+    const style=document.createElement('style');style.id='pp-sportsbook-polish';style.textContent=`
+      .pp-sportsbook-note{margin:10px 0 12px;padding:10px 12px;border:1px solid rgba(59,231,218,.28);border-radius:12px;background:rgba(11,43,58,.72);font-size:13px;line-height:1.35;color:#bcd3df}
+      .pp-sportsbook-note strong{color:#f4fbff}.pp-sportsbook-note span{color:#20e8d0;font-weight:800}
+      .sportsbook-grid.pp-price-grid{display:flex!important;grid-template-columns:none!important;gap:10px!important;overflow-x:auto!important;overflow-y:hidden;padding:2px 2px 8px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;touch-action:pan-x;overscroll-behavior-x:contain}
+      .sportsbook-grid.pp-price-grid::-webkit-scrollbar{height:4px}.sportsbook-grid.pp-price-grid::-webkit-scrollbar-thumb{background:#1c6675;border-radius:4px}
+      .sportsbook-grid.pp-price-grid .book-card{flex:0 0 190px;min-width:190px;max-width:220px;scroll-snap-align:start;cursor:pointer;pointer-events:auto!important;position:relative;z-index:2}
+      .sportsbook-grid.pp-price-grid .book-card.active{outline:2px solid #24e8d1;box-shadow:0 0 0 2px rgba(36,232,209,.12),0 8px 24px rgba(0,0,0,.22)}
+      .sportsbook-grid.pp-price-grid .book-card small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+      .pp-prob-label.pp-implied{color:#87dbe5}.pp-prob-label.pp-implied:after{content:' implied';font-size:10px;font-weight:700;opacity:.72;margin-left:3px;text-transform:uppercase}
+      #openBookBtn.pp-hidden-one-tap{display:none!important}
+      @media(max-width:700px){.pp-sportsbook-note{font-size:12px;margin-top:8px}.sportsbook-grid.pp-price-grid{margin-right:-4px}.sportsbook-grid.pp-price-grid .book-card{flex-basis:174px;min-width:174px}.sportsbook-grid.pp-price-grid .book-card strong{font-size:14px}.sportsbook-grid.pp-price-grid .book-card small{font-size:11px}}
+    `;document.head.appendChild(style);
+  }
+
+  function activeModelProbability(leg){
+    const status=String(leg?.status||'PENDING').toUpperCase();
+    if(status==='LIVE'){const live=num(leg?.liveProbability);if(live!=null)return {value:live,kind:'model'};}
+    const pre=num(leg?.pregameProbability);if(pre!=null)return {value:pre,kind:'model'};
+    return null;
+  }
+
+  function updateLegs(book){
     qa('.pp-leg-item').forEach((item,index)=>{
-      const id=String(item.dataset.legId||'');
-      const leg=legs.find(row=>String(row?.id||'')===id)||legs[index];
-      const target=item.querySelector('.pp-leg-odds');
-      if(!target)return;
-      const price=validPrice(leg,book);
-      target.dataset.book=book||'';
-      target.textContent=fmtOdds(price);
-      if(book===BEST&&price!=null){target.title=`Best verified price: ${normalizeBook(leg?.sportsbook)||'sportsbook'}`;}else target.title=book&&price!=null?`${book} verified leg price`:'';
+      const id=String(item.dataset.legId||'');const leg=legs.find(row=>String(row?.id||'')===id)||legs[index];if(!leg)return;
+      const price=priceFor(leg,book);const odds=q('.pp-leg-odds',item);if(odds){odds.textContent=fmtOdds(price);odds.dataset.book=book||'';}
+      const model=activeModelProbability(leg);const fallback=model||((price!=null&&impliedFromAmerican(price)!=null)?{value:impliedFromAmerican(price),kind:'implied'}:null);
+      const label=q('.pp-prob-label',item),fill=q('.pp-prob-fill',item);
+      if(label){label.classList.toggle('pp-implied',fallback?.kind==='implied');label.textContent=fallback?fmtPct(fallback.value):'—';label.title=fallback?.kind==='implied'?`Implied probability from ${book===BEST?'best available':book} odds`:'Model probability';}
+      if(fill)fill.style.setProperty('--pp-prob',`${fallback?Math.max(0,Math.min(100,fallback.value*100)):0}%`);
     });
   }
-  function update(){
-    const combinedOdds=q('#combinedOdds'),impliedProbability=q('#impliedProbability');
-    if(!combinedOdds||!impliedProbability)return;
-    if(slip.combinedOddsVerified&&num(slip.combinedOddsAmerican)!=null){
-      const decimal=americanToDecimal(slip.combinedOddsAmerican);
-      combinedOdds.textContent=fmtOdds(slip.combinedOddsAmerican);
-      impliedProbability.textContent=decimal?fmtPct(1/decimal):'—';
-      combinedOdds.title='Verified sportsbook parlay odds';
-      impliedProbability.title='Implied probability from verified sportsbook parlay odds';
-      return;
-    }
-    const book=selectedBook(),combined=combinedForBook(book);
-    if(!combined||combined.american==null||combined.implied==null){
-      combinedOdds.textContent='—';impliedProbability.textContent='—';return;
-    }
-    combinedOdds.textContent=`Calc ${fmtOdds(combined.american)}`;
-    impliedProbability.textContent=fmtPct(combined.implied);
-    const note=book===BEST
-      ? 'Calculated from each leg’s best verified sportsbook price across separate games; this is not a sportsbook-quoted parlay price.'
-      : `Calculated from verified ${book} leg prices across separate games; this is not a sportsbook-quoted parlay price.`;
-    combinedOdds.title=note;impliedProbability.title=note;
+
+  function updateSummary(){
+    const odds=q('#combinedOdds'),prob=q('#impliedProbability');if(!odds||!prob)return;
+    if(slip.combinedOddsVerified&&num(slip.combinedOddsAmerican)!=null){const d=americanToDecimal(slip.combinedOddsAmerican);odds.textContent=fmtOdds(slip.combinedOddsAmerican);prob.textContent=d?fmtPct(1/d):'—';return;}
+    const combined=combinedFor(activeBook);if(!combined){odds.textContent='—';prob.textContent='—';return;}
+    odds.textContent=`Calc ${fmtOdds(combined.american)}`;prob.textContent=fmtPct(combined.implied);
+    const title=activeBook===BEST?'Calculated from each leg’s best verified price.':'Calculated from verified leg prices at this sportsbook.';odds.title=title;prob.title=title;
   }
-  function installVerifiedPriceFallback(){
-    const grid=q('.sportsbook-grid'),open=q('#openBookBtn');
-    if(!grid||!open)return;
-    const exact=[...grid.querySelectorAll('.book-card')].some(card=>String(card.dataset.exactUrl||'').startsWith('https://'));
-    if(exact)return;
+
+  function setActive(book,grid){
+    activeBook=book;qa('.book-card',grid).forEach(card=>card.classList.toggle('active',normalizeBook(card.dataset.book)===book));
+    const label=q('#selectedBookLabel');if(label)label.textContent=book||'Sportsbook';updateLegs(book);updateSummary();
+  }
+
+  function renderPriceSelector(){
+    const grid=q('.sportsbook-grid'),open=q('#openBookBtn');if(!grid)return;
+    const exactCards=qa('.book-card',grid).filter(card=>String(card.dataset.exactUrl||'').startsWith('https://'));
+    if(exactCards.length){updateLegs(normalizeBook(q('.book-card.active',grid)?.dataset.book)||normalizeBook(exactCards[0].dataset.book));return;}
     const books=unionBooks();if(!books.length)return;
-    const useBest=hasBestAvailable();
-    const active=useBest?BEST:([...books].sort((a,b)=>bookCoverage(b)-bookCoverage(a))[0]||books[0]);
+    const parent=grid.parentElement;
+    qa('.pp-books-price-note,.pp-books-unavailable',parent||document).forEach(node=>node.remove());
+    const note=document.createElement('div');note.className='pp-sportsbook-note';note.innerHTML='<strong>Compare verified prices.</strong> Tap a sportsbook below. <span>One-tap betslip is not available for this feed.</span>';
+    grid.before(note);
+    const useBest=hasBest();activeBook=useBest?BEST:[...books].sort((a,b)=>coverage(b)-coverage(a))[0];
     const cards=[];
-    if(useBest){const combined=combinedForBook(BEST);cards.push(`<button class="book-card active" type="button" data-book="${BEST}" role="listitem"><span class="book-logo more">★</span><span><strong>Best Available</strong><small>${legs.length}/${legs.length} picks priced${combined?.american!=null?` · calc. ${esc(fmtOdds(combined.american))}`:''}</small></span></button>`);}
-    for(const book of books){
-      const coverage=bookCoverage(book),combined=coverage===legs.length?combinedForBook(book):null;
-      const sub=`${coverage}/${legs.length} picks priced${combined?.american!=null?` · calc. ${fmtOdds(combined.american)}`:''}`;
-      cards.push(`<button class="book-card${!useBest&&book===active?' active':''}" type="button" data-book="${esc(book)}" role="listitem"><span class="book-logo ${esc(BOOK_CLASS[book]||'more')}">${esc(BOOK_MARK[book]||book.slice(0,2).toUpperCase())}</span><span><strong>${esc(book)}</strong><small>${esc(sub)}</small></span></button>`);
-    }
-    grid.innerHTML=`<div style="grid-column:1/-1" class="pp-books-unavailable pp-books-price-note"><strong>Verified sportsbook prices are available.</strong><span>${useBest?'Best Available uses the best verified price for each pick across sportsbooks. ':''}ParlayPing labels combined numbers as calculated because they are not a sportsbook-quoted parlay. This MLB feed does not include sportsbook selection IDs, so ParlayPing will not invent a one-tap betslip link or send you to a generic homepage.</span></div>${cards.join('')}`;
-    const label=q('#selectedBookLabel');if(label)label.textContent=active;
-    open.disabled=true;open.classList.add('unavailable');open.innerHTML='<span class="link-icon">↗</span> <strong>Exact one-tap betslip link unavailable</strong>';
-    grid.querySelectorAll('.book-card').forEach(card=>card.addEventListener('click',()=>{
-      grid.querySelectorAll('.book-card').forEach(node=>node.classList.remove('active'));
-      card.classList.add('active');const book=normalizeBook(card.dataset.book);if(label)label.textContent=book;updateLegOdds(book);update();
-    }));
-    updateLegOdds(active);
+    if(useBest){const c=combinedFor(BEST);cards.push(`<button class="book-card active" type="button" data-book="${BEST}"><span class="book-logo more">★</span><span><strong>Best Available</strong><small>${legs.length}/${legs.length} priced${c?.american!=null?` · ${esc(fmtOdds(c.american))}`:''}</small></span></button>`);}
+    for(const book of books){const c=coverage(book)===legs.length?combinedFor(book):null;cards.push(`<button class="book-card${!useBest&&book===activeBook?' active':''}" type="button" data-book="${esc(book)}"><span class="book-logo ${esc(BOOK_CLASS[book]||'more')}">${esc(BOOK_MARK[book]||book.slice(0,2).toUpperCase())}</span><span><strong>${esc(book)}</strong><small>${coverage(book)}/${legs.length} priced${c?.american!=null?` · ${esc(fmtOdds(c.american))}`:''}</small></span></button>`);}
+    grid.classList.add('pp-price-grid');grid.innerHTML=cards.join('');
+    grid.onclick=event=>{const card=event.target.closest('.book-card');if(!card||!grid.contains(card))return;event.preventDefault();setActive(normalizeBook(card.dataset.book),grid);};
+    if(open){open.classList.add('pp-hidden-one-tap');open.disabled=true;}
+    setActive(activeBook,grid);
   }
-  function schedule(){requestAnimationFrame(()=>requestAnimationFrame(()=>{installVerifiedPriceFallback();update();}));}
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',schedule,{once:true});else schedule();
-  document.addEventListener('click',event=>{if(event.target?.closest?.('.book-card'))setTimeout(update,0);},true);
-  const observer=new MutationObserver(records=>{if(records.some(row=>[...row.addedNodes].some(node=>node?.nodeType===1&&((node.matches?.('.sportsbook-grid,.book-card,.pp-books-unavailable'))||node.querySelector?.('.book-card,.pp-books-unavailable')))))schedule();});
-  observer.observe(document.documentElement,{childList:true,subtree:true});
-  window.__PP_SUMMARY_ODDS_HOTFIX_TEST__={americanToDecimal,decimalToAmerican,combinedForBook,unionBooks,commonBooks,bookCoverage,gameIdentity,independentGames,update,installVerifiedPriceFallback,fmtPct,BEST};
+
+  function init(){injectStyles();renderPriceSelector();updateSummary();}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>requestAnimationFrame(()=>requestAnimationFrame(init)),{once:true});else requestAnimationFrame(()=>requestAnimationFrame(init));
+  window.__PP_SUMMARY_ODDS_HOTFIX_TEST__={americanToDecimal,decimalToAmerican,impliedFromAmerican,combinedFor,unionBooks,coverage,independentGames,fmtPct,fmtOdds,BEST};
 })();
