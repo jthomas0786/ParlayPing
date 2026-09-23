@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { hydrateSharedSlip } = require('./lib/share-hydrate');
+const { enrichSportsbookMarkets } = require('./lib/sportsbook-enrich');
 const { decodeShareSlip, buildShareUrl } = require('./lib/share-slip');
 const { renderShareSvg, safeAssetUrl, selectVisibleLegs } = require('./lib/share-renderer');
 const APPROVED_WORDMARK_DATA_URI = require('./lib/approved-wordmark-data');
@@ -61,17 +62,25 @@ async function imageDataUri(value) {
     const response = await fetch(url, {
       signal,
       headers:{
-        accept:'image/avif,image/webp,image/png,image/jpeg,*/*',
+        // Do not advertise AVIF here. MLB's f_auto headshot CDN can honor AVIF,
+        // while the share-card SVG pipeline expects PNG/JPEG/WebP data URIs.
+        accept:'image/webp,image/png,image/jpeg,*/*;q=0.8',
         'user-agent':'Mozilla/5.0 (compatible; ParlayPing/1.0; +https://parlayping.net)',
         referer:'https://www.espn.com/',
       },
     });
     if (!response.ok) throw new Error(`image ${response.status}`);
     const type = String(response.headers.get('content-type') || '').split(';')[0].toLowerCase();
-    if (!['image/png','image/jpeg','image/jpg','image/webp'].includes(type)) throw new Error('unsupported image type');
-    const bytes = Buffer.from(await response.arrayBuffer());
+    let bytes = Buffer.from(await response.arrayBuffer());
     if (!bytes.length || bytes.length > 1_500_000) throw new Error('image too large');
-    const uri = `data:${type};base64,${bytes.toString('base64')}`;
+    let outputType = type;
+    if (type === 'image/avif') {
+      const sharp = require('sharp');
+      bytes = await sharp(bytes).png({ compressionLevel:9, adaptiveFiltering:true }).toBuffer();
+      outputType = 'image/png';
+    }
+    if (!['image/png','image/jpeg','image/jpg','image/webp'].includes(outputType)) throw new Error('unsupported image type');
+    const uri = `data:${outputType};base64,${bytes.toString('base64')}`;
     if (imageCache.size > 96) imageCache.clear();
     imageCache.set(url, uri);
     return uri;
@@ -200,9 +209,11 @@ module.exports = async function handler(req, res) {
     const baseUrl = requestBaseUrl(req);
     const slip = decodeShareSlip(token);
     const hydratedResult = await hydrateSharedSlip(slip, { baseUrl });
+    let displaySlip = hydratedResult.slip;
+    try { displaySlip = await enrichSportsbookMarkets(displaySlip); } catch (_) {}
     const context = String(req.query?.context || '') === 'x_reply' ? 'x_reply' : 'share';
     const pageUrl = buildShareUrl(token, baseUrl);
-    const svg = await prepareShareSvg({ slip:hydratedResult.slip, context, pageUrl });
+    const svg = await prepareShareSvg({ slip:displaySlip, context, pageUrl });
 
     res.setHeader('Cache-Control', 'public, max-age=20, s-maxage=20, stale-while-revalidate=40');
     res.setHeader('X-Content-Type-Options', 'nosniff');
