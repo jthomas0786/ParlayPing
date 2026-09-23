@@ -21,10 +21,13 @@ test('MLB share card has an explicit PNG official headshot fallback keyed by MLB
   assert.equal(mlbOfficialPngHeadshot({sport:'NFL',playerId:'660271'}),null);
 });
 
-test('mobile sportsbook hotfix is stable, concise, tappable, and labels implied probabilities',()=>{
+test('mobile sportsbook hotfix is stable, concise, tappable, always linkable, and labels implied probabilities',()=>{
   const source=fs.readFileSync(path.join(__dirname,'..','builder-summary-odds-hotfix.js'),'utf8');
   assert.doesNotMatch(source,/new MutationObserver/);
-  assert.match(source,/Tap a sportsbook below/);
+  assert.match(source,/Choose a sportsbook/);
+  assert.match(source,/Exact slip when available; sportsbook page otherwise/);
+  assert.match(source,/BOOK_HOME/);
+  assert.match(source,/syncOpenButton/);
   assert.match(source,/grid\.onclick/);
   assert.match(source,/impliedFromAmerican/);
   assert.match(source,/pp-implied/);
