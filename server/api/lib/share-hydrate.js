@@ -2,6 +2,7 @@ const { analyzeMultiSport } = require('./sport-router');
 const { mergeAnalysisIntoSlip } = require('./share-slip');
 const { enrichShareAssets } = require('./share-assets');
 const { ensureHeadshots } = require('./headshot-ensure');
+const { ensureNflOfficialHeadshots } = require('./nfl-headshot-fallback');
 
 async function withAssets(slip) {
   let enriched = slip;
@@ -10,6 +11,9 @@ async function withAssets(slip) {
   } catch (_) {}
   try {
     enriched = await ensureHeadshots(enriched);
+  } catch (_) {}
+  try {
+    enriched = await ensureNflOfficialHeadshots(enriched);
   } catch (_) {}
   return enriched;
 }
