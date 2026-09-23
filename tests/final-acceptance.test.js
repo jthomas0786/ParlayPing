@@ -36,7 +36,7 @@ test('builder loads final acceptance assets last and legacy branding override is
   assert.match(html, /builder-acceptance-final\.css/);
   assert.match(html, /builder-acceptance-final\.js/);
   assert.doesNotMatch(html, /builder-approved-assets\.js/);
-  assert.match(html, /\/share\/test-token\.png\?context=x_reply&amp;v=20260923d|\/share\/test-token\.png\?v=20260923d&amp;context=x_reply/);
+  assert.match(html, /\/share\/test-token\.png\?(?:context=x_reply(?:&|&amp;)v=20260923d|v=20260923d(?:&|&amp;)context=x_reply)/);
 });
 
 test('ESPN summary asset parser returns stable player ids, headshots, and team logos', () => {
