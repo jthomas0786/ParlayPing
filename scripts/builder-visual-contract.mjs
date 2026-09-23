@@ -11,6 +11,8 @@ const root=path.resolve(path.dirname(new URL(import.meta.url).pathname),'..');
 const artifactDir=path.join(root,'artifacts');
 fs.mkdirSync(artifactDir,{recursive:true});
 
+const startA='2026-12-01T18:00:00Z';
+const startB='2026-12-01T21:05:00Z';
 const slip={
   source:'The Sports Outpost',sportsbook:'DraftKings',combinedOddsAmerican:412,combinedOddsVerified:true,
   sportsbookLinks:{
@@ -21,9 +23,9 @@ const slip={
     'theScore Bet':'https://sportsbook.example/betslip/thescore-exact',
   },
   legs:[
-    {id:'allen-pass',sport:'NFL',player:'Josh Allen',playerId:'3918298',playerImageUrl:'https://a.espncdn.com/i/headshots/nfl/players/full/3918298.png',team:'BUF',gameId:'buf-nyj',matchup:'BUF @ NYJ',market:'passing yards',displayMarket:'Over 249.5 Passing Yards',side:'over',line:249.5,oddsAmerican:-110,status:'PENDING',pregameProbability:.61,startTimeUTC:'2026-12-01T18:00:00Z',altLines:[{line:225.5,oddsAmerican:-165,probability:.66},{line:249.5,oddsAmerican:-110,probability:.61},{line:275.5,oddsAmerican:+135,probability:.44}]},
-    {id:'cook-rush',sport:'NFL',player:'James Cook',playerId:'4379399',playerImageUrl:'https://a.espncdn.com/i/headshots/nfl/players/full/4379399.png',team:'BUF',gameId:'buf-nyj',matchup:'BUF @ NYJ',market:'rushing yards',displayMarket:'Over 69.5 Rushing Yards',side:'over',line:69.5,oddsAmerican:-105,status:'PENDING',pregameProbability:.57,startTimeUTC:'2026-12-01T18:00:00Z',altLines:[{line:60.5,oddsAmerican:-145,probability:.63},{line:69.5,oddsAmerican:-105,probability:.57}]},
-    {id:'henry-rush',sport:'NFL',player:'Derrick Henry',playerId:'3043078',playerImageUrl:'https://a.espncdn.com/i/headshots/nfl/players/full/3043078.png',team:'BAL',gameId:'bal-kc',matchup:'BAL @ KC',market:'rushing yards',displayMarket:'Over 84.5 Rushing Yards',side:'over',line:84.5,oddsAmerican:-115,status:'LIVE',progressText:'62 / 85 yards',pregameProbability:.64,liveProbability:.71,startTimeUTC:'2026-12-01T21:05:00Z',altLines:[{line:75.5,oddsAmerican:-150,probability:.69},{line:84.5,oddsAmerican:-115,probability:.64}]},
+    {id:'allen-pass',sport:'NFL',player:'Josh Allen',playerId:'3918298',playerImageUrl:'https://a.espncdn.com/i/headshots/nfl/players/full/3918298.png',team:'BUF',gameId:'buf-nyj',matchup:'BUF @ NYJ',market:'passing yards',displayMarket:'Over 249.5 Passing Yards',side:'over',line:249.5,oddsAmerican:-110,sportsbook:'DraftKings',bookOffers:{DraftKings:{oddsAmerican:-110},FanDuel:{oddsAmerican:-102}},status:'PENDING',pregameProbability:.61,startTimeUTC:startA,altLinesByBook:{DraftKings:[{line:225.5,oddsAmerican:-165,probability:.66,side:'over'},{line:249.5,oddsAmerican:-110,probability:.61,side:'over'},{line:275.5,oddsAmerican:135,probability:.44,side:'over'}],FanDuel:[{line:230.5,oddsAmerican:-150,probability:.65,side:'over'},{line:249.5,oddsAmerican:-102,probability:.60,side:'over'},{line:270.5,oddsAmerican:120,probability:.47,side:'over'}]}},
+    {id:'cook-rush',sport:'NFL',player:'James Cook',playerId:'4379399',playerImageUrl:'https://a.espncdn.com/i/headshots/nfl/players/full/4379399.png',team:'BUF',gameId:'buf-nyj',matchup:'BUF @ NYJ',market:'rushing yards',displayMarket:'Over 69.5 Rushing Yards',side:'over',line:69.5,oddsAmerican:-105,sportsbook:'DraftKings',bookOffers:{DraftKings:{oddsAmerican:-105},FanDuel:{oddsAmerican:105}},status:'PENDING',pregameProbability:.57,startTimeUTC:startA,altLinesByBook:{DraftKings:[{line:60.5,oddsAmerican:-145,probability:.63,side:'over'},{line:69.5,oddsAmerican:-105,probability:.57,side:'over'}],FanDuel:[{line:59.5,oddsAmerican:-135,probability:.64,side:'over'},{line:69.5,oddsAmerican:105,probability:.55,side:'over'}]}},
+    {id:'henry-rush',sport:'NFL',player:'Derrick Henry',playerId:'3043078',playerImageUrl:'https://a.espncdn.com/i/headshots/nfl/players/full/3043078.png',team:'BAL',gameId:'bal-kc',matchup:'BAL @ KC',market:'rushing yards',displayMarket:'Over 84.5 Rushing Yards',side:'over',line:84.5,oddsAmerican:-115,sportsbook:'DraftKings',bookOffers:{DraftKings:{oddsAmerican:-115},FanDuel:{oddsAmerican:-108}},status:'LIVE',progressText:'62 / 85 yards',pregameProbability:.64,liveProbability:.71,startTimeUTC:startB,altLinesByBook:{DraftKings:[{line:75.5,oddsAmerican:-150,probability:.69,side:'over'},{line:84.5,oddsAmerican:-115,probability:.64,side:'over'}],FanDuel:[{line:74.5,oddsAmerican:-145,probability:.70,side:'over'},{line:84.5,oddsAmerican:-108,probability:.63,side:'over'}]}},
   ],
 };
 const fixture=renderBuilderHtml({slip,token:'s1.visual.acceptance',liveDataAvailable:true});
@@ -45,7 +47,7 @@ await page.waitForFunction(()=>document.documentElement.dataset.ppAcceptance==='
 await page.waitForSelector('.pp-game-group');
 await page.waitForTimeout(250);
 
-const before=await page.evaluate(()=>{
+const snapshot=()=>page.evaluate(()=>{
   const rect=s=>{const r=document.querySelector(s)?.getBoundingClientRect();return r?{x:r.x,y:r.y,width:r.width,height:r.height,right:r.right,bottom:r.bottom}:null};
   const visible=s=>[...document.querySelectorAll(s)].filter(el=>{const style=getComputedStyle(el),r=el.getBoundingClientRect();return style.display!=='none'&&style.visibility!=='hidden'&&r.width>0&&r.height>0;});
   const hero=document.querySelector('.concept-hero');
@@ -56,46 +58,46 @@ const before=await page.evaluate(()=>{
     photos:[...document.querySelectorAll('.pp-player-photo')].map(el=>({tag:el.tagName,src:el.getAttribute('src')||'',width:el.getBoundingClientRect().width,height:el.getBoundingClientRect().height})),
     probabilities:[...document.querySelectorAll('.pp-prob-label')].map(el=>el.textContent.trim()),odds:[...document.querySelectorAll('.pp-leg-odds')].map(el=>el.textContent.trim()),
     summaryOdds:document.querySelector('#combinedOdds')?.textContent?.trim(),summaryProbability:document.querySelector('#impliedProbability')?.textContent?.trim(),
-    altVisible:visible('.pp-leg-alts').length,
-    books:[...document.querySelectorAll('.book-card')].map(el=>({book:el.dataset.book,url:el.dataset.exactUrl,disabled:el.disabled})),
+    altVisible:visible('.pp-leg-alts').length,altBooks:[...visible('.pp-leg-alts')].map(el=>el.dataset.book||''),altLines:[...document.querySelectorAll('.pp-alt-option span')].map(el=>el.textContent.trim()),altOdds:[...document.querySelectorAll('.pp-alt-option strong')].map(el=>el.textContent.trim()),
+    selectedBook:document.querySelector('.book-card.active')?.dataset.book||'',books:[...document.querySelectorAll('.book-card')].map(el=>({book:el.dataset.book,url:el.dataset.exactUrl,disabled:el.disabled})),
     shares:document.querySelectorAll('.share-action').length,lower:document.querySelectorAll('.secondary-panel').length,bodyWidth:document.body.scrollWidth,viewportWidth:innerWidth,
   };
 });
 
+const before=await snapshot();
 if(before.shell.width<900||before.shell.width>1200)throw new Error(`desktop shell width drift: ${before.shell.width}`);
 if(before.brandSrc!=='/parlayping-approved-lockup.svg')throw new Error(`approved header lockup missing: ${before.brandSrc}`);
 if(before.legacyBrand!==0)throw new Error(`legacy header wordmark survived: ${before.legacyBrand}`);
-if(before.heroWatermarkDisplay!=='none')throw new Error(`legacy hero watermark still visible: ${before.heroWatermarkDisplay}`);
-if(before.heroTools!==3)throw new Error(`expected 3 clean hero actions, got ${before.heroTools}`);
-if(before.groups!==2)throw new Error(`expected 2 grouped games, got ${before.groups}`);
-if(before.legRows!==3)throw new Error(`expected 3 nested legs, got ${before.legRows}`);
+if(before.heroWatermarkDisplay!=='none'||before.heroTools!==3)throw new Error('hero regressed');
+if(before.groups!==2||before.legRows!==3)throw new Error(`game grouping failed: ${before.groups}/${before.legRows}`);
 if(!before.groupHeadings.includes('BUF @ NYJ')||!before.groupHeadings.includes('BAL @ KC'))throw new Error(`game grouping headings wrong: ${before.groupHeadings.join(', ')}`);
 if(before.photos.length!==3||before.photos.some(row=>row.tag!=='IMG'||!row.src||row.width<40||row.height<40))throw new Error(`player headshots missing: ${JSON.stringify(before.photos)}`);
 if(before.probabilities.length!==3||before.probabilities.some(value=>!/%|HIT|MISS|PUSH|VOID/.test(value)))throw new Error(`probability labels missing: ${before.probabilities.join(', ')}`);
-if(before.odds.join('|')!=='-110|-105|-115')throw new Error(`leg odds missing: ${before.odds.join(', ')}`);
+if(before.selectedBook!=='DraftKings'||before.odds.join('|')!=='-110|-105|-115')throw new Error(`DraftKings odds not selected: ${before.selectedBook} ${before.odds.join(', ')}`);
 if(before.summaryOdds!=='+412'||before.summaryProbability!=='19.5%')throw new Error(`summary metrics wrong: ${before.summaryOdds} / ${before.summaryProbability}`);
 if(before.altVisible!==0)throw new Error(`alt lines visible before tune: ${before.altVisible}`);
 if(before.books.length!==5||before.books.some(row=>!row.url||row.disabled||!row.url.includes('/betslip/')))throw new Error(`exact sportsbook links not wired: ${JSON.stringify(before.books)}`);
-if(before.shares!==4||before.lower!==2)throw new Error('share/lower sections regressed');
-if(before.bodyWidth>before.viewportWidth+2)throw new Error(`desktop horizontal overflow: body ${before.bodyWidth}, viewport ${before.viewportWidth}`);
+if(before.shares!==4||before.lower!==2||before.bodyWidth>before.viewportWidth+2)throw new Error('layout/share regression');
 
 await page.screenshot({path:path.join(artifactDir,'builder-desktop-default.png'),fullPage:true});
 await page.click('#tuneBtn');
 await page.waitForFunction(()=>[...document.querySelectorAll('.pp-leg-alts')].some(el=>!el.hidden));
 await page.waitForTimeout(120);
+const draftKings=await snapshot();
+if(draftKings.altVisible!==3||draftKings.altBooks.some(book=>book!=='DraftKings'))throw new Error(`Tune is not DraftKings-specific: ${JSON.stringify(draftKings.altBooks)}`);
+if(!draftKings.altLines.includes('Over 225.5')||!draftKings.altLines.includes('Over 275.5')||draftKings.altLines.includes('Over 230.5'))throw new Error(`DraftKings alt lines are contaminated: ${draftKings.altLines.join(', ')}`);
+if(!draftKings.altOdds.includes('-165')||!draftKings.altOdds.includes('+135'))throw new Error(`DraftKings alt odds missing: ${draftKings.altOdds.join(', ')}`);
+await page.screenshot({path:path.join(artifactDir,'builder-desktop-tune-draftkings.png'),fullPage:true});
 
-const after=await page.evaluate(()=>({
-  active:document.querySelector('#tuneBtn')?.classList.contains('active')||false,
-  expanded:document.querySelector('#tuneBtn')?.getAttribute('aria-expanded'),
-  visible:[...document.querySelectorAll('.pp-leg-alts')].filter(el=>!el.hidden).length,
-  lineText:[...document.querySelectorAll('.pp-alt-option span')].map(el=>el.textContent.trim()),
-  oddsText:[...document.querySelectorAll('.pp-alt-option strong')].map(el=>el.textContent.trim()),
-}));
-if(!after.active||after.expanded!=='true'||after.visible!==3)throw new Error(`Parlay Tune did not open: ${JSON.stringify(after)}`);
-if(!after.lineText.includes('Over 225.5')||!after.lineText.includes('Over 84.5'))throw new Error(`verified alternate lines missing: ${after.lineText.join(', ')}`);
-if(!after.oddsText.includes('-165')||!after.oddsText.includes('+135')||!after.oddsText.includes('-150'))throw new Error(`alternate odds missing: ${after.oddsText.join(', ')}`);
+await page.click('.book-card[data-book="FanDuel"]');
+await page.waitForTimeout(120);
+const fanDuel=await snapshot();
+if(fanDuel.selectedBook!=='FanDuel'||fanDuel.odds.join('|')!=='-102|+105|-108')throw new Error(`FanDuel main odds did not replace DraftKings odds: ${fanDuel.selectedBook} ${fanDuel.odds.join(', ')}`);
+if(fanDuel.altVisible!==3||fanDuel.altBooks.some(book=>book!=='FanDuel'))throw new Error(`Tune is not FanDuel-specific: ${JSON.stringify(fanDuel.altBooks)}`);
+if(!fanDuel.altLines.includes('Over 230.5')||!fanDuel.altLines.includes('Over 270.5')||fanDuel.altLines.includes('Over 225.5'))throw new Error(`FanDuel alt lines are contaminated: ${fanDuel.altLines.join(', ')}`);
+if(!fanDuel.altOdds.includes('-150')||!fanDuel.altOdds.includes('+120'))throw new Error(`FanDuel alt odds missing: ${fanDuel.altOdds.join(', ')}`);
+await page.screenshot({path:path.join(artifactDir,'builder-desktop-tune-fanduel.png'),fullPage:true});
 
-await page.screenshot({path:path.join(artifactDir,'builder-desktop-tune.png'),fullPage:true});
-console.log(JSON.stringify({before,after},null,2));
+console.log(JSON.stringify({before,draftKings,fanDuel},null,2));
 await browser.close();
 await new Promise(resolve=>server.close(resolve));
