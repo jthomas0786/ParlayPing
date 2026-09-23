@@ -9,10 +9,10 @@
   const esc=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
   const num=v=>v===null||v===undefined||v===''?null:(Number.isFinite(Number(v))?Number(v):null);
   const BEST='Best Available';
-  const BOOK_ORDER=['DraftKings','FanDuel','bet365','Caesars','BetMGM','Fanatics','ESPN BET','Hard Rock','BetRivers','Pinnacle'];
-  const BOOK_CLASS={'DraftKings':'dk','FanDuel':'fd','bet365':'b365','Caesars':'cz','BetMGM':'mgm','Fanatics':'fanatics','ESPN BET':'espn','Hard Rock':'more','BetRivers':'more','Pinnacle':'more'};
-  const BOOK_MARK={'DraftKings':'DK','FanDuel':'F','bet365':'bet','Caesars':'C','BetMGM':'M','Fanatics':'F','ESPN BET':'E','Hard Rock':'HR','BetRivers':'BR','Pinnacle':'P'};
-  const normalizeBook=value=>{const raw=String(value||'').trim();if(raw===BEST)return BEST;const key=raw.toLowerCase().replace(/[^a-z0-9]/g,'');const aliases={draftkings:'DraftKings',dk:'DraftKings',fanduel:'FanDuel',fd:'FanDuel',bet365:'bet365','365':'bet365',caesars:'Caesars',williamhill:'Caesars',caesarssportsbook:'Caesars',betmgm:'BetMGM',mgm:'BetMGM',fanatics:'Fanatics',fanaticssportsbook:'Fanatics',espnbet:'ESPN BET',espn:'ESPN BET',hardrock:'Hard Rock',hardrockbet:'Hard Rock',betrivers:'BetRivers',pinnacle:'Pinnacle'};return aliases[key]||raw||null;};
+  const BOOK_ORDER=['DraftKings','FanDuel','bet365','Caesars','BetMGM','Fanatics','ESPN BET','Hard Rock','BetRivers','Pinnacle','Parx'];
+  const BOOK_CLASS={'DraftKings':'dk','FanDuel':'fd','bet365':'b365','Caesars':'cz','BetMGM':'mgm','Fanatics':'fanatics','ESPN BET':'espn','Hard Rock':'more','BetRivers':'more','Pinnacle':'more','Parx':'more'};
+  const BOOK_MARK={'DraftKings':'DK','FanDuel':'F','bet365':'bet','Caesars':'C','BetMGM':'M','Fanatics':'F','ESPN BET':'E','Hard Rock':'HR','BetRivers':'BR','Pinnacle':'P','Parx':'PX'};
+  const normalizeBook=value=>{const raw=String(value||'').trim();if(raw===BEST)return BEST;const key=raw.toLowerCase().replace(/[^a-z0-9]/g,'');const aliases={draftkings:'DraftKings',dk:'DraftKings',fanduel:'FanDuel',fd:'FanDuel',bet365:'bet365','365':'bet365',caesars:'Caesars',williamhill:'Caesars',caesarssportsbook:'Caesars',betmgm:'BetMGM',mgm:'BetMGM',fanatics:'Fanatics',fanaticssportsbook:'Fanatics',espnbet:'ESPN BET',espn:'ESPN BET',hardrock:'Hard Rock',hardrockbet:'Hard Rock',betrivers:'BetRivers',pinnacle:'Pinnacle',parx:'Parx',parxcasino:'Parx'};return aliases[key]||raw||null;};
   const americanToDecimal=price=>{const n=num(price);if(n==null||n===0)return null;return n>0?1+n/100:1+100/Math.abs(n);};
   const decimalToAmerican=decimal=>{const d=num(decimal);if(d==null||d<=1)return null;return d>=2?Math.round((d-1)*100):Math.round(-100/(d-1));};
   const fmtOdds=value=>{const n=num(value);if(n==null||n===0)return '—';const r=Math.round(n);return r>0?`+${r}`:String(r);};
@@ -38,8 +38,17 @@
     if(hasBestAvailable())return BEST;
     return [...books].sort((a,b)=>bookCoverage(b)-bookCoverage(a))[0]||null;
   };
+  const gameIdentity=leg=>{
+    const sport=String(leg?.sport||'').trim().toUpperCase();
+    const matchup=String(leg?.matchup||'').trim().toUpperCase().replace(/\s+/g,' ');
+    const start=String(leg?.startTimeUTC||'').trim();
+    const day=start&&Number.isFinite(Date.parse(start))?new Date(start).toISOString().slice(0,10):'';
+    if(matchup)return `match:${sport}:${matchup}:${day}`;
+    const id=String(leg?.gameId||'').trim();
+    return id?`id:${sport}:${id}`:'';
+  };
   const independentGames=()=>{
-    const ids=legs.map(leg=>String(leg?.gameId||'').trim());
+    const ids=legs.map(gameIdentity);
     return ids.every(Boolean)&&new Set(ids).size===ids.length;
   };
   const combinedForBook=book=>{
@@ -111,5 +120,5 @@
   document.addEventListener('click',event=>{if(event.target?.closest?.('.book-card'))setTimeout(update,0);},true);
   const observer=new MutationObserver(records=>{if(records.some(row=>[...row.addedNodes].some(node=>node?.nodeType===1&&((node.matches?.('.sportsbook-grid,.book-card,.pp-books-unavailable'))||node.querySelector?.('.book-card,.pp-books-unavailable')))))schedule();});
   observer.observe(document.documentElement,{childList:true,subtree:true});
-  window.__PP_SUMMARY_ODDS_HOTFIX_TEST__={americanToDecimal,decimalToAmerican,combinedForBook,unionBooks,commonBooks,bookCoverage,update,installVerifiedPriceFallback,fmtPct,BEST};
+  window.__PP_SUMMARY_ODDS_HOTFIX_TEST__={americanToDecimal,decimalToAmerican,combinedForBook,unionBooks,commonBooks,bookCoverage,gameIdentity,independentGames,update,installVerifiedPriceFallback,fmtPct,BEST};
 })();
