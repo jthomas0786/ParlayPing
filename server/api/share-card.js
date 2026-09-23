@@ -1,6 +1,7 @@
 const { hydrateSharedSlip } = require('./lib/share-hydrate');
 const { decodeShareSlip, buildShareUrl } = require('./lib/share-slip');
 const { renderShareSvg, safeAssetUrl, selectVisibleLegs } = require('./lib/share-renderer');
+const APPROVED_WORDMARK_DATA_URI = require('./lib/approved-wordmark-data');
 
 const imageCache = new Map();
 
@@ -67,7 +68,14 @@ async function rasterizeEmbeddedWebp(svg) {
   for (const dataUri of webpUris) {
     try {
       const bytes = Buffer.from(dataUri.slice('data:image/webp;base64,'.length), 'base64');
-      const png = await sharp(bytes).png({ compressionLevel:9, adaptiveFiltering:true }).toBuffer();
+      const image = sharp(bytes);
+      const metadata = await image.metadata();
+      const aspect = metadata.width && metadata.height ? metadata.width / metadata.height : 0;
+      if (aspect >= 2.5) {
+        output = output.split(dataUri).join(APPROVED_WORDMARK_DATA_URI);
+        continue;
+      }
+      const png = await image.png({ compressionLevel:9, adaptiveFiltering:true }).toBuffer();
       output = output.split(dataUri).join(`data:image/png;base64,${png.toString('base64')}`);
     } catch (error) {
       console.error('ParlayPing WebP conversion failed', error);
