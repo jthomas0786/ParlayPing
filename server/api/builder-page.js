@@ -4,7 +4,7 @@ const { decodeShareSlip, buildCardUrl } = require('./lib/share-slip');
 const { hydrateSharedSlip } = require('./lib/share-hydrate');
 const { enrichSportsbookMarkets } = require('./lib/sportsbook-enrich');
 
-const SHARE_CARD_VERSION = '20260923e';
+const SHARE_CARD_VERSION = '20260923f';
 
 function tokenFromRequest(req) {
   return String(req.query?.slip || req.query?.token || '').trim();
@@ -48,7 +48,7 @@ function renderBuilderHtml({ slip, token, liveDataAvailable }) {
     .replace(/\.\/parlayping-logo\.svg/g, '/parlayping-logo.svg')
     .replace(/\.\/account\.html/g, '/account.html')
     .replace(/\.\/styles\.css/g, '/builder.css')
-    .replace(/<script src="\.\/app\.js"><\/script>/, `<script>window.__PARLAYPING_BUILDER__=${payload};</script><script src="/builder-sportsbook-links-prep.js"></script><script src="/builder-precision-runtime.js"></script><script src="/builder-concept-finish.js"></script><script src="/builder-mobile-fix.js"></script><script src="/builder-mobile-final.js"></script><script src="/builder-acceptance-final.js"></script><script src="/builder-acceptance-icons.js"></script><script src="/builder-branding-final.js"></script>`)
+    .replace(/<script src="\.\/app\.js"><\/script>/, `<script>window.__PARLAYPING_BUILDER__=${payload};</script><script src="/builder-sportsbook-links-prep.js"></script><script src="/builder-precision-runtime.js"></script><script src="/builder-concept-finish.js"></script><script src="/builder-mobile-fix.js"></script><script src="/builder-mobile-final.js"></script><script src="/builder-acceptance-final.js"></script><script src="/builder-summary-odds-hotfix.js"></script><script src="/builder-acceptance-icons.js"></script><script src="/builder-branding-final.js"></script>`)
     .replace(/<title>[^<]*<\/title>/, `<title>${title}</title>`)
     .replace(/<meta name="description" content="[^"]*" \/>/, `<meta name="description" content="${description}" />`)
     .replace(/<meta property="og:title" content="[^"]*" \/>/, `<meta property="og:title" content="${title}" />`)
