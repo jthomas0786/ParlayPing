@@ -22,8 +22,8 @@ const slip={
     'theScore Bet':'https://sportsbook.example/betslip/thescore-mobile',
   },
   legs:[
-    {id:'wilson-reb',sport:'WNBA',player:"A'ja Wilson",playerId:'3149391',playerImageUrl:'https://a.espncdn.com/i/headshots/wnba/players/full/3149391.png',team:'LVA',gameId:'game-1',matchup:'SEA @ LVA',market:'rebounds',displayMarket:'Over 8 Rebounds',side:'over',line:8,oddsAmerican:-125,status:'LIVE',progressText:'7 / 8 rebounds',startTimeUTC:start,pregameProbability:.71,liveProbability:.82,altLines:[{line:7,oddsAmerican:-165,probability:.79},{line:8,oddsAmerican:-125,probability:.71},{line:9,oddsAmerican:+105,probability:.52}]},
-    {id:'young-ast',sport:'WNBA',player:'Jackie Young',playerId:'4065870',playerImageUrl:'https://a.espncdn.com/i/headshots/wnba/players/full/4065870.png',team:'LVA',gameId:'game-1',matchup:'SEA @ LVA',market:'assists',displayMarket:'Over 8 Assists',side:'over',line:8,oddsAmerican:110,status:'LIVE',progressText:'5 / 8 assists',startTimeUTC:start,pregameProbability:.58,liveProbability:.46,altLines:[{line:6,oddsAmerican:-155,probability:.68},{line:7,oddsAmerican:-110,probability:.59},{line:8,oddsAmerican:+110,probability:.48}]},
+    {id:'wilson-reb',sport:'WNBA',player:"A'ja Wilson",playerId:'3149391',playerImageUrl:'https://a.espncdn.com/i/headshots/wnba/players/full/3149391.png',team:'LVA',gameId:'game-1',matchup:'SEA @ LVA',market:'rebounds',displayMarket:'Over 8 Rebounds',side:'over',line:8,oddsAmerican:-125,sportsbook:'DraftKings',bookOffers:{DraftKings:{oddsAmerican:-125},FanDuel:{oddsAmerican:-118}},status:'LIVE',progressText:'7 / 8 rebounds',startTimeUTC:start,pregameProbability:.71,liveProbability:.82,altLinesByBook:{DraftKings:[{line:7,oddsAmerican:-165,probability:.79,side:'over'},{line:8,oddsAmerican:-125,probability:.71,side:'over'},{line:9,oddsAmerican:105,probability:.52,side:'over'}],FanDuel:[{line:7.5,oddsAmerican:-150,probability:.76,side:'over'},{line:8,oddsAmerican:-118,probability:.70,side:'over'},{line:9.5,oddsAmerican:125,probability:.49,side:'over'}]}},
+    {id:'young-ast',sport:'WNBA',player:'Jackie Young',playerId:'4065870',playerImageUrl:'https://a.espncdn.com/i/headshots/wnba/players/full/4065870.png',team:'LVA',gameId:'game-1',matchup:'SEA @ LVA',market:'assists',displayMarket:'Over 8 Assists',side:'over',line:8,oddsAmerican:110,sportsbook:'DraftKings',bookOffers:{DraftKings:{oddsAmerican:110},FanDuel:{oddsAmerican:120}},status:'LIVE',progressText:'5 / 8 assists',startTimeUTC:start,pregameProbability:.58,liveProbability:.46,altLinesByBook:{DraftKings:[{line:6,oddsAmerican:-155,probability:.68,side:'over'},{line:7,oddsAmerican:-110,probability:.59,side:'over'},{line:8,oddsAmerican:110,probability:.48,side:'over'}],FanDuel:[{line:6.5,oddsAmerican:-140,probability:.66,side:'over'},{line:7.5,oddsAmerican:-105,probability:.56,side:'over'},{line:8,oddsAmerican:120,probability:.46,side:'over'}]}},
   ],
 };
 
@@ -45,7 +45,7 @@ await page.waitForFunction(()=>document.documentElement.dataset.ppAcceptance==='
 await page.waitForSelector('.pp-game-group');
 await page.waitForTimeout(250);
 
-const metrics=await page.evaluate(()=>{
+const snap=()=>page.evaluate(()=>{
   const visible=s=>[...document.querySelectorAll(s)].filter(el=>{const style=getComputedStyle(el),r=el.getBoundingClientRect();return style.display!=='none'&&style.visibility!=='hidden'&&r.width>0&&r.height>0;});
   return {
     acceptance:document.documentElement.dataset.ppAcceptance,brandSrc:document.querySelector('.pp-acceptance-lockup')?.getAttribute('src')||'',legacyBrand:document.querySelectorAll('.pp-brand-lockup').length,
@@ -53,11 +53,12 @@ const metrics=await page.evaluate(()=>{
     gameGroups:document.querySelectorAll('.pp-game-group').length,gameHeaders:[...document.querySelectorAll('.pp-game-copy strong')].map(el=>el.textContent.trim()),legRows:document.querySelectorAll('.pp-leg-row').length,
     players:[...document.querySelectorAll('.pp-leg-copy strong')].map(el=>el.textContent.trim()),headshots:[...document.querySelectorAll('.pp-player-photo')].map(el=>({tag:el.tagName,src:el.getAttribute('src')||'',width:el.getBoundingClientRect().width,height:el.getBoundingClientRect().height})),
     probabilities:[...document.querySelectorAll('.pp-prob-label')].map(el=>el.textContent.trim()),odds:[...document.querySelectorAll('.pp-leg-odds')].map(el=>el.textContent.trim()),summaryOdds:document.querySelector('#combinedOdds')?.textContent?.trim(),summaryProbability:document.querySelector('#impliedProbability')?.textContent?.trim(),
-    altVisible:visible('.pp-leg-alts').length,books:[...document.querySelectorAll('.book-card')].map(el=>({book:el.dataset.book,url:el.dataset.exactUrl,disabled:el.disabled})),
+    selectedBook:document.querySelector('.book-card.active')?.dataset.book||'',altVisible:visible('.pp-leg-alts').length,altBooks:[...visible('.pp-leg-alts')].map(el=>el.dataset.book||''),altLines:[...document.querySelectorAll('.pp-alt-option span')].map(el=>el.textContent.trim()),altOdds:[...document.querySelectorAll('.pp-alt-option strong')].map(el=>el.textContent.trim()),books:[...document.querySelectorAll('.book-card')].map(el=>({book:el.dataset.book,url:el.dataset.exactUrl,disabled:el.disabled})),
     shareActions:document.querySelectorAll('.share-action').length,bodyWidth:document.body.scrollWidth,viewportWidth:innerWidth,
   };
 });
 
+const metrics=await snap();
 if(metrics.acceptance!=='ready')throw new Error(`acceptance layer not ready: ${metrics.acceptance}`);
 if(metrics.brandSrc!=='/parlayping-approved-lockup.svg'||metrics.legacyBrand!==0)throw new Error('approved lockup is not authoritative');
 if(metrics.heroBeforeDisplay!=='none'||metrics.heroTools!==3)throw new Error('hero regressed');
@@ -65,30 +66,31 @@ if(metrics.gameGroups!==1||metrics.legRows!==2||metrics.gameHeaders.join('|')!==
 if(!metrics.players.includes("A'ja Wilson")||!metrics.players.includes('Jackie Young'))throw new Error(`player names missing: ${metrics.players.join(', ')}`);
 if(metrics.headshots.length!==2||metrics.headshots.some(row=>row.tag!=='IMG'||!row.src||row.width<38||row.height<38))throw new Error(`player headshots are not rendered correctly: ${JSON.stringify(metrics.headshots)}`);
 if(metrics.probabilities.length!==2||metrics.probabilities.some(value=>!/%/.test(value)))throw new Error(`probability UI missing: ${metrics.probabilities.join(', ')}`);
-if(metrics.odds.join('|')!=='-125|+110')throw new Error(`odds UI missing: ${metrics.odds.join(', ')}`);
+if(metrics.selectedBook!=='DraftKings'||metrics.odds.join('|')!=='-125|+110')throw new Error(`DraftKings odds missing: ${metrics.selectedBook} ${metrics.odds.join(', ')}`);
 if(metrics.summaryOdds!=='+284'||metrics.summaryProbability!=='26.0%')throw new Error(`summary metrics wrong: ${metrics.summaryOdds}/${metrics.summaryProbability}`);
 if(metrics.altVisible!==0)throw new Error(`alt lines visible before tune: ${metrics.altVisible}`);
 if(metrics.books.length!==5||metrics.books.some(row=>!row.url||row.disabled||!row.url.includes('/betslip/')))throw new Error(`exact sportsbook links are not functional: ${JSON.stringify(metrics.books)}`);
-if(metrics.shareActions!==4)throw new Error(`share actions regressed: ${metrics.shareActions}`);
-if(metrics.bodyWidth>metrics.viewportWidth+2)throw new Error(`horizontal overflow: body ${metrics.bodyWidth}, viewport ${metrics.viewportWidth}`);
+if(metrics.shareActions!==4||metrics.bodyWidth>metrics.viewportWidth+2)throw new Error('mobile layout/share regression');
 
 await page.screenshot({path:path.join(artifactDir,'builder-mobile-default.png'),fullPage:true});
 await page.click('#tuneBtn');
 await page.waitForFunction(()=>[...document.querySelectorAll('.pp-leg-alts')].some(el=>!el.hidden));
 await page.waitForTimeout(120);
+const dk=await snap();
+if(dk.altVisible!==2||dk.altBooks.some(book=>book!=='DraftKings'))throw new Error(`mobile Tune not DraftKings-specific: ${JSON.stringify(dk.altBooks)}`);
+if(!dk.altLines.includes('Over 7')||!dk.altLines.includes('Over 9')||dk.altLines.includes('Over 7.5'))throw new Error(`DraftKings mobile lines contaminated: ${dk.altLines.join(', ')}`);
+if(!dk.altOdds.includes('-165')||!dk.altOdds.includes('+105')||!dk.altOdds.includes('-155'))throw new Error(`DraftKings mobile odds missing: ${dk.altOdds.join(', ')}`);
+await page.screenshot({path:path.join(artifactDir,'builder-mobile-tune-draftkings.png'),fullPage:true});
 
-const tune=await page.evaluate(()=>({
-  active:document.querySelector('#tuneBtn')?.classList.contains('active')||false,
-  expanded:document.querySelector('#tuneBtn')?.getAttribute('aria-expanded'),
-  visible:[...document.querySelectorAll('.pp-leg-alts')].filter(el=>!el.hidden).length,
-  lines:[...document.querySelectorAll('.pp-alt-option span')].map(el=>el.textContent.trim()),
-  odds:[...document.querySelectorAll('.pp-alt-option strong')].map(el=>el.textContent.trim()),
-}));
-if(!tune.active||tune.expanded!=='true'||tune.visible!==2)throw new Error(`Parlay Tune did not open cleanly: ${JSON.stringify(tune)}`);
-if(!tune.lines.includes('Over 7')||!tune.lines.includes('Over 9')||!tune.lines.includes('Over 6'))throw new Error(`verified line chips missing: ${tune.lines.join(', ')}`);
-if(!tune.odds.includes('-165')||!tune.odds.includes('+105')||!tune.odds.includes('-155'))throw new Error(`alt odds missing: ${tune.odds.join(', ')}`);
+await page.click('.book-card[data-book="FanDuel"]');
+await page.waitForTimeout(120);
+const fd=await snap();
+if(fd.selectedBook!=='FanDuel'||fd.odds.join('|')!=='-118|+120')throw new Error(`FanDuel mobile main odds wrong: ${fd.selectedBook} ${fd.odds.join(', ')}`);
+if(fd.altVisible!==2||fd.altBooks.some(book=>book!=='FanDuel'))throw new Error(`mobile Tune not FanDuel-specific: ${JSON.stringify(fd.altBooks)}`);
+if(!fd.altLines.includes('Over 7.5')||!fd.altLines.includes('Over 9.5')||fd.altLines.includes('Over 7'))throw new Error(`FanDuel mobile lines contaminated: ${fd.altLines.join(', ')}`);
+if(!fd.altOdds.includes('-150')||!fd.altOdds.includes('+125')||!fd.altOdds.includes('-140'))throw new Error(`FanDuel mobile odds missing: ${fd.altOdds.join(', ')}`);
+await page.screenshot({path:path.join(artifactDir,'builder-mobile-tune-fanduel.png'),fullPage:true});
 
-await page.screenshot({path:path.join(artifactDir,'builder-mobile-tune.png'),fullPage:true});
-console.log(JSON.stringify({metrics,tune},null,2));
+console.log(JSON.stringify({metrics,dk,fd},null,2));
 await browser.close();
 await new Promise(resolve=>server.close(resolve));
