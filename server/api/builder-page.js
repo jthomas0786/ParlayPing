@@ -3,6 +3,8 @@ const path = require('path');
 const { decodeShareSlip, buildCardUrl } = require('./lib/share-slip');
 const { hydrateSharedSlip } = require('./lib/share-hydrate');
 
+const SHARE_CARD_VERSION = '20260923b';
+
 function tokenFromRequest(req) {
   return String(req.query?.slip || req.query?.token || '').trim();
 }
@@ -22,10 +24,18 @@ function safeJson(value) {
     .replace(/\u2029/g, '\\u2029');
 }
 
+function versionedCardUrl(token, slip, baseUrl = publicBaseUrl()) {
+  const base = buildCardUrl(token, baseUrl);
+  const xReply = /^X\s+@ParlayPing$/i.test(String(slip?.source || '').trim());
+  const query = new URLSearchParams({ v:SHARE_CARD_VERSION });
+  if (xReply) query.set('context','x_reply');
+  return `${base}?${query.toString()}`;
+}
+
 function renderBuilderHtml({ slip, token, liveDataAvailable }) {
   const baseUrl = publicBaseUrl();
   const url = builderUrl(token, baseUrl);
-  const cardUrl = buildCardUrl(token, baseUrl);
+  const cardUrl = versionedCardUrl(token, slip, baseUrl);
   const legs = Array.isArray(slip.legs) ? slip.legs : [];
   const title = `${legs.length}-Leg Parlay — ParlayPing`;
   const description = `Build, tweak, share, and tail this ${legs.length}-leg ParlayPing betslip.`;
@@ -76,3 +86,5 @@ module.exports = async function handler(req, res) {
 module.exports.builderUrl = builderUrl;
 module.exports.renderBuilderHtml = renderBuilderHtml;
 module.exports.tokenFromRequest = tokenFromRequest;
+module.exports.versionedCardUrl = versionedCardUrl;
+module.exports.SHARE_CARD_VERSION = SHARE_CARD_VERSION;

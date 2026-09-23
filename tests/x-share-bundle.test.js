@@ -47,7 +47,7 @@ test('X share bundle creates premade builder URL and x-reply card URL without po
   assert.equal(bundle.ready,true);
   assert.match(bundle.shareUrl,/^https:\/\/parlayping\.net\/build\/s1\./);
   assert.match(bundle.cardUrl,/^https:\/\/parlayping\.net\/share\/s1\..+\.png$/);
-  assert.match(bundle.xReplyCardUrl,/\.png\?context=x_reply$/);
+  assert.match(bundle.xReplyCardUrl,/\.png\?context=x_reply&v=\d+[a-z]?$/);
   assert.match(bundle.replyText,/^🔔 ParlayPing Live/);
   assert.match(bundle.replyText,/Open betslip → https:\/\/parlayping\.net\/build\//);
   assert.doesNotMatch(bundle.replyText,/Tail what's left/);

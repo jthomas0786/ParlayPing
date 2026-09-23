@@ -6,7 +6,8 @@
     "test": "node scripts/prepare-test-api.cjs && node --test tests/*.test.js"
   },
   "dependencies": {
-    "@resvg/resvg-js": "2.6.2"
+    "@resvg/resvg-js": "2.6.2",
+    "sharp": "0.34.4"
   },
   "engines": {
     "node": ">=20"
