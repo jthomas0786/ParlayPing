@@ -4,7 +4,7 @@ const { decodeShareSlip, buildCardUrl } = require('./lib/share-slip');
 const { hydrateSharedSlip } = require('./lib/share-hydrate');
 const { enrichSportsbookMarkets } = require('./lib/sportsbook-enrich');
 
-const SHARE_CARD_VERSION = '20260923d';
+const SHARE_CARD_VERSION = '20260923e';
 
 function tokenFromRequest(req) {
   return String(req.query?.slip || req.query?.token || '').trim();
