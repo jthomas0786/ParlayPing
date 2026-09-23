@@ -1,6 +1,8 @@
 const { canonicalSlip, mergeAnalysisIntoSlip, encodeShareSlip, buildCardUrl } = require('./share-slip');
 const { buildPublicReply } = require('./analysis-safety');
 
+const X_SHARE_CARD_VERSION = '20260923b';
+
 function hasUnresolved(analysis) {
   return (Array.isArray(analysis?.results) ? analysis.results : []).some(row => row?.status === 'UNRESOLVED');
 }
@@ -30,7 +32,7 @@ function buildXShareBundle({ parsedLegs, analysis, sourceReference, baseUrl, max
   const token = encodeShareSlip(hydrated);
   const shareUrl = builderUrl(token, baseUrl);
   const cardUrl = buildCardUrl(token, baseUrl);
-  const xReplyCardUrl = `${cardUrl}?context=x_reply`;
+  const xReplyCardUrl = `${cardUrl}?context=x_reply&v=${X_SHARE_CARD_VERSION}`;
 
   const baseReply = buildPublicReply({ ...analysis, tailUrl: shareUrl }, { maxLegs: maxReplyLegs });
   const replyText = baseReply
@@ -65,4 +67,4 @@ function tryBuildXShareBundle(input) {
   }
 }
 
-module.exports = { buildXShareBundle, tryBuildXShareBundle, hasUnresolved, builderUrl };
+module.exports = { buildXShareBundle, tryBuildXShareBundle, hasUnresolved, builderUrl, X_SHARE_CARD_VERSION };
