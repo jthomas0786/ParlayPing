@@ -7,10 +7,16 @@ on:
       - 'builder-mobile-fix.js'
       - 'builder-mobile-final.css'
       - 'builder-mobile-final.js'
+      - 'builder-acceptance-final.css'
+      - 'builder-acceptance-final.js'
       - 'parlayping-approved-logo.png'
+      - 'parlayping-approved-lockup.svg'
       - 'server/api/builder-page.js'
+      - 'server/api/lib/share-assets.js'
+      - 'server/api/lib/share-hydrate.js'
       - 'scripts/builder-mobile-contract.mjs'
       - 'tests/builder-concept.test.js'
+      - 'tests/final-acceptance.test.js'
       - '.github/workflows/builder-mobile-contract.yml'
 
 permissions:
@@ -31,7 +37,7 @@ jobs:
         run: npm install --no-save --no-audit --no-fund playwright@1.55.0
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
-      - name: Verify iPhone concept fidelity
+      - name: Verify final iPhone acceptance checklist
         run: node scripts/builder-mobile-contract.mjs
       - name: Upload rendered iPhone screenshots
         if: always()

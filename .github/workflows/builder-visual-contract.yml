@@ -12,10 +12,16 @@ on:
       - 'builder-mobile-fix.js'
       - 'builder-mobile-final.css'
       - 'builder-mobile-final.js'
+      - 'builder-acceptance-final.css'
+      - 'builder-acceptance-final.js'
       - 'parlayping-approved-logo.png'
+      - 'parlayping-approved-lockup.svg'
       - 'server/api/builder-page.js'
+      - 'server/api/lib/share-assets.js'
+      - 'server/api/lib/share-hydrate.js'
       - 'scripts/builder-visual-contract.mjs'
       - 'tests/builder-concept.test.js'
+      - 'tests/final-acceptance.test.js'
       - '.github/workflows/builder-visual-contract.yml'
 
 permissions:
@@ -36,5 +42,13 @@ jobs:
         run: npm install --no-save --no-audit --no-fund playwright@1.55.0
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
-      - name: Verify approved concept geometry
+      - name: Verify final desktop acceptance checklist
         run: node scripts/builder-visual-contract.mjs
+      - name: Upload rendered desktop screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: builder-desktop-screenshots
+          path: artifacts/builder-desktop-*.png
+          if-no-files-found: error
+          retention-days: 3
