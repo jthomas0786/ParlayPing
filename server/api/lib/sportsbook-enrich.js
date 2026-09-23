@@ -113,6 +113,9 @@ function mlbGameMatches(game,leg){
 function parseMlbPublicSlate(doc,leg){
   const games=Array.isArray(doc?.games)?doc.games:[];if(!games.length)return null;
   const wanted=norm(leg?.player),market=marketKey(leg);if(!wanted)return null;
+  // The Sports Outpost MLB slate currently stores the OVER/YES price returned by
+  // the odds feed. Never reuse that quote for an Under/No selection.
+  if(sideOf(leg)==='under')return null;
   let found=null;
   for(const game of games){
     if(!mlbGameMatches(game,leg))continue;
@@ -145,7 +148,7 @@ function parseMlbPublicSlate(doc,leg){
     const book=normBook(offer?.bookTitle||offer?.book||offer?.sportsbook),price=finite(offer?.price??offer?.oddsAmerican),selectionLink=offer?.link||offer?.deepLink||offer?.selectionLink||null;
     if(!book||price==null)continue;
     const dedupe=`${book}|${price}|${selectionLink||''}`;if(seen.has(dedupe))continue;seen.add(dedupe);
-    const side=leg?.side==='no'?'no':leg?.side==='under'?'under':market==='hr'?'yes':'over';
+    const side=market==='hr'?'yes':'over';
     pushAlt(altLinesByBook,book,{line,oddsAmerican:price,side,selectionLink});
     bookOffers[book]={oddsAmerican:price,selectionLink,betslipUrl:null};
     if(!preferred||price>preferred.oddsAmerican)preferred={sportsbook:book,oddsAmerican:price,sportsbookLink:selectionLink};
