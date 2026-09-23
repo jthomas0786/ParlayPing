@@ -62,8 +62,6 @@ async function imageDataUri(value) {
     const response = await fetch(url, {
       signal,
       headers:{
-        // Do not advertise AVIF here. MLB's f_auto headshot CDN can honor AVIF,
-        // while the share-card SVG pipeline expects PNG/JPEG/WebP data URIs.
         accept:'image/webp,image/png,image/jpeg,*/*;q=0.8',
         'user-agent':'Mozilla/5.0 (compatible; ParlayPing/1.0; +https://parlayping.net)',
         referer:'https://www.espn.com/',
@@ -91,6 +89,31 @@ async function imageDataUri(value) {
   }
 }
 
+function mlbOfficialPngHeadshot(leg = {}) {
+  if (String(leg.sport || '').toUpperCase() !== 'MLB') return null;
+  const id = String(leg.playerId || leg.mlbPlayerId || leg.officialPlayerId || '').trim();
+  if (!/^\d+$/.test(id)) return null;
+  return `https://img.mlbstatic.com/mlb-photos/image/upload/w_426,d_people:generic:headshot:silo:current.png,q_auto:best,f_png/v1/people/${encodeURIComponent(id)}/headshot/silo/current`;
+}
+
+function espnHeadshot(leg = {}) {
+  const id = String(leg.espnPlayerId || '').trim();
+  if (!/^\d+$/.test(id)) return null;
+  const sport = String(leg.sport || '').toUpperCase();
+  const slugs = { NFL:'nfl', NCAAF:'college-football', NBA:'nba', WNBA:'wnba', NCAAB:'mens-college-basketball', MLB:'mlb', NHL:'nhl' };
+  const slug = slugs[sport];
+  return slug ? `https://a.espncdn.com/i/headshots/${slug}/players/full/${encodeURIComponent(id)}.png` : null;
+}
+
+async function embeddedPlayerImage(leg = {}) {
+  const candidates = [leg.playerImageUrl, leg.headshotUrl, mlbOfficialPngHeadshot(leg), espnHeadshot(leg)].filter(Boolean);
+  for (const candidate of [...new Set(candidates)]) {
+    const embedded = await imageDataUri(candidate);
+    if (embedded) return embedded;
+  }
+  return null;
+}
+
 async function embedVisibleAssets(slip, context) {
   const legs = Array.isArray(slip?.legs) ? slip.legs.map(leg => ({ ...leg })) : [];
   const visible = selectVisibleLegs(legs, context, 6);
@@ -98,7 +121,7 @@ async function embedVisibleAssets(slip, context) {
     const index = Number(leg.__index);
     if (!Number.isInteger(index) || !legs[index]) return;
     const [playerImageUrl, teamLogoUrl] = await Promise.all([
-      imageDataUri(legs[index].playerImageUrl),
+      embeddedPlayerImage(legs[index]),
       imageDataUri(legs[index].teamLogoUrl),
     ]);
     legs[index].playerImageUrl = playerImageUrl;
@@ -236,6 +259,9 @@ module.exports = async function handler(req, res) {
 
 module.exports.tokenFromRequest = tokenFromRequest;
 module.exports.imageDataUri = imageDataUri;
+module.exports.mlbOfficialPngHeadshot = mlbOfficialPngHeadshot;
+module.exports.espnHeadshot = espnHeadshot;
+module.exports.embeddedPlayerImage = embeddedPlayerImage;
 module.exports.embedVisibleAssets = embedVisibleAssets;
 module.exports.inlineApprovedLockup = inlineApprovedLockup;
 module.exports.prepareShareSvg = prepareShareSvg;
