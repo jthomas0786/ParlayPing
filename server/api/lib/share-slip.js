@@ -35,6 +35,48 @@ function cleanUrl(value) {
   }
 }
 
+function normalizeSportsbookName(value) {
+  const raw = cleanText(value, 80);
+  if (!raw) return null;
+  const key = raw.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const aliases = {
+    draftkings:'DraftKings', dk:'DraftKings', fanduel:'FanDuel', fd:'FanDuel',
+    bet365:'bet365', '365':'bet365', caesars:'Caesars', williamhill:'Caesars',
+    caesarssportsbook:'Caesars', thescorebet:'theScore Bet', thescore:'theScore Bet',
+    betmgm:'BetMGM', mgm:'BetMGM', fanatics:'Fanatics', fanaticssportsbook:'Fanatics',
+  };
+  return aliases[key] || raw.slice(0, 80);
+}
+
+function cleanSportsbookLinks(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  const out = {};
+  for (const [rawBook, rawUrl] of Object.entries(value)) {
+    if (Object.keys(out).length >= 12) break;
+    const book = normalizeSportsbookName(rawBook);
+    const url = cleanUrl(rawUrl && typeof rawUrl === 'object' ? (rawUrl.betslipUrl ?? rawUrl.parlayUrl ?? rawUrl.url ?? rawUrl.link) : rawUrl);
+    if (book && url) out[book] = url;
+  }
+  return out;
+}
+
+function cleanBookOffers(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  const out = {};
+  for (const [rawBook, rawOffer] of Object.entries(value)) {
+    if (Object.keys(out).length >= 16) break;
+    const book = normalizeSportsbookName(rawBook);
+    if (!book) continue;
+    const offer = rawOffer && typeof rawOffer === 'object' && !Array.isArray(rawOffer) ? rawOffer : { oddsAmerican:rawOffer };
+    const oddsAmerican = finiteOrNull(offer.oddsAmerican ?? offer.price ?? offer.odds);
+    const selectionLink = cleanUrl(offer.selectionLink ?? offer.deepLink ?? offer.link);
+    const betslipUrl = cleanUrl(offer.betslipUrl ?? offer.betslipLink ?? offer.parlayUrl ?? offer.parlayLink ?? offer.shareUrl);
+    if (oddsAmerican == null && !selectionLink && !betslipUrl) continue;
+    out[book] = { oddsAmerican, selectionLink, betslipUrl };
+  }
+  return out;
+}
+
 function allowedReturnOrigins(value = process.env.PARLAYPING_ALLOWED_RETURN_ORIGINS) {
   const configured = String(value || '').split(',').map(x => x.trim()).filter(Boolean);
   const source = configured.length ? configured : DEFAULT_RETURN_ORIGINS;
@@ -100,8 +142,9 @@ function canonicalLeg(input = {}, index = 0) {
     inclusive: Boolean(input.inclusive),
     originalText: cleanText(input.originalText, 300),
     oddsAmerican,
-    sportsbook: cleanText(input.sportsbook ?? input.book ?? input.bookName, 80),
+    sportsbook: normalizeSportsbookName(input.sportsbook ?? input.book ?? input.bookName),
     sportsbookLink: cleanUrl(input.sportsbookLink ?? input.link ?? input.deepLink),
+    bookOffers: cleanBookOffers(input.bookOffers ?? input.sportsbookOffers ?? input.offersByBook),
     status,
     pregameProbability,
     liveProbability,
@@ -130,7 +173,8 @@ function canonicalSlip(input = {}) {
     sourceReference: cleanText(input.sourceReference, 180),
     returnUrl,
     returnLabel: returnUrl ? (cleanText(input.returnLabel ?? input.return_label, 80) || 'The Sports Outpost') : null,
-    sportsbook: cleanText(input.sportsbook ?? input.book ?? input.bookName, 80),
+    sportsbook: normalizeSportsbookName(input.sportsbook ?? input.book ?? input.bookName),
+    sportsbookLinks: cleanSportsbookLinks(input.sportsbookLinks ?? input.sportsbookBetslipLinks ?? input.betslipLinks ?? input.parlayLinks),
     combinedOddsAmerican,
     combinedOddsVerified: combinedOddsAmerican != null && input.combinedOddsVerified === true,
     legs,
@@ -289,4 +333,7 @@ module.exports = {
   finiteOrNull,
   cleanReturnUrl,
   allowedReturnOrigins,
+  normalizeSportsbookName,
+  cleanSportsbookLinks,
+  cleanBookOffers,
 };
