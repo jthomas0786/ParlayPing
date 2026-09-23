@@ -6,7 +6,7 @@ const { renderShareSvg, safeAssetUrl, selectVisibleLegs } = require('./lib/share
 const APPROVED_WORDMARK_DATA_URI = require('./lib/approved-wordmark-data');
 
 const imageCache = new Map();
-let approvedLockupInner = null;
+let approvedShareWordmark = null;
 
 function tokenFromRequest(req) {
   return String(req.query?.slip || req.query?.token || '').trim();
@@ -64,33 +64,31 @@ async function embedVisibleAssets(slip, context) {
   return { ...slip, legs };
 }
 
-function approvedLockupMarkup() {
-  if (approvedLockupInner != null) return approvedLockupInner;
+function approvedShareWordmarkDataUri() {
+  if (approvedShareWordmark != null) return approvedShareWordmark;
   try {
-    const raw = fs.readFileSync(path.join(process.cwd(), 'parlayping-approved-lockup.svg'), 'utf8');
-    approvedLockupInner = raw
-      .replace(/^\s*<svg[^>]*>/i, '')
-      .replace(/<\/svg>\s*$/i, '')
-      .replace(/<title[\s\S]*?<\/title>/gi, '')
-      .replace(/<desc[\s\S]*?<\/desc>/gi, '')
-      .trim();
+    const bytes = fs.readFileSync(path.join(process.cwd(), 'parlayping-approved-wordmark.webp'));
+    approvedShareWordmark = `data:image/webp;base64,${bytes.toString('base64')}`;
   } catch (error) {
-    console.error('ParlayPing approved lockup read failed', error);
-    approvedLockupInner = '';
+    console.error('ParlayPing approved share wordmark read failed', error);
+    approvedShareWordmark = null;
   }
-  return approvedLockupInner;
+  return approvedShareWordmark;
 }
 
 function inlineApprovedLockup(svg) {
   const source = String(svg || '');
-  const inner = approvedLockupMarkup();
-  if (!inner) return source;
+  const href = approvedShareWordmarkDataUri();
+  if (!href) return source;
   return source.replace(
     /<image\s+href="data:image\/svg\+xml;base64,[^"]+"\s+x="([^"]+)"\s+y="([^"]+)"\s+width="([^"]+)"\s+height="([^"]+)"[^>]*\/>/gi,
-    (_match, x, y, width, height) => {
-      const sx = Number(width) / 420;
-      const sy = Number(height) / 96;
-      return `<g class="pp-approved-lockup" transform="translate(${Number(x)} ${Number(y)}) scale(${sx} ${sy})">${inner}</g>`;
+    (_match, rawX, rawY, rawWidth) => {
+      const x = Number(rawX);
+      const y = Number(rawY) - 3;
+      const width = Math.min(302, Math.max(286, Number(rawWidth) * 0.95));
+      const height = width * (54 / 220);
+      const taglineY = y + height + 12;
+      return `<g class="pp-approved-lockup"><image href="${href}" x="${x}" y="${y}" width="${width}" height="${height}" preserveAspectRatio="xMinYMid meet"/><text x="${x+4}" y="${taglineY}" font-family="Arial,sans-serif" font-size="11.5" font-weight="900" letter-spacing="3.05" fill="#a9bfcd">COMPARE • TAIL • WIN TOGETHER</text></g>`;
     },
   );
 }
