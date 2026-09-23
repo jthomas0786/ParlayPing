@@ -1,0 +1,54 @@
+const test=require('node:test');
+const assert=require('node:assert/strict');
+const {mlbHeuristic,canonicalizeMlbLeg,sanitizeMlbLeg,MLB_MARKETS}=require('../lib/mlb-parser-extension');
+const {parseSlip}=require('../lib/slip-parser-wrapper');
+
+test('MLB parser captures common hitter and pitcher markets beyond the legacy six',()=>{
+  const legs=mlbHeuristic([
+    'MLB',
+    'Tarik Skubal Over 7.5 Pitcher Strikeouts',
+    'Riley Greene 2+ Runs + RBI',
+    'Coby Mayo 1+ Extra Base Hits',
+    'Joe Ryan Over 17.5 Pitching Outs',
+    'Byron Buxton Over 0.5 Batter Strikeouts'
+  ].join('\n'));
+  assert.deepEqual(legs.map(l=>l.market),['pitcherStrikeouts','runsRbi','extraBaseHits','pitchingOuts','batterStrikeouts']);
+  assert.equal(legs[0].line,7.5);
+  assert.equal(legs[1].line,2);
+  assert.equal(legs[1].inclusive,true);
+});
+
+test('MLB parser canonicalizes common aliases and preserves explicit custom MLB market keys',()=>{
+  assert.equal(canonicalizeMlbLeg({sport:'MLB',player:'Riley Greene',market:'homeRuns',side:'yes',line:null})?.market,'homeRun');
+  assert.equal(canonicalizeMlbLeg({sport:'MLB',player:'Tarik Skubal',market:'pitcherKs',side:'over',line:7.5})?.market,'pitcherStrikeouts');
+  const custom=sanitizeMlbLeg({sport:'MLB',player:'Test Player',market:'fantasyScore',side:'over',line:8.5,originalText:'Test Player Over 8.5 Fantasy Score'});
+  assert.equal(custom?.market,'fantasyScore');
+  assert.ok(MLB_MARKETS.has('pitcherStrikeouts'));
+});
+
+test('active slip parser merges expanded MLB heuristic legs instead of silently dropping them',async()=>{
+  const original=process.env.OPENAI_API_KEY;
+  delete process.env.OPENAI_API_KEY;
+  try{
+    const parsed=await parseSlip({text:'MLB\nTarik Skubal Over 7.5 Pitcher Strikeouts\nRiley Greene 2+ Runs + RBI',mediaUrls:[]});
+    assert.equal(parsed.sport,'MLB');
+    assert.deepEqual(parsed.legs.map(l=>l.market),['pitcherStrikeouts','runsRbi']);
+    assert.ok(parsed.mlbParser);
+  }finally{
+    if(original===undefined)delete process.env.OPENAI_API_KEY;else process.env.OPENAI_API_KEY=original;
+  }
+});
+
+test('active MLB wrapper leaves non-MLB base parsing behavior intact',async()=>{
+  const original=process.env.OPENAI_API_KEY;
+  delete process.env.OPENAI_API_KEY;
+  try{
+    const parsed=await parseSlip({text:'NBA\nStephen Curry 4+ Made Threes',mediaUrls:[]});
+    assert.equal(parsed.sport,'NBA');
+    assert.equal(parsed.legs.length,1);
+    assert.equal(parsed.legs[0].market,'threes');
+    assert.equal(parsed.legs[0].line,4);
+  }finally{
+    if(original===undefined)delete process.env.OPENAI_API_KEY;else process.env.OPENAI_API_KEY=original;
+  }
+});
