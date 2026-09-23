@@ -3,8 +3,7 @@ import { createRequire } from 'node:module';
 import { Resvg } from '@resvg/resvg-js';
 
 const require = createRequire(import.meta.url);
-const { renderShareSvg } = require('../server/api/lib/share-renderer');
-const { rasterizeEmbeddedWebp } = require('../server/api/share-card');
+const { prepareShareSvg, renderPng } = require('../server/api/share-card');
 
 const slip = {
   source:'X @ParlayPing',
@@ -19,16 +18,18 @@ const slip = {
   ],
 };
 
-const svg = await rasterizeEmbeddedWebp(renderShareSvg({ slip, context:'x_reply', pageUrl:'https://parlayping.net/build/demo' }));
+const svg = await prepareShareSvg({ slip, context:'x_reply', pageUrl:'https://parlayping.net/build/demo' });
 fs.mkdirSync('artifacts', { recursive:true });
 fs.writeFileSync('artifacts/share-card-preview.svg', svg);
-for (const width of [1200,506]) {
-  const png = new Resvg(svg, { fitTo:{ mode:'width', value:width }, font:{ loadSystemFonts:true, defaultFontFamily:'Arial' } }).render().asPng();
-  fs.writeFileSync(`artifacts/share-card-preview-${width}.png`, png);
-}
-if(!svg.includes('parlayping-approved-lockup.svg') && !svg.includes('image/svg+xml')){
-  throw new Error('Approved ParlayPing lockup is not embedded in the share card.');
-}
+const fullPng = await renderPng(svg);
+fs.writeFileSync('artifacts/share-card-preview-1200.png', fullPng);
+const smallPng = new Resvg(svg, { fitTo:{ mode:'width', value:506 }, font:{ loadSystemFonts:true } }).render().asPng();
+fs.writeFileSync('artifacts/share-card-preview-506.png', smallPng);
+
+if(!svg.includes('class="pp-approved-lockup"'))throw new Error('Approved ParlayPing lockup was not inlined into share card SVG.');
+if(svg.includes('https://a.espncdn.com/i/headshots/'))throw new Error('Remote ESPN headshots survived instead of being embedded.');
 const avatarImages=(svg.match(/clip-path="url\(#avatar-/g)||[]).length;
-if(avatarImages!==5)throw new Error(`Expected 5 player headshots in share card SVG, got ${avatarImages}.`);
-console.log('Rendered ParlayPing share card previews with approved lockup and player headshots.');
+if(avatarImages!==5)throw new Error(`Expected 5 embedded player headshots in share card SVG, got ${avatarImages}.`);
+const embeddedPngs=(svg.match(/data:image\/(?:png|jpeg|jpg);base64,/g)||[]).length;
+if(embeddedPngs<5)throw new Error(`Expected at least 5 embedded raster assets, got ${embeddedPngs}.`);
+console.log('Rendered ParlayPing share card through production asset path with approved lockup and embedded player headshots.');
