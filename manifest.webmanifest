@@ -1,0 +1,19 @@
+{
+  "id": "/",
+  "name": "ParlayPing",
+  "short_name": "ParlayPing",
+  "description": "Build, track, share, and follow live parlay progress.",
+  "start_url": "/profile?tab=tracking",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#03111c",
+  "theme_color": "#031421",
+  "icons": [
+    {
+      "src": "/parlayping-approved-logo.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
