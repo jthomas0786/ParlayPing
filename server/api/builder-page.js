@@ -48,7 +48,7 @@ function renderBuilderHtml({ slip, token, liveDataAvailable }) {
     .replace(/\.\/parlayping-logo\.svg/g, '/parlayping-logo.svg')
     .replace(/\.\/account\.html/g, '/account.html')
     .replace(/\.\/styles\.css/g, '/builder.css')
-    .replace(/<script src="\.\/app\.js"><\/script>/, `<script>window.__PARLAYPING_BUILDER__=${payload};</script><script src="/builder-sportsbook-links-prep.js"></script><script src="/builder-precision-runtime.js"></script><script src="/builder-concept-finish.js"></script><script src="/builder-mobile-fix.js"></script><script src="/builder-mobile-final.js"></script><script src="/builder-acceptance-final.js"></script><script src="/builder-summary-odds-hotfix.js"></script><script src="/builder-acceptance-icons.js"></script><script src="/builder-branding-final.js"></script><script src="/builder-sportsbook-open-final.js?v=20260924b"></script><script src="/builder-community-features.js?v=20260924a"></script>`)
+    .replace(/<script src="\.\/app\.js"><\/script>/, `<script>window.__PARLAYPING_BUILDER__=${payload};</script><script src="/builder-sportsbook-links-prep.js"></script><script src="/builder-precision-runtime.js"></script><script src="/builder-concept-finish.js"></script><script src="/builder-mobile-fix.js"></script><script src="/builder-mobile-final.js"></script><script src="/builder-acceptance-final.js"></script><script src="/builder-summary-odds-hotfix.js"></script><script src="/builder-acceptance-icons.js"></script><script src="/builder-branding-final.js"></script><script src="/builder-sportsbook-open-final.js?v=20260924b"></script><script src="/builder-community-features.js?v=20260924a"></script><script src="/builder-tracking.js?v=20260924a"></script>`)
     .replace(/<title>[^<]*<\/title>/, `<title>${title}</title>`)
     .replace(/<meta name="description" content="[^"]*" \/>/, `<meta name="description" content="${description}" />`)
     .replace(/<meta property="og:title" content="[^"]*" \/>/, `<meta property="og:title" content="${title}" />`)
@@ -56,7 +56,7 @@ function renderBuilderHtml({ slip, token, liveDataAvailable }) {
     .replace(/<meta property="og:url" content="[^"]*" \/>/, `<meta property="og:url" content="${url}" />`);
 
   const social = `<meta property="og:image" content="${cardUrl}" /><meta property="og:image:width" content="1200" /><meta property="og:image:height" content="675" /><meta name="twitter:card" content="summary_large_image" /><meta name="twitter:title" content="${title}" /><meta name="twitter:description" content="${description}" /><meta name="twitter:image" content="${cardUrl}" />`;
-  html = html.replace('</head>', `<link rel="stylesheet" href="/builder-precision.css" /><link rel="stylesheet" href="/builder-mobile-fix.css" /><link rel="stylesheet" href="/builder-mobile-final.css" /><link rel="stylesheet" href="/builder-acceptance-final.css" /><link rel="stylesheet" href="/builder-branding-final.css" /><link rel="stylesheet" href="/builder-community-features.css?v=20260924a" />${social}</head>`);
+  html = html.replace('</head>', `<link rel="stylesheet" href="/builder-precision.css" /><link rel="stylesheet" href="/builder-mobile-fix.css" /><link rel="stylesheet" href="/builder-mobile-final.css" /><link rel="stylesheet" href="/builder-acceptance-final.css" /><link rel="stylesheet" href="/builder-branding-final.css" /><link rel="stylesheet" href="/builder-community-features.css?v=20260924a" /><link rel="stylesheet" href="/builder-tracking.css?v=20260924a" />${social}</head>`);
   return html;
 }
 
