@@ -10,14 +10,32 @@ test('landing page loads the ParlayPing bet creation hub',()=>{
   const app=read('app.js');
   const hub=read('landing-hub.js');
   const css=read('landing-hub.css');
-  assert.match(app,/landing-hub\.js/);
+  const intelCss=read('landing-insights-trends.css');
+  assert.match(app,/landing-hub\.js\?v=20260924b/);
   assert.match(hub,/Image to Betslip/);
   assert.match(hub,/Trending betslips/);
-  assert.match(hub,/NOTABLE INSIGHTS/);
+  assert.match(hub,/LIVE COMMUNITY INSIGHTS/);
   assert.match(hub,/parlayping-approved-lockup\.svg/);
   assert.match(hub,/\/api\/landing-create/);
   assert.match(css,/\.pp-home-header/);
   assert.match(css,/\.pp-bet-composer/);
+  assert.match(intelCss,/\.pp-intel-section/);
+  assert.match(intelCss,/\.pp-trend-filter/);
+});
+
+test('landing insights and trends are derived from real public community builds',()=>{
+  const hub=read('landing-hub.js');
+  assert.match(hub,/community_parlays\?is_active=eq\.true/);
+  assert.match(hub,/select=id,builder_url,title,author_name,x_username,sport,leg_count,legs,sportsbook,created_at/);
+  assert.match(hub,/function computeIntel\(/);
+  assert.match(hub,/function trendScore\(/);
+  assert.match(hub,/function trendReason\(/);
+  assert.match(hub,/data-pp-trend-sport/);
+  assert.match(hub,/data-pp-insight-prompt/);
+  assert.match(hub,/data-pp-intel-refresh/);
+  assert.match(hub,/No public build data yet/);
+  assert.doesNotMatch(hub,/POPULAR BUILD/);
+  assert.doesNotMatch(hub,/Sunday player props/);
 });
 
 test('landing creator is routed through Vercel and the API router',()=>{
