@@ -16,6 +16,7 @@
   <link rel="stylesheet" href="/profile.css">
   <link rel="stylesheet" href="/profile-push.css?v=20260924a">
   <link rel="stylesheet" href="/tracking-branding.css?v=20260924a">
+  <link rel="stylesheet" href="/profile-dev.css?v=20260924b">
 </head>
 <body>
   <header class="site-header">
@@ -24,7 +25,7 @@
       <nav class="top-nav" aria-label="Primary">
         <a href="/">Build</a>
         <a href="/#similar">Explore</a>
-        <a href="/#community">Community</a>
+        <a href="/profile?tab=community">Community</a>
         <a href="/#insights">Insights</a>
       </nav>
       <div class="header-actions"><a class="track-nav active" href="/profile">Tracking</a><a class="settings-link" href="/account.html" aria-label="Account settings">⚙</a></div>
@@ -53,6 +54,7 @@
         <nav class="profile-tabs" aria-label="Profile sections">
           <button type="button" class="active" data-profile-tab="tracking">Tracking</button>
           <button type="button" data-profile-tab="community">Community</button>
+          <button id="devTab" type="button" data-profile-tab="dev" hidden>Dev</button>
         </nav>
       </section>
 
@@ -85,6 +87,40 @@
         <div id="profileCommunityStatus" class="feed-status">Loading your community posts…</div>
         <div id="profileCommunityGrid" class="community-grid"></div>
       </section>
+
+      <section id="devSection" class="feed-section dev-section" hidden aria-label="ParlayPing developer settings">
+        <div class="tracking-toolbar">
+          <div><span class="eyebrow">PARLAYPING OWNER TOOLS</span><h2>Dev</h2><p>Private developer settings for the @ParlayPing account.</p></div>
+          <span class="dev-private-badge">PRIVATE</span>
+        </div>
+        <div class="dev-grid">
+          <article class="dev-card">
+            <div class="dev-card-head"><div><span class="eyebrow">API PLAN</span><h3>Usage</h3></div><span id="devPlanName" class="dev-pill">FREE</span></div>
+            <div class="dev-metric"><strong id="devUsageUsed">0</strong><span>/ <b id="devUsageLimit">0</b> requests this month</span></div>
+            <p><span id="devMinuteLimit">0</span> requests/minute · <span id="devKeyLimit">0</span> active keys max</p>
+          </article>
+
+          <article class="dev-card">
+            <span class="eyebrow">BILLING</span><h3>Developer plan</h3>
+            <p id="devBillingSummary">Loading billing…</p>
+            <div id="devBillingFreeActions" class="dev-actions"><button id="devUpgradePro" type="button">Upgrade Pro</button><button id="devUpgradeBusiness" class="secondary" type="button">Business</button></div>
+            <div id="devBillingPaidActions" class="dev-actions" hidden><button id="devManageBilling" type="button">Manage billing</button></div>
+          </article>
+
+          <article class="dev-card dev-card-full">
+            <div class="dev-card-head"><div><span class="eyebrow">AUTHENTICATION</span><h3>API keys</h3><p>Keys are only shown once when created.</p></div></div>
+            <form id="devKeyForm" class="dev-key-form"><input id="devKeyName" maxlength="80" placeholder="Key name" required><button type="submit">Create API key</button></form>
+            <div id="devNewKeyBox" class="dev-new-key" hidden><span>Copy this key now:</span><code id="devNewKey"></code></div>
+            <div id="devKeysList" class="dev-key-list"></div>
+          </article>
+
+          <article class="dev-card dev-card-full">
+            <span class="eyebrow">API QUICK START</span><h3>Analyze a slip</h3>
+            <code class="dev-code">POST https://parlayping.net/api/v1/analyze<br>x-api-key: pp_live_…<br>content-type: application/json<br><br>{"legs":[...]}</code>
+          </article>
+        </div>
+        <div id="devStatus" class="dev-status" hidden role="status"></div>
+      </section>
     </section>
   </main>
 
@@ -93,5 +129,6 @@
   <script src="/profile.js" defer></script>
   <script src="/tracking-branding.js?v=20260924a" defer></script>
   <script src="/profile-push.js?v=20260924a" defer></script>
+  <script src="/profile-dev.js?v=20260924b" defer></script>
 </body>
 </html>
