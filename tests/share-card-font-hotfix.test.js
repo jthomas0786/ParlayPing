@@ -23,6 +23,6 @@ test('share card renderer produces a real PNG with packaged font path', async ()
 });
 
 test('share card cache versions were bumped after renderer hotfix', () => {
-  assert.match(builderPageSource, /20260923f/);
-  assert.match(xShareSource, /20260923f/);
+  assert.match(builderPageSource, /20260924g/);
+  assert.match(xShareSource, /20260924g/);
 });
