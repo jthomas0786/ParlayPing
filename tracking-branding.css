@@ -34,8 +34,8 @@
 .tracking-card>.winner-ribbon{z-index:5}
 .card-footer{align-items:center}
 .card-footer .tracking-brand{
-  flex:0 0 118px;
-  min-height:35px;
+  flex:0 0 124px;
+  min-height:37px;
   display:flex;
   flex-direction:column;
   align-items:flex-start;
@@ -51,13 +51,15 @@
 .card-footer .tracking-brand:hover{background:transparent;border:0;color:#c8f8f1}
 .tracking-brand img{
   display:block;
-  width:108px;
+  width:118px;
   max-width:100%;
   height:auto;
-  max-height:27px;
+  max-height:30px;
   object-fit:contain;
   object-position:left center;
-  filter:drop-shadow(0 0 9px rgba(39,221,202,.08));
+  opacity:1;
+  filter:none;
+  mix-blend-mode:normal;
 }
 .tracking-brand span{
   display:block;
@@ -76,9 +78,9 @@
   }
   .card-footer .tracking-brand{
     grid-column:1/-1;
-    width:122px;
-    min-height:33px;
+    width:128px;
+    min-height:35px;
     justify-self:start;
   }
-  .tracking-brand img{width:112px}
+  .tracking-brand img{width:120px}
 }
