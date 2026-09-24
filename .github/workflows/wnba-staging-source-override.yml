@@ -1,0 +1,57 @@
+name: WNBA Staging Source Override
+
+on:
+  push:
+    paths:
+      - '.github/workflows/wnba-staging-source-override.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch-test:
+    if: github.ref_name == 'wnba-parity-final-stage'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Add staging-safe Sports Outpost source override
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('lib/basketball-adapter.js')
+          s=p.read_text()
+          old="const OUTPOST_BASE='https://raw.githubusercontent.com/jthomas0786/The-Sports-Outpost/main/slates';"
+          new="const OUTPOST_BASE=String(process.env.SPORTS_OUTPOST_RAW_BASE||'https://raw.githubusercontent.com/jthomas0786/The-Sports-Outpost/main/slates').replace(/\\/$/,'');"
+          if old not in s: raise SystemExit('OUTPOST_BASE anchor missing')
+          p.write_text(s.replace(old,new,1))
+          Path('tests/wnba-staging-source-override.test.js').write_text("""const test=require('node:test');
+          const assert=require('node:assert/strict');
+          const fs=require('node:fs');
+          test('basketball adapter keeps production main as default and supports an explicit staging source override',()=>{
+            const source=fs.readFileSync(require.resolve('../lib/basketball-adapter'),'utf8');
+            assert.match(source,/SPORTS_OUTPOST_RAW_BASE/);
+            assert.match(source,/The-Sports-Outpost\\/main\\/slates/);
+            assert.match(source,/replace\(\/\\\\\/\$\//);
+          });
+          """)
+          PY
+          node --check lib/basketball-adapter.js
+      - run: npm install --no-audit --no-fund
+      - name: Run complete regression suite
+        run: npm test
+      - name: Commit tested source override and remove one-time workflow
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/wnba-staging-source-override.yml
+          git add lib/basketball-adapter.js tests/wnba-staging-source-override.test.js
+          git commit -m 'Allow staged basketball odds source verification'
+          git pull --rebase origin wnba-parity-final-stage
+          git push origin HEAD:wnba-parity-final-stage
