@@ -3,71 +3,84 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>ParlayPing Account</title>
+  <meta name="theme-color" content="#031421">
+  <meta name="description" content="Sign in and manage your ParlayPing profile.">
+  <title>Account — ParlayPing</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-  <style>
-    :root{color-scheme:dark;--bg:#07110d;--panel:#0d1c15;--panel2:#10271b;--line:#1e4b33;--text:#eefbf3;--muted:#9dc5aa;--green:#39e58c;--danger:#ff6b7a}
-    *{box-sizing:border-box}body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:radial-gradient(circle at top,#103723 0,#07110d 42%);color:var(--text);min-height:100vh}.wrap{max-width:980px;margin:0 auto;padding:32px 20px 80px}.top{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:28px}.brand{font-size:24px;font-weight:800}.brand span{color:var(--green)}a{color:var(--green);text-decoration:none}.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.card{background:rgba(13,28,21,.92);border:1px solid var(--line);border-radius:18px;padding:20px;box-shadow:0 12px 40px rgba(0,0,0,.22)}h1,h2,h3,p{margin-top:0}.muted{color:var(--muted)}label{display:block;font-size:13px;color:var(--muted);margin:12px 0 6px}input{width:100%;border:1px solid var(--line);background:#08130e;color:var(--text);border-radius:10px;padding:11px 12px;outline:none}input:focus{border-color:var(--green)}button{border:0;border-radius:10px;padding:11px 14px;font-weight:800;cursor:pointer;background:var(--green);color:#062112}button.secondary{background:#173a28;color:var(--text)}button.danger{background:#401923;color:#ffd7dc}.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.hidden{display:none!important}.status{padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#08130e;color:var(--muted);margin-top:12px;white-space:pre-wrap}.key{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#06110c;border:1px dashed #2e7650;padding:12px;border-radius:10px;word-break:break-all}.metric{font-size:28px;font-weight:900}.pill{display:inline-flex;padding:5px 9px;border-radius:999px;background:#143d29;color:#bdf6d4;font-size:12px;font-weight:800}.list{display:grid;gap:10px}.item{border:1px solid var(--line);border-radius:12px;padding:12px;background:#09160f}.full{grid-column:1/-1}@media(max-width:760px){.grid{grid-template-columns:1fr}.full{grid-column:auto}.top{align-items:flex-start;flex-direction:column}}
-  </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/account.css?v=20260924b">
 </head>
 <body>
-<div class="wrap">
-  <div class="top"><div class="brand">Parlay<span>Ping</span> Developer</div><a href="/">← Back to ParlayPing</a></div>
-
-  <section id="authCard" class="card">
-    <h1>Developer Account</h1>
-    <p class="muted">Create an account to generate API keys, view usage, and manage your ParlayPing developer access.</p>
-    <div class="grid">
-      <form id="signInForm">
-        <h3>Sign in</h3>
-        <label>Email</label><input id="loginEmail" type="email" autocomplete="email" required>
-        <label>Password</label><input id="loginPassword" type="password" autocomplete="current-password" minlength="8" required>
-        <button style="margin-top:14px" type="submit">Sign in</button>
-      </form>
-      <form id="signUpForm">
-        <h3>Create account</h3>
-        <label>Name</label><input id="signupName" autocomplete="name">
-        <label>Email</label><input id="signupEmail" type="email" autocomplete="email" required>
-        <label>Password</label><input id="signupPassword" type="password" autocomplete="new-password" minlength="8" required>
-        <button style="margin-top:14px" type="submit">Create account</button>
-      </form>
+  <header class="site-header">
+    <div class="shell header-inner">
+      <a class="brand" href="/"><img src="/parlayping-approved-lockup.svg" alt="ParlayPing"></a>
+      <nav class="top-nav" aria-label="Primary">
+        <a href="/">Build</a>
+        <a href="/#similar">Explore</a>
+        <a href="/profile?tab=community">Community</a>
+        <a href="/#insights">Insights</a>
+      </nav>
+      <a class="track-nav" href="/profile">Tracking</a>
     </div>
-    <div id="authStatus" class="status hidden"></div>
-  </section>
+  </header>
 
-  <section id="console" class="hidden">
-    <div class="grid">
-      <div class="card">
-        <div class="row" style="justify-content:space-between"><div><h2 style="margin-bottom:5px">Account</h2><div id="accountEmail" class="muted"></div></div><button id="signOutBtn" class="secondary">Sign out</button></div>
-        <form id="profileForm">
-          <label>Display name</label><input id="displayName">
-          <label>X username</label><input id="xUsername" placeholder="ParlayPing">
-          <label>Developer / company name</label><input id="companyName">
-          <label>Website</label><input id="websiteUrl" type="url" placeholder="https://">
-          <button style="margin-top:14px" type="submit">Save profile</button>
+  <main class="shell account-shell">
+    <section id="authCard" class="auth-panel">
+      <div class="auth-brand"><img src="/parlayping-approved-logo.png" alt="" aria-hidden="true"><span>YOUR PARLAYPING ACCOUNT</span></div>
+      <div class="auth-heading">
+        <h1>Track every slip in one place.</h1>
+        <p>Sign in to save your profile, track placed bets and watchlists, receive movement alerts, and share your cards with the community.</p>
+      </div>
+      <div class="auth-grid">
+        <form id="signInForm" class="auth-form">
+          <span class="eyebrow">WELCOME BACK</span>
+          <h2>Sign in</h2>
+          <label>Email<input id="loginEmail" type="email" autocomplete="email" required></label>
+          <label>Password<input id="loginPassword" type="password" autocomplete="current-password" minlength="8" required></label>
+          <button type="submit">Sign in to ParlayPing</button>
+        </form>
+        <form id="signUpForm" class="auth-form signup-form">
+          <span class="eyebrow">NEW HERE?</span>
+          <h2>Create your profile</h2>
+          <label>Display name<input id="signupName" autocomplete="name" maxlength="80" placeholder="Your name"></label>
+          <label>Email<input id="signupEmail" type="email" autocomplete="email" required></label>
+          <label>Password<input id="signupPassword" type="password" autocomplete="new-password" minlength="8" required></label>
+          <button type="submit">Create account</button>
         </form>
       </div>
-      <div class="card">
-        <h2>Usage</h2>
-        <div class="pill" id="planName">Free</div>
-        <p style="margin-top:16px"><span id="usageUsed" class="metric">0</span> <span class="muted">/ <span id="usageLimit">0</span> requests this month</span></p>
-        <p class="muted"><span id="minuteLimit">0</span> requests/minute · <span id="keyLimit">0</span> active keys max</p>
-      </div>
-      <div class="card full">
-        <div class="row" style="justify-content:space-between"><div><h2 style="margin-bottom:5px">API Keys</h2><p class="muted">Keys are shown once. Store them somewhere safe.</p></div></div>
-        <form id="keyForm" class="row"><input id="keyName" placeholder="My app" maxlength="80" required style="flex:1;min-width:220px"><button type="submit">Create API key</button></form>
-        <div id="newKeyBox" class="hidden" style="margin-top:14px"><div class="muted" style="margin-bottom:6px">Copy this key now:</div><div id="newKey" class="key"></div></div>
-        <div id="keysList" class="list" style="margin-top:16px"></div>
-      </div>
-      <div class="card full">
-        <h2>API Quick Start</h2>
-        <p class="muted">Send your key in <code>x-api-key</code> to the versioned analysis endpoint.</p>
-        <div class="key">POST https://parlayping.net/api/v1/analyze<br>x-api-key: pp_live_…<br>content-type: application/json<br><br>{"legs":[...]}</div>
-      </div>
-    </div>
-    <div id="consoleStatus" class="status hidden"></div>
-  </section>
-</div>
-<script src="/account.js" defer></script>
+      <div id="authStatus" class="status hidden" role="status"></div>
+    </section>
+
+    <section id="accountApp" class="account-app hidden">
+      <section class="account-hero">
+        <div class="avatar-shell"><div id="accountAvatar" class="account-avatar">PP</div></div>
+        <div class="account-copy"><span class="eyebrow">PROFILE SETTINGS</span><h1 id="accountName">ParlayPing User</h1><p id="accountEmail" class="muted"></p></div>
+        <div class="account-actions"><a href="/profile" class="secondary-button">Open Tracking</a><button id="signOutBtn" class="ghost-button" type="button">Sign out</button></div>
+      </section>
+
+      <section class="settings-grid">
+        <form id="profileForm" class="settings-card">
+          <div class="card-heading"><div><span class="eyebrow">YOUR PROFILE</span><h2>Profile details</h2></div><span class="privacy-pill">YOU CONTROL THIS</span></div>
+          <label>Display name<input id="displayName" maxlength="80" placeholder="How your name appears"></label>
+          <label>X username<input id="xUsername" maxlength="80" placeholder="ParlayPing"></label>
+          <label>Avatar image URL<input id="avatarUrl" type="url" placeholder="https://..."></label>
+          <label>Website <span>(optional)</span><input id="websiteUrl" type="url" placeholder="https://..."></label>
+          <button type="submit">Save profile</button>
+        </form>
+
+        <aside class="settings-card account-help">
+          <span class="eyebrow">WHAT YOUR ACCOUNT UNLOCKS</span>
+          <h2>Built around Tracking.</h2>
+          <div class="benefit"><span>◎</span><div><strong>Placed + Watching</strong><p>Keep bets from every sportsbook together on one Tracking page.</p></div></div>
+          <div class="benefit"><span>↗</span><div><strong>Movement alerts</strong><p>Get push notifications when tracked player or team stats move.</p></div></div>
+          <div class="benefit"><span>◇</span><div><strong>Community sharing</strong><p>Share branded live Tracking Cards without exposing private slips by default.</p></div></div>
+        </aside>
+      </section>
+      <div id="accountStatus" class="status hidden" role="status"></div>
+    </section>
+  </main>
+  <script src="/account.js?v=20260924b" defer></script>
 </body>
 </html>
