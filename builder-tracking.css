@@ -31,4 +31,7 @@ body.pp-track-open{overflow:hidden}
 .pp-track-cancel{border:1px solid #28536a;background:#092131;color:#b7cfda}
 .pp-track-confirm{border:1px solid #2be1cd;background:linear-gradient(180deg,#27dcc8,#14aa9e);color:#021b18;box-shadow:0 8px 25px rgba(19,185,170,.2)}
 .pp-track-confirm:disabled{opacity:.55;cursor:wait}
-@media(max-width:560px){.pp-track-modal{padding:10px;align-items:end}.pp-track-dialog{width:100%;max-height:90vh;border-radius:20px 20px 14px 14px;padding:22px 17px}.pp-track-choice,.pp-track-money{grid-template-columns:1fr}.pp-track-summary{align-items:flex-start;flex-direction:column}.pp-track-summary span{text-align:left}.pp-track-actions{display:grid;grid-template-columns:1fr 1fr}.pp-track-actions button{width:100%}}
+#myParlayTitle .pp-parlay-title-input{width:min(390px,70vw);height:38px;margin:-5px 7px -5px 0;padding:5px 10px;border:1px solid #2b9f9e;border-radius:9px;background:#071d2b;color:#f2fdff;font:inherit;font-size:inherit;font-weight:inherit;outline:none;box-shadow:0 0 0 3px rgba(39,221,202,.08)}
+#myParlayTitle .pp-parlay-title-input::placeholder{color:#668b9c}
+#myParlayTitle .edit-title{cursor:pointer}
+@media(max-width:560px){.pp-track-modal{padding:10px;align-items:end}.pp-track-dialog{width:100%;max-height:90vh;border-radius:20px 20px 14px 14px;padding:22px 17px}.pp-track-choice,.pp-track-money{grid-template-columns:1fr}.pp-track-summary{align-items:flex-start;flex-direction:column}.pp-track-summary span{text-align:left}.pp-track-actions{display:grid;grid-template-columns:1fr 1fr}.pp-track-actions button{width:100%}#myParlayTitle .pp-parlay-title-input{width:min(250px,62vw)}}
