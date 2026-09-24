@@ -1,0 +1,268 @@
+name: WNBA Explicit Slip Price Stage v2
+
+on:
+  push:
+    paths:
+      - '.github/workflows/wnba-explicit-slip-price-stage-v2.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch-test:
+    if: github.ref_name == 'wnba-parity-final-stage'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Apply exact slip-price preservation
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          def replace_once(text, old, new, label):
+            if old not in text:
+              raise SystemExit(f'{label} anchor not found')
+            return text.replace(old,new,1)
+
+          def sub_once(text, pattern, repl, label):
+            out,n=re.subn(pattern,repl,text,count=1,flags=re.S)
+            if n!=1:
+              raise SystemExit(f'{label} pattern matched {n} times')
+            return out
+
+          # Parser: preserve only an explicitly bound leg-level price/book.
+          p=Path('server/api/lib/slip-parser.js')
+          s=p.read_text()
+          s=replace_once(s,
+            "  if (Number.isFinite(line) && (line < 0 || line > 100000)) return null;\n  return {\n",
+            "  if (Number.isFinite(line) && (line < 0 || line > 100000)) return null;\n  const rawOdds = raw.oddsAmerican == null ? null : Number(raw.oddsAmerican);\n  const oddsAmerican = Number.isFinite(rawOdds) && rawOdds !== 0 && Math.abs(rawOdds) >= 100 && Math.abs(rawOdds) <= 100000 ? Math.round(rawOdds) : null;\n  const sportsbook = raw.sportsbook ? String(raw.sportsbook).trim().slice(0, 80) : null;\n  return {\n",
+            'sanitize pre-return')
+          s=replace_once(s,
+            "    inclusive: binary ? true : Boolean(raw.inclusive),\n    originalText: String(raw.originalText || '').trim().slice(0, 240)\n  };",
+            "    inclusive: binary ? true : Boolean(raw.inclusive),\n    originalText: String(raw.originalText || '').trim().slice(0, 240),\n    oddsAmerican,\n    sportsbook\n  };",
+            'sanitize return')
+          s=replace_once(s,
+            "Treat each visible wager selection as one leg. Ignore odds, stake, payout, boosts, sportsbook branding, game totals, spreads, unrelated team/game moneylines, settled icons, cash-out text, and promotional copy. Tennis/Table Tennis explicit player match-winner selections and MMA fighter-winner selections are valid legs and should not be discarded as generic moneylines.",
+            "Treat each visible wager selection as one leg. Preserve a leg-level American price only when that price is visibly bound to that exact selection. Preserve the sportsbook name only when the screenshot clearly identifies the book containing that selection. Never use overall parlay odds, stake, payout, boost value, or a nearby selection's price as a leg price. Ignore unrelated game totals, spreads, team/game moneylines, settled icons, cash-out text, and promotional copy. Tennis/Table Tennis explicit player match-winner selections and MMA fighter-winner selections are valid legs and should not be discarded as generic moneylines.",
+            'vision odds instruction')
+          s=sub_once(s,
+            r"side:\{type:'string',enum:\['over','under','yes','no'\]\}, line:\{type:\['number','null'\]\}, inclusive:\{type:'boolean'\}, originalText:\{type:'string'\}",
+            "side:{type:'string',enum:['over','under','yes','no']}, line:{type:['number','null']}, inclusive:{type:'boolean'}, originalText:{type:'string'}, oddsAmerican:{type:['integer','null']}, sportsbook:{type:['string','null']}",
+            'vision schema properties')
+          s=replace_once(s,
+            "required:['sport','player','team','market','side','line','inclusive','originalText']",
+            "required:['sport','player','team','market','side','line','inclusive','originalText','oddsAmerican','sportsbook']",
+            'vision schema required')
+          p.write_text(s)
+
+          # Router: retain quote metadata through normalization.
+          p=Path('server/api/lib/sport-router.js')
+          s=p.read_text()
+          router="""function explicitQuoteFields(input){
+            const rawOdds=input?.oddsAmerican==null?null:Number(input.oddsAmerican);
+            return {
+              oddsAmerican:Number.isFinite(rawOdds)&&rawOdds!==0&&Math.abs(rawOdds)>=100&&Math.abs(rawOdds)<=100000?Math.round(rawOdds):null,
+              sportsbook:input?.sportsbook?String(input.sportsbook).trim().slice(0,80):null
+            };
+          }
+          function normalizeUniversalLeg(input,index){
+            const sport=normalizeSport(input?.sport);
+            const quote=explicitQuoteFields(input);
+            if(sport==='NFL') return {...normalizeLeg({...input,sport:'NFL'},index),...quote};
+            return {
+              id:input?.id||`${sport.toLowerCase()}-${index+1}`,
+              sport,
+              player:String(input?.player||'').trim(),
+              team:input?.team?String(input.team).toUpperCase():null,
+              gameId:input?.gameId?String(input.gameId):null,
+              market:String(input?.market||'').trim(),
+              side:String(input?.side||'over').toLowerCase(),
+              line:input?.line==null?null:Number(input.line),
+              inclusive:Boolean(input?.inclusive),
+              originalText:input?.originalText||null,
+              ...quote
+            };
+          }
+          function unsupportedResult"""
+          s=sub_once(s,r"function normalizeUniversalLeg\(input,index\)\{.*?\n\}\nfunction unsupportedResult",router,'router normalize')
+          p.write_text(s)
+
+          # Basketball adapter: provider exact quote first; explicit screenshot quote fills exact gaps only.
+          p=Path('lib/basketball-adapter.js')
+          s=p.read_text()
+          s=s.replace("draftkings:'DraftKings',dk:'DraftKings',fanduel:'FanDuel',fd:'FanDuel'","draftkings:'DraftKings',draftkingssportsbook:'DraftKings',dk:'DraftKings',fanduel:'FanDuel',fanduelsportsbook:'FanDuel',fd:'FanDuel'",1)
+          s=s.replace("fanatics:'Fanatics',fanaticssportsbook:'Fanatics',hardrock:'Hard Rock'","fanatics:'Fanatics',fanaticssportsbook:'Fanatics',espnbet:'ESPN BET',espn:'ESPN BET',hardrock:'Hard Rock'",1)
+          s=replace_once(s,
+            "function americanImplied(price){const p=finite(price);if(p===null||p===0)return null;return p>0?100/(p+100):(-p)/((-p)+100);}\n",
+            "function americanImplied(price){const p=finite(price);if(p===null||p===0)return null;return p>0?100/(p+100):(-p)/((-p)+100);}\nfunction explicitSlipOffer(leg){\n  const oddsAmerican=finite(leg?.oddsAmerican),sportsbook=normBook(leg?.sportsbook);\n  if(oddsAmerican===null||oddsAmerican===0||Math.abs(oddsAmerican)<100||!sportsbook)return null;\n  return {sportsbook,oddsAmerican:Math.round(oddsAmerican),selectionLink:null,selectionId:null,betslipUrl:null,snapshotTime:null,priceKind:'explicit-slip',preserved:false,line:finite(leg?.line),side:quoteSide(leg)};\n}\n",
+            'explicit slip helper')
+          quote_fn="""function quoteProbabilitySafe(odds,leg,row){
+            const side=quoteSide(leg);
+            const rows=matchingQuoteRows(odds,leg,row);
+            const probabilities=rows.map(r=>sideProbability(r,side)).filter(Number.isFinite);
+            if(probabilities.length){
+              const twoSided=rows.some(r=>(finite(r?.overImplied)??americanImplied(r?.overPrice))!==null&&(finite(r?.underImplied)??americanImplied(r?.underPrice))!==null);
+              return {probability:clamp(median(probabilities)),method:twoSided?'sportsbook-devig-median':'sportsbook-implied-median'};
+            }
+            const slip=explicitSlipOffer(leg);
+            const implied=americanImplied(slip?.oddsAmerican);
+            return Number.isFinite(implied)?{probability:clamp(implied),method:'sportsbook-slip-implied'}:{probability:null,method:null};
+          }
+          function sportsbookQuotesSafe"""
+          s=sub_once(s,r"function quoteProbabilitySafe\(odds,leg,row\)\{.*?\n\}\nfunction sportsbookQuotesSafe",quote_fn,'quote probability')
+          offers_fn="""function sportsbookQuotesSafe(odds,leg,row){
+            const side=quoteSide(leg);
+            const bookOffers={};
+            for(const candidate of matchingQuoteRows(odds,leg,row)){
+              const book=normBook(candidate?.book||candidate?.sportsbook||candidate?.bookKey);
+              const price=sidePrice(candidate,side);
+              if(!book||price===null)continue;
+              const selectionLink=sideSelectionLink(candidate,side);
+              const selectionId=sideSelectionId(candidate,side);
+              const offer={
+                oddsAmerican:price,
+                selectionLink:selectionLink||null,
+                betslipUrl:candidate?.betslipUrl||null,
+                selectionId:selectionId?String(selectionId):null,
+                snapshotTime:candidate?.snapshotTime||null,
+                priceKind:candidate?.priceKind||(candidate?.preserved?'last-verified-pregame':'verified-snapshot'),
+                preserved:Boolean(candidate?.preserved),
+                line:finite(candidate?.line),
+                market:candidate?.market||leg.market||null,
+                marketKey:candidate?.marketKey||null,
+                bookKey:candidate?.bookKey||null
+              };
+              const current=bookOffers[book];
+              if(!current||price>current.oddsAmerican||(price===current.oddsAmerican&&!current.selectionLink&&selectionLink))bookOffers[book]=offer;
+            }
+            const slip=explicitSlipOffer(leg);
+            if(slip&&!bookOffers[slip.sportsbook])bookOffers[slip.sportsbook]={...slip};
+            const ranked=Object.entries(bookOffers).sort((a,b)=>b[1].oddsAmerican-a[1].oddsAmerican);
+            const [sportsbook,best]=ranked[0]||[];
+            return {bookOffers,preferred:best?{sportsbook,...best,sportsbookLink:best.selectionLink||null}:null};
+          }
+          function marketOptionsSafe"""
+          s=sub_once(s,r"function sportsbookQuotesSafe\(odds,leg,row\)\{.*?\n\}\nfunction marketOptionsSafe",offers_fn,'sportsbook offers')
+          pregame_fn="""function pregameResult(odds,leg,row){
+            const match=syntheticMatch(row,leg);
+            const quote=quoteProbabilitySafe(odds,leg,row);
+            const prices=sportsbookQuotesSafe(odds,leg,row);
+            return {
+              ...leg,
+              team:leg.team||row?.team||null,
+              gameId:String(row?.eventId||''),
+              matchup:matchup(match),
+              startTimeUTC:row?.commenceTime||null,
+              gameState:'pre',
+              status:'PENDING',
+              displayMarket:legacy.displayMarket(leg),
+              current:null,
+              target:legacy.targetForLeg(leg),
+              probability:quote.probability,
+              probabilityPct:pct(quote.probability),
+              probabilityMethod:quote.method,
+              oddsAmerican:prices.preferred?.oddsAmerican??null,
+              sportsbook:prices.preferred?.sportsbook??null,
+              sportsbookLink:prices.preferred?.sportsbookLink??null,
+              sportsbookSelectionId:prices.preferred?.selectionId??null,
+              oddsSnapshotTime:prices.preferred?.snapshotTime??null,
+              oddsPriceKind:prices.preferred?.priceKind??null,
+              oddsPreserved:Boolean(prices.preferred?.preserved),
+              bookOffers:prices.bookOffers,
+              marketOptions:marketOptionsSafe(odds,leg,row),
+              resolutionReason:null
+            };
+          }
+          function safeUnresolved"""
+          s=sub_once(s,r"function pregameResult\(odds,leg,row\)\{.*?\n\}\nfunction safeUnresolved",pregame_fn,'pregame result')
+          s=replace_once(s,
+            "      const live=await withEspnServerFetch(()=>legacy.analyzeBasketballSlip(sport,liveInputs,options));\n      results.push(...(live.results||[]));",
+            "      const live=await withEspnServerFetch(()=>legacy.analyzeBasketballSlip(sport,liveInputs,options));\n      for(const liveResult of live.results||[]){\n        const sourceLeg=liveLegs.find(leg=>normPlayerName(leg.player)===normPlayerName(liveResult.player)&&leg.market===liveResult.market&&finite(leg.line)===finite(liveResult.line))||liveResult;\n        const row=closestEventRow(odds,sourceLeg,referenceTime);\n        const prices=sportsbookQuotesSafe(odds,sourceLeg,row);\n        const preferred=prices.preferred;\n        results.push({\n          ...liveResult,\n          bookOffers:{...(liveResult.bookOffers||{}),...prices.bookOffers},\n          ...(preferred&&finite(liveResult.oddsAmerican)===null?{\n            oddsAmerican:preferred.oddsAmerican,\n            sportsbook:preferred.sportsbook,\n            sportsbookLink:preferred.sportsbookLink||null,\n            sportsbookSelectionId:preferred.selectionId||null,\n            oddsSnapshotTime:preferred.snapshotTime||null,\n            oddsPriceKind:preferred.priceKind||null,\n            oddsPreserved:Boolean(preferred.preserved)\n          }:{})\n        });\n      }",
+            'live price merge')
+          if 'explicitSlipOffer' not in s.split('module.exports=',1)[-1]:
+            s=s.replace('module.exports={analyzeBasketballSlip,','module.exports={analyzeBasketballSlip,explicitSlipOffer,',1)
+          p.write_text(s)
+
+          Path('tests/wnba-explicit-slip-price.test.js').write_text(r"""const test=require('node:test');
+          const assert=require('node:assert/strict');
+          const {parseSlip,sanitizeLeg}=require('../server/api/lib/slip-parser');
+          const {normalizeUniversalLeg}=require('../server/api/lib/sport-router');
+          const {pregameResult,sportsbookQuotesSafe}=require('../lib/basketball-adapter');
+
+          test('sanitizeLeg preserves only valid explicit American odds and sportsbook',()=>{
+            const leg=sanitizeLeg({sport:'WNBA',player:'Breanna Stewart',market:'pra',side:'over',line:30,inclusive:true,originalText:'Breanna Stewart 30+ PRA +125',oddsAmerican:125,sportsbook:'FanDuel'});
+            assert.equal(leg.oddsAmerican,125);
+            assert.equal(leg.sportsbook,'FanDuel');
+            const invalid=sanitizeLeg({sport:'WNBA',player:'Breanna Stewart',market:'pra',side:'over',line:30,inclusive:true,oddsAmerican:50,sportsbook:'FanDuel'});
+            assert.equal(invalid.oddsAmerican,null);
+          });
+
+          test('vision schema requests exact per-leg sportsbook price metadata and keeps it',async()=>{
+            const oldKey=process.env.OPENAI_API_KEY,oldFetch=global.fetch;
+            process.env.OPENAI_API_KEY='test-key';
+            let sawOddsSchema=false;
+            global.fetch=async(_url,init)=>{
+              const body=JSON.parse(init.body);
+              const props=body?.text?.format?.schema?.properties?.legs?.items?.properties||{};
+              sawOddsSchema=Boolean(props.oddsAmerican&&props.sportsbook);
+              return {ok:true,status:200,json:async()=>({output_text:JSON.stringify({legs:[{sport:'WNBA',player:'Breanna Stewart',team:'NYL',market:'pra',side:'over',line:30,inclusive:true,originalText:'Breanna Stewart 30+ PRA +125',oddsAmerican:125,sportsbook:'FanDuel'}]})})};
+            };
+            try{
+              const parsed=await parseSlip({mediaUrls:['https://example.com/slip.png']});
+              assert.equal(sawOddsSchema,true);
+              assert.equal(parsed.legs[0].oddsAmerican,125);
+              assert.equal(parsed.legs[0].sportsbook,'FanDuel');
+            }finally{
+              global.fetch=oldFetch;
+              if(oldKey===undefined)delete process.env.OPENAI_API_KEY;else process.env.OPENAI_API_KEY=oldKey;
+            }
+          });
+
+          test('multi-sport normalization carries explicit slip quote metadata',()=>{
+            const leg=normalizeUniversalLeg({sport:'WNBA',player:'Angel Reese',market:'rebsAsts',side:'over',line:12,inclusive:true,oddsAmerican:-105,sportsbook:'DraftKings Sportsbook'},0);
+            assert.equal(leg.oddsAmerican,-105);
+            assert.equal(leg.sportsbook,'DraftKings Sportsbook');
+          });
+
+          test('WNBA exact slip price fills a combo milestone missing from provider quotes',()=>{
+            const leg={id:'stewart-pra',sport:'WNBA',player:'Breanna Stewart',team:'NYL',market:'pra',side:'over',line:30,inclusive:true,oddsAmerican:125,sportsbook:'FanDuel'};
+            const eventRow={eventId:'wnba-1',sport:'WNBA',commenceTime:'2026-09-24T01:00:00.000Z',awayTeam:'Chicago Sky',homeTeam:'New York Liberty',player:'Breanna Stewart',team:'NYL',market:'points',line:20.5,book:'FanDuel',overPrice:-110,underPrice:-110};
+            const result=pregameResult({rows:[eventRow]},leg,eventRow);
+            assert.equal(result.oddsAmerican,125);
+            assert.equal(result.sportsbook,'FanDuel');
+            assert.equal(result.oddsPriceKind,'explicit-slip');
+            assert.equal(result.bookOffers.FanDuel.oddsAmerican,125);
+            assert.equal(result.bookOffers.FanDuel.priceKind,'explicit-slip');
+            assert.equal(result.probabilityMethod,'sportsbook-slip-implied');
+            assert.ok(Math.abs(result.probability-(100/225))<1e-9);
+          });
+
+          test('fresh exact provider quote wins over screenshot price for same sportsbook',()=>{
+            const leg={sport:'WNBA',player:'Jordin Canada',market:'assists',side:'over',line:6,inclusive:true,oddsAmerican:140,sportsbook:'DraftKings'};
+            const exact={eventId:'wnba-2',commenceTime:'2026-09-24T01:00:00.000Z',player:'Jordin Canada',market:'assists',line:5.5,book:'DraftKings',overPrice:115,underPrice:-145};
+            const offers=sportsbookQuotesSafe({rows:[exact]},leg,exact);
+            assert.equal(offers.bookOffers.DraftKings.oddsAmerican,115);
+            assert.notEqual(offers.bookOffers.DraftKings.priceKind,'explicit-slip');
+          });
+          """)
+          PY
+      - run: npm install --no-audit --no-fund
+      - name: Run complete regression suite
+        run: npm test
+      - name: Commit tested changes and remove staging workflows
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/wnba-explicit-slip-price-stage.yml .github/workflows/wnba-explicit-slip-price-stage-v2.yml
+          git add server/api/lib/slip-parser.js server/api/lib/sport-router.js lib/basketball-adapter.js tests/wnba-explicit-slip-price.test.js
+          git commit -m 'Preserve exact slip-bound WNBA prices'
+          git pull --rebase origin wnba-parity-final-stage
+          git push origin HEAD:wnba-parity-final-stage
