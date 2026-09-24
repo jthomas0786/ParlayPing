@@ -172,7 +172,10 @@ function safeAssetUrl(value) {
 }
 
 function safePlayerImageUrl(value) {
-  return isTrustedImageUrl(value) ? safeAssetUrl(value) : null;
+  if (!value) return null;
+  const raw = String(value);
+  if (/^data:image\/(?:png|jpe?g|webp);base64,/i.test(raw)) return safeAssetUrl(raw);
+  return isTrustedImageUrl(raw) ? safeAssetUrl(raw) : null;
 }
 
 function initials(name) {
