@@ -11,6 +11,7 @@ const loaders={
   'share-page':()=>require('../server/api/share-page'),
   'builder-page':()=>require('../server/api/builder-page'),
   'sportsbook-link':()=>require('../server/api/sportsbook-link'),
+  'tracking-refresh':()=>require('../server/api/tracking-refresh'),
   'v1-analyze':()=>require('../server/api/v1/analyze'),
   'v1-build':()=>require('../server/api/v1/build'),
   'v1-share':()=>require('../server/api/v1/share'),
