@@ -34,6 +34,8 @@
     for(const [raw,value] of Object.entries(map)){if(normalizeBook(raw)===wanted)return value&&typeof value==='object'?value:null;}
     return null;
   }
+
+  let slipMutated=false;
   function exactSportsbookLinks(){
     const out={};
     const explicit=slip.sportsbookLinks&&typeof slip.sportsbookLinks==='object'?slip.sportsbookLinks:{};
@@ -41,6 +43,7 @@
       const book=normalizeBook(raw),url=safeHttps(value);
       if(book&&url)out[book]=url;
     }
+    if(slipMutated)return out;
     const books=[...new Set(legs.map(leg=>normalizeBook(leg?.sportsbook)).filter(Boolean))];
     for(const book of books){
       if(out[book]||!legs.length||!legs.every(leg=>normalizeBook(leg?.sportsbook)===book))continue;
@@ -77,13 +80,98 @@
     if(normalizeBook(leg?.sportsbook)===book&&Number.isFinite(Number(leg?.oddsAmerican)))return Number(leg.oddsAmerican);
     return null;
   }
+  function legForItem(item,index){
+    const id=String(item?.dataset?.legId||'');
+    return (id&&legs.find(row=>String(row?.id||'')===id))||legs[index]||null;
+  }
   function refreshDisplayedOdds(book){
     qa('.pp-leg-item').forEach((item,index)=>{
-      const id=String(item.dataset.legId||'');
-      const leg=(id&&legs.find(row=>String(row?.id||'')===id))||legs[index];
+      const leg=legForItem(item,index);
       const price=q('.pp-leg-odds',item);
       if(price)price.textContent=fmtOdds(legOddsForBook(leg,book));
     });
+  }
+  function altRowsForBook(leg,book){
+    const normalized=normalizeBook(book);
+    if(!leg||!normalized)return [];
+    const side=String(leg?.side||'over').toLowerCase();
+    const raw=entryForBook(leg?.altLinesByBook,normalized);
+    const rows=(Array.isArray(raw)?raw:[])
+      .filter(row=>row&&row.line!=null&&Number.isFinite(Number(row.oddsAmerican))&&(!row.side||String(row.side).toLowerCase()===side))
+      .map(row=>({...row,sportsbook:normalized}));
+    const currentOdds=legOddsForBook(leg,normalized);
+    if(leg.line!=null&&currentOdds!=null&&!rows.some(row=>String(row.line)===String(leg.line)&&(!row.side||String(row.side).toLowerCase()===side))){
+      rows.unshift({line:leg.line,oddsAmerican:currentOdds,probability:leg.pregameProbability,side,sportsbook:normalized,current:true});
+    }
+    return rows.sort((a,b)=>Number(a.line)-Number(b.line)).slice(0,8);
+  }
+  function altLabel(leg,line){
+    if(!leg?.side)return String(line);
+    return `${String(leg.side).toLowerCase()==='under'?'Under':'Over'} ${line}`;
+  }
+  function marketText(leg){
+    const market=String(leg?.market||'Prop');
+    if(/atd|anytime.*touchdown/i.test(market))return 'Anytime TD Scorer';
+    if(/atg|anytime.*goal/i.test(market))return 'Anytime Goal Scorer';
+    if(leg?.line!=null&&leg?.side)return `${String(leg.side).toLowerCase()==='under'?'Under':'Over'} ${leg.line} ${market}`;
+    if(leg?.displayMarket)return String(leg.displayMarket).replace(/^O(?=\d)/i,'Over ').replace(/^U(?=\d)/i,'Under ');
+    return market;
+  }
+  function tuneIsOpen(){return Boolean(q('.parlay-panel')?.classList?.contains('pp-tune-open'));}
+  function renderTuneForBook(book){
+    const normalized=normalizeBook(book);
+    const open=tuneIsOpen();
+    qa('.pp-leg-item').forEach((item,index)=>{
+      const leg=legForItem(item,index);
+      const current=q('.pp-leg-alts',item);
+      if(!leg||!current)return;
+      const rows=altRowsForBook(leg,normalized);
+      const body=!normalized
+        ? '<span>Select a sportsbook to view its verified alternate lines.</span>'
+        : rows.length
+          ? `<div class="pp-alt-heading">Alt Lines · ${esc(normalized)}</div><div class="pp-alt-options">${rows.map(alt=>{
+              const selected=String(alt.line)===String(leg.line);
+              const probability=Number(alt.probability);
+              return `<button class="pp-alt-option${selected?' selected':''}" type="button" data-book="${esc(normalized)}" data-line="${esc(alt.line)}" data-odds="${esc(alt.oddsAmerican)}" data-prob="${Number.isFinite(probability)?probability:''}"><span>${esc(altLabel(leg,alt.line))}</span><strong>${esc(fmtOdds(alt.oddsAmerican))}</strong></button>`;
+            }).join('')}</div>`
+          : `<div class="pp-alt-heading">Alt Lines · ${esc(normalized)}</div><span>${esc(normalized)} has no verified alternate lines for this selection.</span>`;
+      const empty=normalized&&rows.length?'':' pp-leg-alts-empty';
+      current.outerHTML=`<div class="pp-leg-alts${empty}"${normalized?` data-book="${esc(normalized)}"`:''}${open?'':' hidden'}>${body}</div>`;
+    });
+    qa('.pp-alt-option').forEach(button=>button.addEventListener('click',()=>updateSelectedAlt(button,normalized)));
+  }
+  function clearExactLinksForMutation(){
+    slipMutated=true;
+    slip.sportsbookLinks={};
+  }
+  function updateSelectedAlt(button,book){
+    const normalized=normalizeBook(book);
+    const item=button?.closest?.('.pp-leg-item');
+    if(!item||!normalized||normalizeBook(button.dataset.book)!==normalized)return;
+    const items=qa('.pp-leg-item');
+    const index=items.indexOf(item);
+    const leg=legForItem(item,index);
+    if(!leg)return;
+    const probability=Number(button.dataset.prob);
+    const odds=Number(button.dataset.odds);
+    const line=Number(button.dataset.line);
+    if(!Number.isFinite(line))return;
+    leg.line=line;
+    if(Number.isFinite(odds))leg.oddsAmerican=odds;
+    leg.sportsbook=normalized;
+    if(Number.isFinite(probability)&&probability>=0&&probability<=1)leg.pregameProbability=probability;
+    const label=q('.pp-prob-label',item),fill=q('.pp-prob-fill',item),price=q('.pp-leg-odds',item),market=q('.pp-leg-market',item);
+    if(Number.isFinite(probability)&&probability>=0&&probability<=1){
+      if(label)label.textContent=`${(probability*100).toFixed(1)}%`;
+      if(fill)fill.style.setProperty('--pp-prob',`${probability*100}%`);
+    }
+    if(Number.isFinite(odds)&&price)price.textContent=fmtOdds(odds);
+    if(market)market.textContent=marketText(leg);
+    const combinedOdds=q('#combinedOdds'),impliedProbability=q('#impliedProbability');
+    if(combinedOdds)combinedOdds.textContent='CUSTOM';
+    if(impliedProbability)impliedProbability.textContent='Repricing';
+    clearExactLinksForMutation();
+    renderSportsbooks(normalized);
   }
   function mobileLike(){
     const ua=String(navigator?.userAgent||'');
@@ -143,10 +231,6 @@
     resolving.set(normalized,task);
     return task;
   }
-  function invalidateResolvedLinks(){
-    if(!slip.sportsbookLinks||typeof slip.sportsbookLinks!=='object')return;
-    for(const book of RESOLVABLE_BOOKS)delete slip.sportsbookLinks[book];
-  }
 
   let selectedBook=null;
   function renderSportsbooks(preferred){
@@ -197,22 +281,21 @@
         open.innerHTML='<span class="link-icon">↗</span> <strong>Sportsbook link unavailable</strong>';
       }
       refreshDisplayedOdds(selectedBook);
+      renderTuneForBook(selectedBook);
     };
 
     qa('.book-card',grid).forEach(card=>card.addEventListener('click',()=>{
       selectedBook=normalizeBook(card.dataset.book);
       qa('.book-card',grid).forEach(node=>node.classList.toggle('active',node===card));
-      if(canResolveExact(selectedBook)){
-        const pending=resolveExactBook(selectedBook);sync();
-        pending.finally(()=>renderSportsbooks(selectedBook));
-      }else sync();
+      sync();
     }));
     open.addEventListener('click',()=>{
       const target=selectedBook?openTarget(selectedBook):null;
       if(!target)return;
       if(target.exact){navigateToSportsbook(target.url);return;}
       if(canResolveExact(selectedBook)){
-        const pending=resolveExactBook(selectedBook);sync();
+        const requestedBook=selectedBook;
+        const pending=resolveExactBook(requestedBook);sync();
         pending.finally(()=>renderSportsbooks(selectedBook));
         return;
       }
@@ -221,9 +304,6 @@
     sync();
   }
 
-  window.__PP_SPORTSBOOK_OPEN_TEST__={normalizeBook,safeHttps,exactSportsbookLinks,pricedSportsbooks,orderedBooks,openTarget,legOddsForBook,mobileLike,resolverLeg,canResolveExact,applyResolvedSelections};
+  window.__PP_SPORTSBOOK_OPEN_TEST__={normalizeBook,safeHttps,exactSportsbookLinks,pricedSportsbooks,orderedBooks,openTarget,legOddsForBook,altRowsForBook,mobileLike,resolverLeg,canResolveExact,applyResolvedSelections};
   renderSportsbooks();
-  document.addEventListener('click',event=>{
-    if(event.target?.closest?.('.pp-alt-option'))setTimeout(()=>{invalidateResolvedLinks();renderSportsbooks(selectedBook);},0);
-  });
 })();
