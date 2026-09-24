@@ -1,0 +1,72 @@
+name: WNBA Cross Repo Parity E2E
+
+on:
+  push:
+    paths:
+      - '.github/workflows/wnba-cross-repo-e2e.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    if: github.ref_name == 'wnba-parity-final-stage'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      SPORTS_OUTPOST_RAW_BASE: https://raw.githubusercontent.com/jthomas0786/The-Sports-Outpost/wnba-parity-final-stage/slates
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify the six target WNBA selections against staged real provider data
+        run: |
+          node - <<'NODE'
+          const assert=require('node:assert/strict');
+          const {analyzeBasketballSlip}=require('./lib/basketball-adapter');
+          const referenceTime='2026-09-23T23:59:00.000Z';
+          // +777 on provider-covered legs is deliberately impossible-looking test fixture data:
+          // if it leaks through, provider precedence is broken. The other three fixture prices
+          // prove the exact-slip fallback path only; they are NOT claimed as real sportsbook odds.
+          const legs=[
+            {id:'canada',sport:'WNBA',player:'Jordin Canada',market:'assists',side:'over',line:6,inclusive:true,oddsAmerican:777,sportsbook:'FanDuel'},
+            {id:'gray',sport:'WNBA',player:'Allisha Gray',market:'points',side:'over',line:15,inclusive:true,oddsAmerican:777,sportsbook:'FanDuel'},
+            {id:'reese',sport:'WNBA',player:'Angel Reese',market:'rebsAsts',side:'over',line:12,inclusive:true,oddsAmerican:110,sportsbook:'FanDuel'},
+            {id:'astier',sport:'WNBA',player:'Pauline Astier',market:'ptsRebs',side:'over',line:10,inclusive:true,oddsAmerican:120,sportsbook:'FanDuel'},
+            {id:'stewart',sport:'WNBA',player:'Breanna Stewart',market:'pra',side:'over',line:30,inclusive:true,oddsAmerican:125,sportsbook:'FanDuel'},
+            {id:'jones',sport:'WNBA',player:'Jonquel Jones',market:'points',side:'over',line:10,inclusive:true,oddsAmerican:777,sportsbook:'FanDuel'},
+          ];
+          const result=await analyzeBasketballSlip('WNBA',legs,{referenceTime});
+          console.log(JSON.stringify(result.results.map(r=>({id:r.id,player:r.player,market:r.market,line:r.line,status:r.status,gameId:r.gameId,matchup:r.matchup,oddsAmerican:r.oddsAmerican,sportsbook:r.sportsbook,oddsPriceKind:r.oddsPriceKind,probability:r.probability,probabilityMethod:r.probabilityMethod,books:Object.keys(r.bookOffers||{})})),null,2));
+          assert.equal(result.results.length,6);
+          const byId=Object.fromEntries(result.results.map(r=>[r.id,r]));
+          for(const id of ['canada','gray','reese','astier','stewart','jones']){
+            assert.ok(byId[id],`missing ${id}`);
+            assert.equal(byId[id].status,'PENDING',`${id} should resolve pregame`);
+            assert.ok(byId[id].gameId,`${id} should have verified game identity`);
+          }
+          for(const id of ['canada','gray','jones']){
+            assert.notEqual(byId[id].oddsAmerican,777,`${id} must use exact provider price, not fixture`);
+            assert.notEqual(byId[id].oddsPriceKind,'explicit-slip',`${id} must use provider quote`);
+            assert.ok(/^sportsbook-(?:devig|implied)-median$/.test(String(byId[id].probabilityMethod)),`${id} should use provider-derived probability`);
+          }
+          const fallbacks={reese:110,astier:120,stewart:125};
+          for(const [id,price] of Object.entries(fallbacks)){
+            assert.equal(byId[id].oddsAmerican,price,`${id} exact slip fixture should fill provider gap`);
+            assert.equal(byId[id].oddsPriceKind,'explicit-slip',`${id} should be labeled explicit-slip`);
+            assert.equal(byId[id].probabilityMethod,'sportsbook-slip-implied',`${id} should label implied method`);
+          }
+          console.log('WNBA cross-repo parity E2E passed. Fixture prices were used only for missing exact provider thresholds.');
+          NODE
+      - name: Remove one-time E2E workflow
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/wnba-cross-repo-e2e.yml
+          git commit -m 'Remove WNBA cross-repo parity E2E'
+          git pull --rebase origin wnba-parity-final-stage
+          git push origin HEAD:wnba-parity-final-stage
