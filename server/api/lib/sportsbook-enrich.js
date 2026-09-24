@@ -52,12 +52,14 @@ function marketKey(leg){
 }
 function teamMatches(a,b){const x=compact(a),y=compact(b);return Boolean(x&&y&&(x===y||x.includes(y)||y.includes(x)));}
 function sameEvent(row,leg){
-  const ids=[row?.eventId,row?.gameId,row?.gamePk,row?.game_pk,row?.providerEventId].filter(v=>v!=null&&String(v));
+  const ids=[row?.eventId,row?.gameId,row?.fixtureId,row?.gamePk,row?.game_pk,row?.providerEventId].filter(v=>v!=null&&String(v));
   const b=String(leg?.gameId||'');
   if(b&&ids.some(a=>String(a)===b))return true;
-  const rowMatch=norm(`${row?.awayTeam||row?.away?.abbr||row?.away?.name||''} @ ${row?.homeTeam||row?.home?.abbr||row?.home?.name||''}`),legMatch=norm(leg?.matchup||'');
+  const away=row?.awayTeam||row?.away?.abbr||row?.away?.name||row?.awayName||(typeof row?.away==='string'?row.away:'')||'';
+  const home=row?.homeTeam||row?.home?.abbr||row?.home?.name||row?.homeName||(typeof row?.home==='string'?row.home:'')||'';
+  const rowMatch=norm(`${away} @ ${home}`),legMatch=norm(leg?.matchup||'');
   if(rowMatch&&legMatch&&(rowMatch===legMatch||rowMatch.replace(/ at /g,' ')===legMatch.replace(/ at /g,' ')))return true;
-  const rt=Date.parse(row?.commenceTime||row?.startTimeUTC||row?.startTime||''),lt=Date.parse(leg?.startTimeUTC||'');
+  const rt=Date.parse(row?.commenceTime||row?.startDateUTC||row?.startTimeUTC||row?.startTime||''),lt=Date.parse(leg?.startTimeUTC||'');
   return Number.isFinite(rt)&&Number.isFinite(lt)&&Math.abs(rt-lt)<=20*60_000;
 }
 async function loadSnapshot(sport){
@@ -86,11 +88,12 @@ function parseRowSnapshot(doc,leg){
     const book=normBook(row.book||row.sportsbook);if(!book)continue;
     const line=finite(row.line),price=finite(side==='under'?row.underPrice:row.overPrice);
     if(line!=null&&price!=null)pushAlt(altLinesByBook,book,{line,oddsAmerican:price,side,snapshotTime:row.snapshotTime,preserved:row.preserved});
-    const binaryMatch=leg.line==null&&binaryMarket(market);
+    const binaryMatch=binaryMarket(market)&&side==='over'&&(finite(leg.line)==null||Math.abs(Number(leg.line)-0.5)<1e-7);
     const exact=binaryMatch||(line!=null&&finite(leg.line)!=null&&Math.abs(line-Number(leg.line))<1e-7);
     if(exact&&price!=null){
       const offer={oddsAmerican:price,selectionLink:row.deepLink||row.selectionLink||null,betslipUrl:null,snapshotTime:row.snapshotTime||null,preserved:Boolean(row.preserved),priceKind:row.preserved?'last-verified-pregame':'verified-snapshot'};
-      bookOffers[book]={...(bookOffers[book]||{}),...offer};
+      const existing=bookOffers[book];
+      if(!existing||price>existing.oddsAmerican)bookOffers[book]={...(existing||{}),...offer};
       if(!preferred||price>preferred.oddsAmerican)preferred={sportsbook:book,oddsAmerican:price,sportsbookLink:offer.selectionLink,snapshotTime:offer.snapshotTime,preserved:offer.preserved};
     }
   }
@@ -102,22 +105,35 @@ function allOffers(branch){
 function findNestedPlayer(doc,leg){
   const wanted=norm(leg.player);let fallback=null;
   for(const game of doc?.games||[]){
-    const eventLike={eventId:game.eventId||game.fixtureId||game.id,commenceTime:game.commenceTime||game.startTimeUTC||game.startTime,awayTeam:game.awayTeam||game.away?.abbr||game.away?.name,homeTeam:game.homeTeam||game.home?.abbr||game.home?.name};
+    const eventLike={eventId:game.eventId||game.id,gameId:game.gameId||null,providerEventId:game.fixtureId||null,commenceTime:game.commenceTime||game.startDateUTC||game.startTimeUTC||game.startTime,awayTeam:game.awayTeam||game.away?.abbr||game.away?.name||game.awayName||(typeof game.away==='string'?game.away:null),homeTeam:game.homeTeam||game.home?.abbr||game.home?.name||game.homeName||(typeof game.home==='string'?game.home:null)};
     if(!sameEvent(eventLike,leg))continue;
-    for(const player of game.players||[]){if(norm(player?.name)!==wanted)continue;const hit={game,player};if(leg.team&&compact(player?.team)===compact(leg.team))return hit;if(!fallback)fallback=hit;}
+    for(const player of game.players||[]){if(norm(player?.name)!==wanted)continue;const hit={game,player};if(leg.team&&teamMatches(player?.team,leg.team))return hit;if(!fallback)fallback=hit;}
   }
   return fallback;
 }
 function parseNestedSnapshot(doc,leg){
   const hit=findNestedPlayer(doc,leg);if(!hit)return null;
-  const slot=hit.player?.odds?.[marketKey(leg)];if(!slot)return null;
+  const market=marketKey(leg),slot=hit.player?.odds?.[market];if(!slot)return null;
   const side=sideOf(leg),altLinesByBook={},bookOffers={};let preferred=null;
+  if(binaryMarket(market)&&side==='over'){
+    const line=finite(leg.line)??0.5;
+    const binarySide=String(leg?.side||'yes').toLowerCase()==='no'?'no':'yes';
+    for(const offer of allOffers(slot)){
+      const book=normBook(offer?.book||offer?.sportsbook),price=finite(offer?.price??offer?.oddsAmerican),selectionLink=offer?.link||offer?.deepLink||offer?.selectionLink||null;
+      if(!book||price==null)continue;
+      pushAlt(altLinesByBook,book,{line,oddsAmerican:price,side:binarySide,selectionLink});
+      const existing=bookOffers[book];
+      if(!existing||price>existing.oddsAmerican)bookOffers[book]={oddsAmerican:price,selectionLink,betslipUrl:null};
+      if(!preferred||price>preferred.oddsAmerican)preferred={sportsbook:book,oddsAmerican:price,sportsbookLink:selectionLink};
+    }
+    return Object.keys(bookOffers).length?{altLinesByBook,bookOffers,preferred,gameId:String(hit.game?.gameId||''),startTimeUTC:hit.game?.startDateUTC||hit.game?.startTimeUTC||null}:null;
+  }
   const source=Array.isArray(slot.alternates)&&slot.alternates.length?slot.alternates:(finite(slot.line)!=null?[{line:Number(slot.line),over:slot.over,under:slot.under}]:[]);
   for(const row of source){
     const line=finite(row?.line);if(line==null)continue;
-    for(const offer of allOffers(row?.[side])){const book=normBook(offer?.book||offer?.sportsbook);const price=finite(offer?.price??offer?.oddsAmerican);if(!book||price==null)continue;pushAlt(altLinesByBook,book,{line,oddsAmerican:price,side,selectionLink:offer?.link||offer?.deepLink||null});const binaryMatch=leg.line==null&&binaryMarket(marketKey(leg));if(binaryMatch||(finite(leg.line)!=null&&Math.abs(line-Number(leg.line))<1e-7)){bookOffers[book]={oddsAmerican:price,selectionLink:offer?.link||offer?.deepLink||null,betslipUrl:null};if(!preferred||price>preferred.oddsAmerican)preferred={sportsbook:book,oddsAmerican:price,sportsbookLink:offer?.link||offer?.deepLink||null};}}
+    for(const offer of allOffers(row?.[side])){const book=normBook(offer?.book||offer?.sportsbook);const price=finite(offer?.price??offer?.oddsAmerican);if(!book||price==null)continue;pushAlt(altLinesByBook,book,{line,oddsAmerican:price,side,selectionLink:offer?.link||offer?.deepLink||null});const exact=finite(leg.line)!=null&&Math.abs(line-Number(leg.line))<1e-7;if(exact){const existing=bookOffers[book];if(!existing||price>existing.oddsAmerican)bookOffers[book]={oddsAmerican:price,selectionLink:offer?.link||offer?.deepLink||null,betslipUrl:null};if(!preferred||price>preferred.oddsAmerican)preferred={sportsbook:book,oddsAmerican:price,sportsbookLink:offer?.link||offer?.deepLink||null};}}
   }
-  return Object.keys(bookOffers).length||Object.keys(altLinesByBook).length?{altLinesByBook,bookOffers,preferred}:null;
+  return Object.keys(bookOffers).length||Object.keys(altLinesByBook).length?{altLinesByBook,bookOffers,preferred,gameId:String(hit.game?.gameId||''),startTimeUTC:hit.game?.startDateUTC||hit.game?.startTimeUTC||null}:null;
 }
 function mlbGameMatches(game,leg){
   if(!game)return false;
