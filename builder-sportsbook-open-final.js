@@ -9,6 +9,7 @@
   const BOOK_ORDER=['DraftKings','FanDuel','bet365','Caesars','theScore Bet','BetMGM','Fanatics'];
   const BOOK_CLASS={'DraftKings':'dk','FanDuel':'fd','bet365':'b365','Caesars':'cz','theScore Bet':'score','BetMGM':'mgm','Fanatics':'fanatics'};
   const BOOK_MARK={'DraftKings':'DK','FanDuel':'F','bet365':'bet','Caesars':'C','theScore Bet':'S','BetMGM':'M','Fanatics':'F'};
+  const RESOLVABLE_BOOKS=new Set(['DraftKings','FanDuel']);
   const GENERIC_BOOK_URLS={
     DraftKings:'https://sportsbook.draftkings.com/',
     FanDuel:'https://sportsbook.fanduel.com/',
@@ -94,6 +95,58 @@
     else window.open(safe,'_blank','noopener,noreferrer');
     return true;
   }
+  function resolverLeg(leg){
+    return {
+      sport:leg?.sport||null,
+      player:leg?.player||null,
+      gameId:leg?.gameId||null,
+      matchup:leg?.matchup||null,
+      market:leg?.market||null,
+      displayMarket:leg?.displayMarket||null,
+      side:leg?.side||null,
+      line:leg?.line??null,
+      inclusive:Boolean(leg?.inclusive),
+      startTimeUTC:leg?.startTimeUTC||null
+    };
+  }
+  function canResolveExact(book){return Boolean(RESOLVABLE_BOOKS.has(normalizeBook(book))&&legs.length&&!exactSportsbookLinks()[normalizeBook(book)]);}
+  function applyResolvedSelections(book,data){
+    const url=safeHttps(data?.url);if(!url)return null;
+    slip.sportsbookLinks={...(slip.sportsbookLinks&&typeof slip.sportsbookLinks==='object'?slip.sportsbookLinks:{})};
+    slip.sportsbookLinks[book]=url;
+    if(Array.isArray(data?.selections))data.selections.forEach((selection,index)=>{
+      const leg=legs[index];if(!leg||!selection)return;
+      const selectionLink=safeHttps(selection.selectionLink);
+      leg.bookOffers=leg.bookOffers&&typeof leg.bookOffers==='object'?leg.bookOffers:{};
+      const existing=entryForBook(leg.bookOffers,book)||{};
+      leg.bookOffers[book]={...existing,...(selectionLink?{selectionLink}:{}),...(selection.selectionId?{selectionId:String(selection.selectionId)}:{}),...(selection.marketId?{marketId:String(selection.marketId)}:{})};
+    });
+    return url;
+  }
+
+  const resolving=new Map();
+  function resolveExactBook(book){
+    const normalized=normalizeBook(book);
+    const existing=exactSportsbookLinks()[normalized];if(existing)return Promise.resolve(existing);
+    if(!RESOLVABLE_BOOKS.has(normalized)||!legs.length||typeof window.fetch!=='function')return Promise.resolve(null);
+    if(resolving.has(normalized))return resolving.get(normalized);
+    const task=(async()=>{
+      const response=await window.fetch('/api/sportsbook-link',{
+        method:'POST',
+        headers:{'content-type':'application/json','accept':'application/json'},
+        body:JSON.stringify({book:normalized,legs:legs.map(resolverLeg)})
+      });
+      let data=null;try{data=await response.json();}catch{}
+      if(!response.ok||!data?.ok||!data?.exact)return null;
+      return applyResolvedSelections(normalized,data);
+    })().catch(()=>null).finally(()=>resolving.delete(normalized));
+    resolving.set(normalized,task);
+    return task;
+  }
+  function invalidateResolvedLinks(){
+    if(!slip.sportsbookLinks||typeof slip.sportsbookLinks!=='object')return;
+    for(const book of RESOLVABLE_BOOKS)delete slip.sportsbookLinks[book];
+  }
 
   let selectedBook=null;
   function renderSportsbooks(preferred){
@@ -114,8 +167,9 @@
     const exactLinks=exactSportsbookLinks();
     grid.innerHTML=books.map(book=>{
       const exact=Boolean(exactLinks[book]);
+      const resolvingNow=resolving.has(book);
       const canOpen=Boolean(openTarget(book));
-      const detail=exact?'Prefilled Betslip':canOpen?'Open Sportsbook':'Link Unavailable';
+      const detail=exact?'Prefilled Betslip':resolvingNow?'Preparing Betslip':canResolveExact(book)?'Tap to Prepare Betslip':canOpen?'Open Sportsbook':'Link Unavailable';
       return `<button class="book-card${book===selectedBook?' active':''}${canOpen?'':' unavailable'}" type="button" data-book="${esc(book)}" role="listitem"><span class="book-logo ${esc(BOOK_CLASS[book]||'more')}">${esc(BOOK_MARK[book]||book.slice(0,2).toUpperCase())}</span><span><strong>${esc(book)}</strong><small>${esc(detail)}</small></span></button>`;
     }).join('');
 
@@ -123,11 +177,18 @@
     const sync=()=>{
       const label=q('#selectedBookLabel');if(label)label.textContent=selectedBook||'Sportsbook';
       const target=selectedBook?openTarget(selectedBook):null;
-      open.disabled=!target;
-      open.classList.toggle('unavailable',!target);
-      if(target?.exact){
+      const resolvingNow=Boolean(selectedBook&&resolving.has(selectedBook));
+      open.disabled=!target||resolvingNow;
+      open.classList.toggle('unavailable',!target||resolvingNow);
+      if(resolvingNow){
+        open.title=`Preparing a verified prefilled ${selectedBook} betslip`;
+        open.innerHTML=`<span class="link-icon">↗</span> <strong>Preparing <span id="selectedBookLabel">${esc(selectedBook)}</span> Betslip…</strong>`;
+      }else if(target?.exact){
         open.title=`Open the verified prefilled ${selectedBook} betslip`;
         open.innerHTML=`<span class="link-icon">↗</span> <strong>Open Prefilled Bet in <span id="selectedBookLabel">${esc(selectedBook)}</span></strong> <span class="external-icon">↗</span>`;
+      }else if(target&&canResolveExact(selectedBook)){
+        open.title=`Prepare an exact ${selectedBook} betslip using verified sportsbook selection IDs.`;
+        open.innerHTML=`<span class="link-icon">↗</span> <strong>Prepare Bet in <span id="selectedBookLabel">${esc(selectedBook)}</span></strong>`;
       }else if(target){
         open.title=`Exact betslip unavailable. Open ${selectedBook} without preloading picks.`;
         open.innerHTML=`<span class="link-icon">↗</span> <strong>Open <span id="selectedBookLabel">${esc(selectedBook)}</span></strong> <span class="external-icon">↗</span>`;
@@ -141,18 +202,28 @@
     qa('.book-card',grid).forEach(card=>card.addEventListener('click',()=>{
       selectedBook=normalizeBook(card.dataset.book);
       qa('.book-card',grid).forEach(node=>node.classList.toggle('active',node===card));
-      sync();
+      if(canResolveExact(selectedBook)){
+        const pending=resolveExactBook(selectedBook);sync();
+        pending.finally(()=>renderSportsbooks(selectedBook));
+      }else sync();
     }));
     open.addEventListener('click',()=>{
       const target=selectedBook?openTarget(selectedBook):null;
-      if(target)navigateToSportsbook(target.url);
+      if(!target)return;
+      if(target.exact){navigateToSportsbook(target.url);return;}
+      if(canResolveExact(selectedBook)){
+        const pending=resolveExactBook(selectedBook);sync();
+        pending.finally(()=>renderSportsbooks(selectedBook));
+        return;
+      }
+      navigateToSportsbook(target.url);
     });
     sync();
   }
 
-  window.__PP_SPORTSBOOK_OPEN_TEST__={normalizeBook,safeHttps,exactSportsbookLinks,pricedSportsbooks,orderedBooks,openTarget,legOddsForBook,mobileLike};
+  window.__PP_SPORTSBOOK_OPEN_TEST__={normalizeBook,safeHttps,exactSportsbookLinks,pricedSportsbooks,orderedBooks,openTarget,legOddsForBook,mobileLike,resolverLeg,canResolveExact,applyResolvedSelections};
   renderSportsbooks();
   document.addEventListener('click',event=>{
-    if(event.target?.closest?.('.pp-alt-option'))setTimeout(()=>renderSportsbooks(selectedBook),0);
+    if(event.target?.closest?.('.pp-alt-option'))setTimeout(()=>{invalidateResolvedLinks();renderSportsbooks(selectedBook);},0);
   });
 })();
