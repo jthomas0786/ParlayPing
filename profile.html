@@ -5,8 +5,11 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#031421">
   <meta name="description" content="Track every ParlayPing betslip in one live dashboard.">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>Tracking — ParlayPing</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="manifest" href="/manifest.webmanifest">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
@@ -84,6 +87,8 @@
   </main>
 
   <div id="profileToast" class="toast" role="status" aria-live="polite"></div>
+  <script src="/push-client.js?v=20260924a" defer></script>
   <script src="/profile.js" defer></script>
+  <script src="/profile-push.js?v=20260924a" defer></script>
 </body>
 </html>
