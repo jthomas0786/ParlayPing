@@ -14,7 +14,9 @@ test('Tracking cards use the approved ParlayPing watermark and linked brand lock
   assert.match(css,/parlayping-approved-hero\.webp/);
   assert.match(css,/tracking-card::after/);
   assert.match(css,/opacity:\.075/);
-  assert.match(js,/parlayping-approved-wordmark\.webp/);
+  assert.match(js,/parlayping-approved-lockup\.svg/);
+  assert.match(css,/\.tracking-brand img[\s\S]*filter:none/);
+  assert.match(css,/\.tracking-brand img[\s\S]*mix-blend-mode:normal/);
   assert.match(js,/tracking-brand/);
   assert.match(js,/https:\/\/parlayping\.net/);
   assert.match(js,/ParlayPing\.net/);
