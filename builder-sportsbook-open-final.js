@@ -237,6 +237,10 @@
     const grid=q('.sportsbook-grid');
     const oldOpen=q('#openBookBtn');
     if(!grid||!oldOpen)return;
+    grid.onclick=null;
+    grid.classList.remove('pp-price-grid');
+    const parent=grid.parentElement;
+    qa('.pp-sportsbook-note,.pp-books-price-note',parent||document).forEach(node=>node.remove());
     const books=orderedBooks();
     const requested=normalizeBook(preferred)||normalizeBook(selectedBook)||normalizeBook(slip?.sportsbook);
     selectedBook=(requested&&books.includes(requested)?requested:null)||books[0]||null;
@@ -306,4 +310,5 @@
 
   window.__PP_SPORTSBOOK_OPEN_TEST__={normalizeBook,safeHttps,exactSportsbookLinks,pricedSportsbooks,orderedBooks,openTarget,legOddsForBook,altRowsForBook,mobileLike,resolverLeg,canResolveExact,applyResolvedSelections};
   renderSportsbooks();
+  if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>requestAnimationFrame(()=>renderSportsbooks(selectedBook)));
 })();
