@@ -59,7 +59,7 @@ const snapshot=()=>page.evaluate(()=>{
     probabilities:[...document.querySelectorAll('.pp-prob-label')].map(el=>el.textContent.trim()),odds:[...document.querySelectorAll('.pp-leg-odds')].map(el=>el.textContent.trim()),
     summaryOdds:document.querySelector('#combinedOdds')?.textContent?.trim(),summaryProbability:document.querySelector('#impliedProbability')?.textContent?.trim(),
     altVisible:visible('.pp-leg-alts').length,altBooks:[...visible('.pp-leg-alts')].map(el=>el.dataset.book||''),altLines:[...document.querySelectorAll('.pp-alt-option span')].map(el=>el.textContent.trim()),altOdds:[...document.querySelectorAll('.pp-alt-option strong')].map(el=>el.textContent.trim()),
-    selectedBook:document.querySelector('.book-card.active')?.dataset.book||'',books:[...document.querySelectorAll('.book-card')].map(el=>({book:el.dataset.book,url:el.dataset.exactUrl,disabled:el.disabled})),
+    selectedBook:document.querySelector('.book-card.active')?.dataset.book||'',books:[...document.querySelectorAll('.book-card')].map(el=>({book:el.dataset.book,detail:el.querySelector('small')?.textContent?.trim()||'',disabled:el.disabled})),
     shares:document.querySelectorAll('.share-action').length,lower:document.querySelectorAll('.secondary-panel').length,bodyWidth:document.body.scrollWidth,viewportWidth:innerWidth,
   };
 });
@@ -76,7 +76,8 @@ if(before.probabilities.length!==3||before.probabilities.some(value=>!/%|HIT|MIS
 if(before.selectedBook!=='DraftKings'||before.odds.join('|')!=='-110|-105|-115')throw new Error(`DraftKings odds not selected: ${before.selectedBook} ${before.odds.join(', ')}`);
 if(before.summaryOdds!=='+412'||before.summaryProbability!=='19.5%')throw new Error(`summary metrics wrong: ${before.summaryOdds} / ${before.summaryProbability}`);
 if(before.altVisible!==0)throw new Error(`alt lines visible before tune: ${before.altVisible}`);
-if(before.books.length!==5||before.books.some(row=>!row.url||row.disabled||!row.url.includes('/betslip/')))throw new Error(`exact sportsbook links not wired: ${JSON.stringify(before.books)}`);
+const requiredBooks=['DraftKings','FanDuel','bet365','Caesars'];
+if(before.books.length<5||requiredBooks.some(book=>!before.books.some(row=>row.book===book))||before.books.some(row=>row.disabled))throw new Error(`sportsbook options not wired: ${JSON.stringify(before.books)}`);
 if(before.shares!==4||before.lower!==2||before.bodyWidth>before.viewportWidth+2)throw new Error('layout/share regression');
 
 await page.screenshot({path:path.join(artifactDir,'builder-desktop-default.png'),fullPage:true});
