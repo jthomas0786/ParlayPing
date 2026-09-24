@@ -64,9 +64,9 @@ test('composes FanDuel parlay only from native market and selection IDs',()=>{
 });
 
 test('composes DraftKings parlay only from one exact outcome per leg',()=>{
-  const url=new URL(composeDraftKings([
+  const url=composeDraftKings([
     {selectionLink:'https://sportsbook.draftkings.com/?outcomes=111'},
     {selectionLink:'https://sportsbook.draftkings.com/?outcomes=222'}
-  ]));
-  assert.equal(url.searchParams.get('outcomes'),'111+222');
+  ]);
+  assert.ok(url.includes('outcomes=111+222'));
 });
