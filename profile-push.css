@@ -1,0 +1,6 @@
+.tracking-toolbar-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.alert-button{border-color:#35606f;background:#0a2635;color:#c8e1e9}
+.alert-button[data-state="on"]{border-color:#29d7c6;background:rgba(27,158,148,.18);color:#bafff6;box-shadow:inset 0 0 0 1px rgba(39,221,202,.08)}
+.tracking-card.notification-focus{animation:ppNotificationFocus 1s ease-in-out 0s 3;box-shadow:0 0 0 2px rgba(39,221,202,.42),0 22px 55px rgba(22,181,167,.22)}
+@keyframes ppNotificationFocus{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+@media(max-width:520px){.tracking-toolbar-actions{width:100%;justify-content:flex-start}.tracking-toolbar-actions .refresh-button{align-self:auto}}
