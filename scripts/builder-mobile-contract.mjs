@@ -53,7 +53,7 @@ const snap=()=>page.evaluate(()=>{
     gameGroups:document.querySelectorAll('.pp-game-group').length,gameHeaders:[...document.querySelectorAll('.pp-game-copy strong')].map(el=>el.textContent.trim()),legRows:document.querySelectorAll('.pp-leg-row').length,
     players:[...document.querySelectorAll('.pp-leg-copy strong')].map(el=>el.textContent.trim()),headshots:[...document.querySelectorAll('.pp-player-photo')].map(el=>({tag:el.tagName,src:el.getAttribute('src')||'',width:el.getBoundingClientRect().width,height:el.getBoundingClientRect().height})),
     probabilities:[...document.querySelectorAll('.pp-prob-label')].map(el=>el.textContent.trim()),odds:[...document.querySelectorAll('.pp-leg-odds')].map(el=>el.textContent.trim()),summaryOdds:document.querySelector('#combinedOdds')?.textContent?.trim(),summaryProbability:document.querySelector('#impliedProbability')?.textContent?.trim(),
-    selectedBook:document.querySelector('.book-card.active')?.dataset.book||'',altVisible:visible('.pp-leg-alts').length,altBooks:[...visible('.pp-leg-alts')].map(el=>el.dataset.book||''),altLines:[...document.querySelectorAll('.pp-alt-option span')].map(el=>el.textContent.trim()),altOdds:[...document.querySelectorAll('.pp-alt-option strong')].map(el=>el.textContent.trim()),books:[...document.querySelectorAll('.book-card')].map(el=>({book:el.dataset.book,url:el.dataset.exactUrl,disabled:el.disabled})),
+    selectedBook:document.querySelector('.book-card.active')?.dataset.book||'',altVisible:visible('.pp-leg-alts').length,altBooks:[...visible('.pp-leg-alts')].map(el=>el.dataset.book||''),altLines:[...document.querySelectorAll('.pp-alt-option span')].map(el=>el.textContent.trim()),altOdds:[...document.querySelectorAll('.pp-alt-option strong')].map(el=>el.textContent.trim()),books:[...document.querySelectorAll('.book-card')].map(el=>{const target=window.__PP_SPORTSBOOK_OPEN_TEST__?.openTarget?.(el.dataset.book);return {book:el.dataset.book,url:target?.url||'',exact:Boolean(target?.exact),disabled:el.disabled};}),
     shareActions:document.querySelectorAll('.share-action').length,bodyWidth:document.body.scrollWidth,viewportWidth:innerWidth,
   };
 });
@@ -69,7 +69,7 @@ if(metrics.probabilities.length!==2||metrics.probabilities.some(value=>!/%/.test
 if(metrics.selectedBook!=='DraftKings'||metrics.odds.join('|')!=='-125|+110')throw new Error(`DraftKings odds missing: ${metrics.selectedBook} ${metrics.odds.join(', ')}`);
 if(metrics.summaryOdds!=='+284'||metrics.summaryProbability!=='26.0%')throw new Error(`summary metrics wrong: ${metrics.summaryOdds}/${metrics.summaryProbability}`);
 if(metrics.altVisible!==0)throw new Error(`alt lines visible before tune: ${metrics.altVisible}`);
-if(metrics.books.length!==5||metrics.books.some(row=>!row.url||row.disabled||!row.url.includes('/betslip/')))throw new Error(`exact sportsbook links are not functional: ${JSON.stringify(metrics.books)}`);
+if(metrics.books.length!==5||metrics.books.some(row=>!row.exact||!row.url||row.disabled||!row.url.includes('/betslip/')))throw new Error(`exact sportsbook links are not functional: ${JSON.stringify(metrics.books)}`);
 if(metrics.shareActions!==4||metrics.bodyWidth>metrics.viewportWidth+2)throw new Error('mobile layout/share regression');
 
 await page.screenshot({path:path.join(artifactDir,'builder-mobile-default.png'),fullPage:true});

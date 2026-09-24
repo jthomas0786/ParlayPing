@@ -14,11 +14,13 @@ on:
       - 'builder-mobile-final.js'
       - 'builder-acceptance-final.css'
       - 'builder-acceptance-final.js'
+      - 'builder-sportsbook-open-final.js'
       - 'parlayping-approved-logo.png'
       - 'parlayping-approved-lockup.svg'
       - 'server/api/builder-page.js'
       - 'server/api/lib/share-assets.js'
       - 'server/api/lib/share-hydrate.js'
+      - 'scripts/builder-sportsbook-runtime-smoke.mjs'
       - 'scripts/builder-visual-contract.mjs'
       - 'tests/builder-concept.test.js'
       - 'tests/final-acceptance.test.js'
@@ -42,6 +44,8 @@ jobs:
         run: npm install --no-save --no-audit --no-fund playwright@1.55.0
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
+      - name: Verify sportsbook runtime loads cleanly
+        run: node scripts/builder-sportsbook-runtime-smoke.mjs
       - name: Verify final desktop acceptance checklist
         run: node scripts/builder-visual-contract.mjs
       - name: Upload rendered desktop screenshots

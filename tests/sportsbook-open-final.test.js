@@ -6,7 +6,7 @@ const vm=require('node:vm');
 
 function runOpenFinal(slip,{userAgent='Mozilla/5.0'}={}){
   const document={querySelector:()=>null,querySelectorAll:()=>[],addEventListener:()=>{}};
-  const window={__PARLAYPING_BUILDER__:{slip},location:{assign:()=>{}},open:()=>{}};
+  const window={__PARLAYPING_BUILDER__:{slip},location:{assign:()=>{}},open:()=>{},fetch:()=>Promise.resolve({ok:false,json:async()=>({})})};
   const context={window,document,navigator:{userAgent,maxTouchPoints:0},URL,setTimeout,console};
   vm.createContext(context);
   const source=fs.readFileSync(path.join(__dirname,'..','builder-sportsbook-open-final.js'),'utf8');
@@ -31,6 +31,26 @@ test('FanDuel stays openable with verified prices even when exact betslip metada
   assert.equal(target.exact,false);
   assert.equal(target.url,'https://sportsbook.fanduel.com/');
   assert.equal(api.legOddsForBook(slip.legs[0],'FanDuel'),-295);
+});
+
+test('unresolved FanDuel can request exact server-side deeplink enrichment',()=>{
+  const slip={legs:[{id:'gray',sport:'WNBA',player:'Allisha Gray',market:'points',side:'over',line:19.5,sportsbook:'FanDuel',oddsAmerican:-110,bookOffers:{FanDuel:{oddsAmerican:-110}}}]};
+  const api=runOpenFinal(slip);
+  assert.equal(api.canResolveExact('FanDuel'),true);
+  assert.deepEqual(JSON.parse(JSON.stringify(api.resolverLeg(slip.legs[0]))),{
+    sport:'WNBA',player:'Allisha Gray',gameId:null,matchup:null,market:'points',displayMarket:null,side:'over',line:19.5,inclusive:false,startTimeUTC:null
+  });
+});
+
+test('resolved FanDuel result becomes an exact prefilled target without inventing IDs',()=>{
+  const slip={legs:[{id:'gray',sport:'WNBA',player:'Allisha Gray',market:'points',side:'over',line:19.5,bookOffers:{FanDuel:{oddsAmerican:-110}}}]};
+  const api=runOpenFinal(slip);
+  const exact='https://account.sportsbook.fanduel.com/sportsbook/addToBetslip?marketId%5B0%5D=42.1&selectionId%5B0%5D=11';
+  api.applyResolvedSelections('FanDuel',{url:exact,selections:[{marketId:'42.1',selectionId:'11',selectionLink:'https://sportsbook.fanduel.com/addToBetslip?marketId=42.1&selectionId=11'}]});
+  assert.equal(api.openTarget('FanDuel').exact,true);
+  assert.equal(api.openTarget('FanDuel').url,exact);
+  assert.equal(slip.legs[0].bookOffers.FanDuel.marketId,'42.1');
+  assert.equal(slip.legs[0].bookOffers.FanDuel.selectionId,'11');
 });
 
 test('verified exact FanDuel betslip link always wins over generic fallback',()=>{

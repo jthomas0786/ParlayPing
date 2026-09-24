@@ -126,7 +126,12 @@
     setActive(activeBook,grid,open);
   }
 
-  function init(){injectStyles();renderPriceSelector();updateSummary();}
+  function init(){
+    injectStyles();
+    if(window.__PP_SPORTSBOOK_OPEN_TEST__){updateSummary();return;}
+    renderPriceSelector();
+    updateSummary();
+  }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>requestAnimationFrame(()=>requestAnimationFrame(init)),{once:true});else requestAnimationFrame(()=>requestAnimationFrame(init));
   window.__PP_SUMMARY_ODDS_HOTFIX_TEST__={americanToDecimal,decimalToAmerican,impliedFromAmerican,combinedFor,unionBooks,coverage,independentGames,fmtPct,fmtOdds,BEST,BOOK_HOME,preferredRealBook};
 })();
