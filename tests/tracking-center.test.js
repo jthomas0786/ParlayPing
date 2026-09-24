@@ -26,13 +26,14 @@ test('builder loads Track workflow and Tracking profile assets exist',()=>{
   const builder=fs.readFileSync(path.join(__dirname,'..','server','api','builder-page.js'),'utf8');
   const tracking=fs.readFileSync(path.join(__dirname,'..','builder-tracking.js'),'utf8');
   const profile=fs.readFileSync(path.join(__dirname,'..','profile.html'),'utf8');
+  const profileJs=fs.readFileSync(path.join(__dirname,'..','profile.js'),'utf8');
   assert.match(builder,/builder-tracking\.js/);
   assert.match(builder,/builder-tracking\.css/);
   assert.match(tracking,/tracked_parlays/);
   assert.match(tracking,/Placed Bet/);
   assert.match(tracking,/Watching/);
   assert.match(profile,/>Tracking</);
-  assert.match(profile,/Share Progress/);
+  assert.match(profileJs,/Share Progress/);
 });
 
 test('tracking refresh route is wired through the API router and Vercel',()=>{
