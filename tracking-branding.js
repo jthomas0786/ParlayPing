@@ -9,7 +9,7 @@
     brand.target='_blank';
     brand.rel='noopener noreferrer';
     brand.setAttribute('aria-label','Visit ParlayPing.net');
-    brand.innerHTML='<img src="/parlayping-approved-wordmark.webp" alt="ParlayPing"><span>ParlayPing.net</span>';
+    brand.innerHTML='<img src="/parlayping-approved-lockup.svg" alt="ParlayPing"><span>ParlayPing.net</span>';
     footer.prepend(brand);
   }
   function sync(){document.querySelectorAll('.tracking-card').forEach(brandCard);}
