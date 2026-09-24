@@ -64,13 +64,13 @@ async function mockSupabase(page){
 }
 
 async function landingShot(viewport,file,fullPage=false){
-  const page=await browser.newPage({viewportSize:viewport});await mockSupabase(page);await page.goto('http://127.0.0.1:4179/',{waitUntil:'networkidle'});await page.waitForSelector('#betlab');await page.waitForTimeout(400);await page.screenshot({path:path.join(outDir,file),fullPage});await page.close();
+  const page=await browser.newPage({viewport});await mockSupabase(page);await page.goto('http://127.0.0.1:4179/',{waitUntil:'networkidle'});await page.waitForSelector('#betlab');await page.waitForTimeout(400);await page.screenshot({path:path.join(outDir,file),fullPage});await page.close();
 }
 await landingShot({width:1440,height:1200},'pending-landing-desktop.png',false);
 await landingShot({width:390,height:844},'pending-landing-mobile.png',false);
 
 async function profileShot(viewport,file){
-  const page=await browser.newPage({viewportSize:viewport});await mockSupabase(page);await page.addInitScript(()=>{localStorage.setItem('parlayping_supabase_session_v1',JSON.stringify({access_token:'demo-token',refresh_token:'demo-refresh',expires_at:Math.floor(Date.now()/1000)+3600}));});await page.goto('http://127.0.0.1:4179/profile',{waitUntil:'networkidle'});await page.waitForSelector('.tracking-card');await page.waitForFunction(()=>document.body.innerText.includes('Sunday Night Hammer'));await page.waitForTimeout(500);await page.screenshot({path:path.join(outDir,file),fullPage:true});await page.close();
+  const page=await browser.newPage({viewport});await mockSupabase(page);await page.addInitScript(()=>{localStorage.setItem('parlayping_supabase_session_v1',JSON.stringify({access_token:'demo-token',refresh_token:'demo-refresh',expires_at:Math.floor(Date.now()/1000)+3600}));});await page.goto('http://127.0.0.1:4179/profile',{waitUntil:'networkidle'});await page.waitForSelector('.tracking-card');await page.waitForFunction(()=>document.body.innerText.includes('Sunday Night Hammer'));await page.waitForTimeout(500);await page.screenshot({path:path.join(outDir,file),fullPage:true});await page.close();
 }
 await profileShot({width:1440,height:1100},'pending-tracking-desktop.png');
 await profileShot({width:390,height:844},'pending-tracking-mobile.png');
