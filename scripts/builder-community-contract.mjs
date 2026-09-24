@@ -77,13 +77,17 @@ if(initial.postLabel!=='Sign In to Post')throw new Error(`Signed-out community C
 if(feedRequests.some(url=>/[?&]select=[^&]*user_id/.test(url)))throw new Error(`Public community query exposed user_id: ${feedRequests.join(' | ')}`);
 
 await page.click('#analysisBtn');
-await page.waitForFunction(()=>{const el=document.querySelector('#ppAnalysisDetail');return el&&!el.hidden;});
+await page.waitForFunction(()=>{const el=document.querySelector('#ppAnalysisDetail');return el&&!el.hidden;},{timeout:5000});
 const analysisText=await page.locator('#ppAnalysisDetail').innerText();
 if(!analysisText.includes('Games')||!analysisText.includes('Alt-line coverage'))throw new Error(`Analysis detail did not expand: ${analysisText}`);
 
+await page.click('.book-card[data-book="Caesars"]');
+await page.waitForFunction(()=>document.querySelector('.book-card.active')?.dataset.book==='Caesars',{timeout:5000});
 await page.click('[data-pp-variant="coverage"]');
-await page.waitForFunction(()=>document.querySelector('.book-card.active')?.dataset.book==='FanDuel');
+await page.waitForFunction(()=>document.querySelector('.book-card.active')?.dataset.book==='DraftKings',{timeout:5000});
 
+await page.click('.book-card[data-book="FanDuel"]');
+await page.waitForFunction(()=>document.querySelector('.book-card.active')?.dataset.book==='FanDuel',{timeout:5000});
 await page.click('[data-pp-variant="safer"]');
 await page.waitForTimeout(120);
 const saferLines=await page.evaluate(()=>[...document.querySelectorAll('.pp-alt-option.selected span')].map(el=>el.textContent.trim()));
@@ -106,8 +110,8 @@ communityPayload=[{
 }];
 feedRequests.length=0;
 await openFixture();
-await page.waitForFunction(()=>document.querySelector('#ppCommunityGrid')?.textContent?.includes('Community Match'));
-await page.waitForFunction(()=>document.querySelector('#similar .similar-list')?.textContent?.includes('Community Match'));
+await page.waitForFunction(()=>document.querySelector('#ppCommunityGrid')?.textContent?.includes('Community Match'),{timeout:5000});
+await page.waitForFunction(()=>document.querySelector('#similar .similar-list')?.textContent?.includes('Community Match'),{timeout:5000});
 
 const communityMatch=await page.evaluate(()=>({
   cardText:document.querySelector('#ppCommunityGrid')?.textContent||'',
