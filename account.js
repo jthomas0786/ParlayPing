@@ -1,3 +1,4 @@
+(()=>{if(!document.querySelector('script[data-pp-app-nav]')){const script=document.createElement('script');script.src='/app-nav.js?v=20260924c';script.dataset.ppAppNav='1';document.head.appendChild(script);}})();
 const SUPABASE_URL='https://avwqjgiitxqphvmitolw.supabase.co';
 const SUPABASE_KEY='sb_publishable_7mYXjjkRrQq3iRig7UYHNQ_b6EZZiJA';
 const SESSION_KEY='parlayping_supabase_session_v1';

@@ -62,10 +62,20 @@ function loadLandingHub(){
   if(document.querySelector('script[data-pp-landing-hub]'))return;
   const script=document.createElement('script');
   script.src='/landing-hub.js?v=20260924b';
-  script.defer=true;
+  script.async=false;
   script.dataset.ppLandingHub='1';
+  document.body.appendChild(script);
+}
+
+function loadAppNav(){
+  if(document.querySelector('script[data-pp-app-nav]'))return;
+  const script=document.createElement('script');
+  script.src='/app-nav.js?v=20260924c';
+  script.async=false;
+  script.dataset.ppAppNav='1';
   document.body.appendChild(script);
 }
 
 updateBuilder();
 loadLandingHub();
+loadAppNav();
