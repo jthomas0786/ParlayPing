@@ -32,11 +32,11 @@ function sampleSlip() {
 
 test('builder loads final acceptance assets last and legacy branding override is disabled', () => {
   const html = renderBuilderHtml({ slip:sampleSlip(), token:'test-token', liveDataAvailable:true });
-  assert.equal(SHARE_CARD_VERSION, '20260923f');
+  assert.equal(SHARE_CARD_VERSION, '20260924g');
   assert.match(html, /builder-acceptance-final\.css/);
   assert.match(html, /builder-acceptance-final\.js/);
   assert.doesNotMatch(html, /builder-approved-assets\.js/);
-  assert.match(html, /\/share\/test-token\.png\?(?:context=x_reply(?:&|&amp;)v=20260923f|v=20260923f(?:&|&amp;)context=x_reply)/);
+  assert.match(html, /\/share\/test-token\.png\?(?:context=x_reply(?:&|&amp;)v=20260924g|v=20260924g(?:&|&amp;)context=x_reply)/);
 });
 
 test('ESPN summary asset parser returns stable player ids, headshots, and team logos', () => {
