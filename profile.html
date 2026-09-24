@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#031421">
+  <meta name="description" content="Track every ParlayPing betslip in one live dashboard.">
+  <title>Tracking — ParlayPing</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/profile.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="shell header-inner">
+      <a class="brand" href="/"><img src="/parlayping-approved-lockup.svg" alt="ParlayPing"></a>
+      <nav class="top-nav" aria-label="Primary">
+        <a href="/">Build</a>
+        <a href="/#similar">Explore</a>
+        <a href="/#community">Community</a>
+        <a href="/#insights">Insights</a>
+      </nav>
+      <div class="header-actions"><a class="track-nav active" href="/profile">Tracking</a><a class="settings-link" href="/account.html" aria-label="Account settings">⚙</a></div>
+    </div>
+  </header>
+
+  <main class="shell profile-shell">
+    <section id="signedOut" class="auth-gate" hidden>
+      <img src="/parlayping-approved-logo.png" alt="" aria-hidden="true">
+      <h1>Your bets. One live view.</h1>
+      <p>Sign in to track placed bets and watchlists from every sportsbook in one place.</p>
+      <a id="signInLink" href="/account.html?next=%2Fprofile">Sign in to ParlayPing</a>
+    </section>
+
+    <section id="profileApp" hidden>
+      <section class="profile-hero">
+        <div class="profile-cover"></div>
+        <div class="profile-info">
+          <div class="avatar" id="profileAvatar">PP</div>
+          <a class="edit-profile" href="/account.html">Edit profile</a>
+          <h1 id="profileName">ParlayPing User</h1>
+          <div class="handle" id="profileHandle"></div>
+          <p>Track placed bets and watchlists across sportsbooks without bouncing between apps.</p>
+          <div class="profile-meta"><span id="activeCount">0 active</span><span id="placedCount">0 placed</span><span id="watchingCount">0 watching</span></div>
+        </div>
+        <nav class="profile-tabs" aria-label="Profile sections">
+          <button type="button" class="active" data-profile-tab="tracking">Tracking</button>
+          <button type="button" data-profile-tab="community">Community</button>
+        </nav>
+      </section>
+
+      <section id="trackingSection" class="feed-section">
+        <div class="tracking-toolbar">
+          <div>
+            <span class="eyebrow">LIVE BET COMMAND CENTER</span>
+            <h2>Tracking</h2>
+            <p>Placed bets and watch-only slips update here as games progress.</p>
+          </div>
+          <button id="refreshTracking" type="button" class="refresh-button">↻ Refresh</button>
+        </div>
+        <div class="filter-row" id="trackingFilters" role="group" aria-label="Tracking filters">
+          <button class="active" type="button" data-filter="all">All</button>
+          <button type="button" data-filter="LIVE">Live</button>
+          <button type="button" data-filter="UPCOMING">Upcoming</button>
+          <button type="button" data-filter="WON">Won</button>
+          <button type="button" data-filter="LOST">Lost</button>
+          <button type="button" data-filter="watching">Watching</button>
+        </div>
+        <div id="trackingStatus" class="feed-status">Loading your tracked parlays…</div>
+        <div id="trackingGrid" class="tracking-grid"></div>
+      </section>
+
+      <section id="communitySection" class="feed-section" hidden>
+        <div class="tracking-toolbar">
+          <div><span class="eyebrow">YOUR PUBLIC BUILDS</span><h2>Community</h2><p>Parlays you have shared with the ParlayPing community.</p></div>
+          <a class="refresh-button link-button" href="/#community">Open Community</a>
+        </div>
+        <div id="profileCommunityStatus" class="feed-status">Loading your community posts…</div>
+        <div id="profileCommunityGrid" class="community-grid"></div>
+      </section>
+    </section>
+  </main>
+
+  <div id="profileToast" class="toast" role="status" aria-live="polite"></div>
+  <script src="/profile.js" defer></script>
+</body>
+</html>
