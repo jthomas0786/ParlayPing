@@ -47,6 +47,40 @@ function normName(value) {
     .replace(/\s+/g, ' ');
 }
 
+function normTeam(value) {
+  return String(value || '')
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+    .replace(/\s+/g, ' ');
+}
+
+function teamAliases(game, playerTeam) {
+  const aliases = new Set();
+  const push = value => { const normalized = normTeam(value); if (normalized) aliases.add(normalized); };
+  push(playerTeam);
+  const meta = game?.game || game || {};
+  for (const side of [meta.away, meta.home]) {
+    if (!side) continue;
+    const sideAbbr = normTeam(side.abbr || side.abbreviation);
+    const sideName = normTeam(side.name || side.displayName || side.shortDisplayName);
+    const playerNorm = normTeam(playerTeam);
+    if (playerNorm && (playerNorm === sideAbbr || playerNorm === sideName)) {
+      push(side.abbr || side.abbreviation);
+      push(side.name || side.displayName || side.shortDisplayName);
+    }
+  }
+  return aliases;
+}
+
+function teamMatches(requestedTeam, playerTeam, game) {
+  if (!requestedTeam) return true;
+  const wanted = normTeam(requestedTeam);
+  if (!wanted) return true;
+  return teamAliases(game, playerTeam).has(wanted);
+}
+
 function normalizeMarket(value) {
   const raw = String(value || '').trim();
   if (MARKET_LABELS[raw]) return raw;
@@ -83,7 +117,7 @@ function findPlayerGame(sim, leg) {
       const n = normName(player?.name);
       if (!n) continue;
       if (n === wanted || n.endsWith(` ${wanted}`) || wanted.endsWith(` ${n}`)) {
-        if (!leg.team || String(player.team || '').toUpperCase() === leg.team) candidates.push({ game, player });
+        if (teamMatches(leg.team, player.team, game)) candidates.push({ game, player });
       }
     }
   }
@@ -97,7 +131,7 @@ function findOddsPlayer(odds, leg, simMatch) {
     if (gameId && String(game.gameId || '') !== gameId) continue;
     for (const player of game.players || []) {
       if (normName(player.name) === wanted || normName(player.name).endsWith(` ${wanted}`) || wanted.endsWith(` ${normName(player.name)}`)) {
-        if (!leg.team || String(player.team || '').toUpperCase() === leg.team) return { game, player };
+        if (teamMatches(leg.team, player.team, simMatch?.game || game)) return { game, player };
       }
     }
   }
@@ -238,7 +272,7 @@ async function analyzeSlip(rawLegs, options = {}) {
   for (const leg of legs) {
     const simMatch = findPlayerGame(sim, leg);
     if (!simMatch) {
-      results.push({ ...leg, status: 'UNRESOLVED', displayMarket: formatLine(leg), probability: null, current: null, target: leg.line, marketOptions: [] });
+      results.push({ ...leg, status: 'UNRESOLVED', resolutionReason: 'nfl-player-or-team-not-found-in-current-simulation', displayMarket: formatLine(leg), probability: null, current: null, target: leg.line, marketOptions: [] });
       continue;
     }
     const gameId = String(simMatch.game?.game?.gameId || '');
@@ -292,4 +326,4 @@ async function analyzeSlip(rawLegs, options = {}) {
   };
 }
 
-module.exports = { analyzeSlip, normalizeLeg, encodeSlip };
+module.exports = { analyzeSlip, normalizeLeg, encodeSlip, teamMatches };
