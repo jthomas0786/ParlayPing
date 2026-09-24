@@ -1,0 +1,84 @@
+/* Approved ParlayPing branding treatment for live Tracking cards. */
+.tracking-card{
+  --pp-track-tint:62,132,172;
+  isolation:isolate;
+  background:
+    radial-gradient(circle at 82% 18%,rgba(var(--pp-track-tint),.13),transparent 37%),
+    repeating-linear-gradient(135deg,rgba(255,255,255,.014) 0 1px,transparent 1px 8px),
+    linear-gradient(180deg,#082334,#061924);
+}
+.tracking-card.status-LIVE{--pp-track-tint:39,221,202}
+.tracking-card.status-WON{--pp-track-tint:69,229,142}
+.tracking-card.status-LOST{--pp-track-tint:255,113,128}
+.tracking-card::after{
+  content:"";
+  position:absolute;
+  width:min(54%,300px);
+  aspect-ratio:1;
+  right:-3%;
+  top:50%;
+  transform:translateY(-50%) rotate(-5deg);
+  background:url('/parlayping-approved-hero.webp') center/contain no-repeat;
+  opacity:.075;
+  filter:saturate(.72) contrast(.92) brightness(.92);
+  mix-blend-mode:screen;
+  pointer-events:none;
+  user-select:none;
+  z-index:0;
+}
+.tracking-card::before{z-index:4}
+.tracking-card>.card-head,
+.tracking-card>.card-stats,
+.tracking-card>.legs,
+.tracking-card>.card-footer{position:relative;z-index:1}
+.tracking-card>.winner-ribbon{z-index:5}
+.card-footer{align-items:center}
+.card-footer .tracking-brand{
+  flex:0 0 118px;
+  min-height:35px;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  justify-content:center;
+  gap:1px;
+  padding:0 4px 0 0;
+  border:0;
+  border-radius:0;
+  background:transparent;
+  box-shadow:none;
+  color:#88aebb;
+}
+.card-footer .tracking-brand:hover{background:transparent;border:0;color:#c8f8f1}
+.tracking-brand img{
+  display:block;
+  width:108px;
+  max-width:100%;
+  height:auto;
+  max-height:27px;
+  object-fit:contain;
+  object-position:left center;
+  filter:drop-shadow(0 0 9px rgba(39,221,202,.08));
+}
+.tracking-brand span{
+  display:block;
+  padding-left:2px;
+  font-size:7px;
+  line-height:1.2;
+  font-weight:800;
+  letter-spacing:.025em;
+  color:#6f9aaa;
+}
+@media(max-width:520px){
+  .tracking-card::after{
+    width:64%;
+    right:-11%;
+    opacity:.065;
+  }
+  .card-footer .tracking-brand{
+    grid-column:1/-1;
+    width:122px;
+    min-height:33px;
+    justify-self:start;
+  }
+  .tracking-brand img{width:112px}
+}

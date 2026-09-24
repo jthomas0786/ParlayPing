@@ -1,0 +1,53 @@
+name: Landing and Tracking Visual Preview
+
+on:
+  pull_request:
+    paths:
+      - 'app.js'
+      - 'landing-hub.js'
+      - 'landing-hub.css'
+      - 'profile.html'
+      - 'profile.js'
+      - 'profile.css'
+      - 'profile-push.js'
+      - 'profile-push.css'
+      - 'push-client.js'
+      - 'sw.js'
+      - 'manifest.webmanifest'
+      - 'server/api/landing-create.js'
+      - 'api/index.js'
+      - 'vercel.json'
+      - 'scripts/landing-tracking-visual.mjs'
+      - 'tests/landing-hub.test.js'
+      - '.github/workflows/landing-tracking-visual.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install app dependencies
+        run: npm install --no-audit --no-fund
+      - name: Install Playwright
+        run: npm install --no-save --no-audit --no-fund playwright@1.55.0
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Capture pending landing and Tracking UI
+        run: node scripts/landing-tracking-visual.mjs
+      - name: Upload pending UI screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pending-landing-tracking-screenshots
+          path: |
+            artifacts/pending-landing-*.png
+            artifacts/pending-tracking-*.png
+          if-no-files-found: error
+          retention-days: 5

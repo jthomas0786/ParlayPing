@@ -1,0 +1,37 @@
+/* ParlayPing Tracking — loaded after the approved builder styles. */
+body.pp-track-open{overflow:hidden}
+#saveBtn.pp-track-button{min-width:108px}
+#saveBtn.pp-track-button span{font-size:13px}
+.pp-track-modal[hidden]{display:none!important}
+.pp-track-modal{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;padding:18px}
+.pp-track-backdrop{position:absolute;inset:0;background:rgba(1,10,17,.78);backdrop-filter:blur(8px)}
+.pp-track-dialog{position:relative;width:min(520px,100%);max-height:min(760px,calc(100vh - 36px));overflow:auto;padding:26px;border:1px solid rgba(49,156,164,.55);border-radius:20px;background:radial-gradient(circle at 12% 0%,rgba(31,225,208,.10),transparent 30%),linear-gradient(180deg,#092336,#061722 82%);box-shadow:0 28px 90px rgba(0,0,0,.52);color:#f1fbff}
+.pp-track-x{position:absolute;right:15px;top:13px;width:34px;height:34px;border:1px solid rgba(103,163,184,.35);border-radius:50%;background:#0a2637;color:#b7ced9;font:700 22px/1 system-ui;cursor:pointer}
+.pp-track-eyebrow{display:block;margin-bottom:7px;color:#50e5d6;font-size:10px;font-weight:900;letter-spacing:.14em}
+.pp-track-dialog h2{margin:0 42px 8px 0;font:800 25px/1.1 Inter,system-ui,sans-serif}
+.pp-track-intro{margin:0 0 18px;color:#8eafc0;font-size:12px;line-height:1.55}
+.pp-track-choice{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:16px}
+.pp-track-choice button{display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:14px;border:1px solid #24536a;border-radius:13px;background:#081d2b;color:#d9edf5;text-align:left;cursor:pointer}
+.pp-track-choice button.active{border-color:#25dec9;background:rgba(18,111,107,.32);box-shadow:inset 0 0 0 1px rgba(37,222,201,.18)}
+.pp-track-choice strong{font-size:13px}
+.pp-track-choice small{color:#7f9eaf;font-size:10px}
+.pp-track-choice .active small{color:#acece4}
+.pp-track-fields{padding:14px;margin-bottom:14px;border:1px solid rgba(37,83,106,.78);border-radius:13px;background:rgba(4,19,29,.55)}
+.pp-track-fields label{display:grid;gap:6px;color:#aec7d3;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em}
+.pp-track-fields label span{color:#6d8b9c;font-weight:600;text-transform:none;letter-spacing:0}
+.pp-track-fields select,.pp-track-fields input{width:100%;min-height:42px;padding:9px 11px;border:1px solid #28566b;border-radius:9px;background:#071722;color:#f1fbff;font:700 13px Inter,system-ui,sans-serif;outline:none}
+.pp-track-fields select:focus,.pp-track-fields input:focus{border-color:#28dfcc}
+.pp-track-money{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:10px}
+.pp-track-summary{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:13px 14px;border:1px solid rgba(38,85,105,.7);border-radius:12px;background:#071b28}
+.pp-track-summary strong{font-size:13px;color:#f3fbff}
+.pp-track-summary span{font-size:10px;color:#81a8b9;text-align:right}
+.pp-track-private{margin:10px 2px 17px;color:#688797;font-size:10px}
+.pp-track-actions{display:flex;justify-content:flex-end;gap:9px}
+.pp-track-actions button{min-height:42px;padding:10px 16px;border-radius:10px;font:800 11px Inter,system-ui,sans-serif;cursor:pointer}
+.pp-track-cancel{border:1px solid #28536a;background:#092131;color:#b7cfda}
+.pp-track-confirm{border:1px solid #2be1cd;background:linear-gradient(180deg,#27dcc8,#14aa9e);color:#021b18;box-shadow:0 8px 25px rgba(19,185,170,.2)}
+.pp-track-confirm:disabled{opacity:.55;cursor:wait}
+#myParlayTitle .pp-parlay-title-input{width:min(390px,70vw);height:38px;margin:-5px 7px -5px 0;padding:5px 10px;border:1px solid #2b9f9e;border-radius:9px;background:#071d2b;color:#f2fdff;font:inherit;font-size:inherit;font-weight:inherit;outline:none;box-shadow:0 0 0 3px rgba(39,221,202,.08)}
+#myParlayTitle .pp-parlay-title-input::placeholder{color:#668b9c}
+#myParlayTitle .edit-title{cursor:pointer}
+@media(max-width:560px){.pp-track-modal{padding:10px;align-items:end}.pp-track-dialog{width:100%;max-height:90vh;border-radius:20px 20px 14px 14px;padding:22px 17px}.pp-track-choice,.pp-track-money{grid-template-columns:1fr}.pp-track-summary{align-items:flex-start;flex-direction:column}.pp-track-summary span{text-align:left}.pp-track-actions{display:grid;grid-template-columns:1fr 1fr}.pp-track-actions button{width:100%}#myParlayTitle .pp-parlay-title-input{width:min(250px,62vw)}}

@@ -17,6 +17,8 @@
     { "source": "/api/share-card", "destination": "/api/index?__pp_route=share-card" },
     { "source": "/api/share-page", "destination": "/api/index?__pp_route=share-page" },
     { "source": "/api/sportsbook-link", "destination": "/api/index?__pp_route=sportsbook-link" },
+    { "source": "/api/tracking-refresh", "destination": "/api/index?__pp_route=tracking-refresh" },
+    { "source": "/api/landing-create", "destination": "/api/index?__pp_route=landing-create" },
     { "source": "/api/v1/analyze", "destination": "/api/index?__pp_route=v1-analyze" },
     { "source": "/api/v1/build", "destination": "/api/index?__pp_route=v1-build" },
     { "source": "/api/v1/share", "destination": "/api/index?__pp_route=v1-share" },

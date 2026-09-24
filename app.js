@@ -58,4 +58,14 @@ presets.forEach(btn => {
   btn.addEventListener("click", () => setPreset(btn.dataset.preset));
 });
 
+function loadLandingHub(){
+  if(document.querySelector('script[data-pp-landing-hub]'))return;
+  const script=document.createElement('script');
+  script.src='/landing-hub.js?v=20260924a';
+  script.defer=true;
+  script.dataset.ppLandingHub='1';
+  document.body.appendChild(script);
+}
+
 updateBuilder();
+loadLandingHub();
