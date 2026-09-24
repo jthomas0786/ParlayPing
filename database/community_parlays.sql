@@ -22,7 +22,7 @@ create table if not exists public.community_parlays (
   constraint community_parlays_x_length check (x_username is null or char_length(x_username) <= 50),
   constraint community_parlays_leg_count check (leg_count between 1 and 25),
   constraint community_parlays_legs_array check (jsonb_typeof(legs) = 'array' and jsonb_array_length(legs) between 1 and 25),
-  constraint community_parlays_builder_url check (builder_url ~ '^https://parlayping\\.net/build/')
+  constraint community_parlays_builder_url check (builder_url ~ '^https://parlayping\.net/build/')
 );
 
 alter table public.community_parlays enable row level security;
@@ -30,6 +30,8 @@ alter table public.community_parlays enable row level security;
 revoke all on table public.community_parlays from anon, authenticated;
 grant select (id, share_token, builder_url, title, author_name, x_username, sport, leg_count, legs, sportsbook, is_active, created_at, updated_at)
   on table public.community_parlays to anon, authenticated;
+-- Authenticated owner filtering/upserts use user_id internally. Keep it hidden from anon.
+grant select (user_id) on table public.community_parlays to authenticated;
 grant insert, update, delete on table public.community_parlays to authenticated;
 
 create policy "community parlays are publicly readable"
