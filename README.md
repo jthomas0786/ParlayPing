@@ -50,6 +50,12 @@ The risk builder only offers sportsbook alternatives actually present in the odd
 
 Copy the names from `.env.example` into the ParlayPing Vercel project's Environment Variables. Never commit real credentials.
 
+Required for exact sportsbook betslip enrichment:
+
+- `ODDS_API_KEY` — server-side The Odds API key used only on demand to resolve sportsbook-native selection IDs/deeplinks. Keep it private in Vercel.
+
+ParlayPing keeps its primary odds feed separate from this enrichment layer and only builds an exact sportsbook betslip when every leg resolves to verified sportsbook-native metadata.
+
 Required for X dry-run ingestion:
 
 - `X_USERNAME=ParlayPing`
