@@ -31,9 +31,17 @@ function normalizeSport(value){
   const aliases={CFB:'NCAAF',COLLEGEFOOTBALL:'NCAAF',NCAAFOOTBALL:'NCAAF',PROFOOTBALL:'NFL',BASEBALL:'MLB',PROBASEBALL:'MLB',MAJORLEAGUEBASEBALL:'MLB',HOCKEY:'NHL',PROHOCKEY:'NHL',NATIONALHOCKEYLEAGUE:'NHL',BASKETBALL:'NBA',PROBASKBALL:'NBA',PROBASKETBALL:'NBA',COLLEGEBASKETBALL:'NCAAB',NCAAM:'NCAAB',NCAAMBB:'NCAAB',WOMENSNBA:'WNBA',UFC:'MMA',MIXEDMARTIALARTS:'MMA',TABLETENNIS:'TABLE_TENNIS',PINGPONG:'TABLE_TENNIS',EPL:'SOCCER',PREMIERLEAGUE:'SOCCER',MLS:'SOCCER',CS2:'ESPORTS',COUNTERSTRIKE:'ESPORTS',COUNTERSTRIKE2:'ESPORTS',VALORANT:'ESPORTS',LEAGUEOFLEGENDS:'ESPORTS',LOL:'ESPORTS',DOTA:'ESPORTS',DOTA2:'ESPORTS',VOLLEYBALL:'VOLLEYBALL',CRICKET:'CRICKET',NRL:'RUGBY_LEAGUE',RUGBYLEAGUE:'RUGBY_LEAGUE',AFL:'AFL',AUSSIERULES:'AFL',AUSTRALIANRULES:'AFL',BOXING:'BOXING',GOLF:'GOLF',PGA:'GOLF',DPWORLD:'GOLF',LIVGOLF:'GOLF'};
   return aliases[raw]||raw||'NFL';
 }
+function explicitQuoteFields(input){
+  const rawOdds=input?.oddsAmerican==null?null:Number(input.oddsAmerican);
+  return {
+    oddsAmerican:Number.isFinite(rawOdds)&&rawOdds!==0&&Math.abs(rawOdds)>=100&&Math.abs(rawOdds)<=100000?Math.round(rawOdds):null,
+    sportsbook:input?.sportsbook?String(input.sportsbook).trim().slice(0,80):null
+  };
+}
 function normalizeUniversalLeg(input,index){
   const sport=normalizeSport(input?.sport);
-  if(sport==='NFL') return normalizeLeg({...input,sport:'NFL'},index);
+  const quote=explicitQuoteFields(input);
+  if(sport==='NFL') return {...normalizeLeg({...input,sport:'NFL'},index),...quote};
   return {
     id:input?.id||`${sport.toLowerCase()}-${index+1}`,
     sport,
@@ -44,7 +52,8 @@ function normalizeUniversalLeg(input,index){
     side:String(input?.side||'over').toLowerCase(),
     line:input?.line==null?null:Number(input.line),
     inclusive:Boolean(input?.inclusive),
-    originalText:input?.originalText||null
+    originalText:input?.originalText||null,
+    ...quote
   };
 }
 function unsupportedResult(leg){

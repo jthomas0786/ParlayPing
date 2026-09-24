@@ -68,6 +68,9 @@ function sanitizeLeg(raw) {
   const line = raw.line == null ? null : Number(raw.line);
   if (!binary && !Number.isFinite(line)) return null;
   if (Number.isFinite(line) && (line < 0 || line > 100000)) return null;
+  const rawOdds = raw.oddsAmerican == null ? null : Number(raw.oddsAmerican);
+  const oddsAmerican = Number.isFinite(rawOdds) && rawOdds !== 0 && Math.abs(rawOdds) >= 100 && Math.abs(rawOdds) <= 100000 ? Math.round(rawOdds) : null;
+  const sportsbook = raw.sportsbook ? String(raw.sportsbook).trim().slice(0, 80) : null;
   return {
     sport,
     player,
@@ -76,7 +79,9 @@ function sanitizeLeg(raw) {
     side,
     line: binary && raw.line == null ? null : line,
     inclusive: binary ? true : Boolean(raw.inclusive),
-    originalText: String(raw.originalText || '').trim().slice(0, 240)
+    originalText: String(raw.originalText || '').trim().slice(0, 240),
+    oddsAmerican,
+    sportsbook
   };
 }
 function dedupeLegs(rawLegs) {
@@ -213,7 +218,7 @@ async function aiParse({ text, mediaUrls = [] }) {
     'Classify EACH leg by sport/league. Do not force a college player into a pro league. Use NCAAF for NCAA/college football, NBA for NBA, WNBA for WNBA, NCAAB for NCAA/college basketball, MLB for Major League Baseball, NHL for National Hockey League, SOCCER for soccer, TENNIS for tennis, MMA for UFC/MMA, ESPORTS for esports, and TABLE_TENNIS for table tennis or ping pong. A mixed-sport slip may contain different sports on different legs.',
     'If the league is visibly shown, use it. If it is not shown, use player/team/market context only when confident; otherwise use OTHER.',
     'Never invent or repair a player, line, team, market, or side that is not supported by the visible content.',
-    'Treat each visible wager selection as one leg. Ignore odds, stake, payout, boosts, sportsbook branding, game totals, spreads, unrelated team/game moneylines, settled icons, cash-out text, and promotional copy. Tennis/Table Tennis explicit player match-winner selections and MMA fighter-winner selections are valid legs and should not be discarded as generic moneylines.',
+    'Treat each visible wager selection as one leg. Preserve a leg-level American price only when that price is visibly bound to that exact selection. Preserve the sportsbook name only when the screenshot clearly identifies the book containing that selection. Never use overall parlay odds, stake, payout, boost value, or a nearby selection price as a leg price. Ignore unrelated game totals, spreads, team/game moneylines, settled icons, cash-out text, and promotional copy. Tennis/Table Tennis explicit player match-winner selections and MMA fighter-winner selections are valid legs and should not be discarded as generic moneylines.',
     'If the same leg appears more than once because of repeated UI elements, output it only once.',
     'Canonical football markets: receiving yards=recYds, rushing yards=rushYds, passing yards=passYds, receptions=receptions, passing touchdowns=passTds, completions=completions, anytime touchdown=atd.',
     'Canonical basketball markets for NBA/WNBA/NCAAB: points=points, rebounds=rebounds, assists=assists, made three-pointers=threes, steals=steals, blocks=blocks, turnovers=turnovers, points+rebounds+assists=pra, points+rebounds=ptsRebs, points+assists=ptsAsts, rebounds+assists=rebsAsts, double-double=doubleDouble (yes/no binary), triple-double=tripleDouble (yes/no binary).',
@@ -232,9 +237,9 @@ async function aiParse({ text, mediaUrls = [] }) {
       type:'object', additionalProperties:false,
       properties:{
         sport:{type:'string',enum:SPORT_ENUM}, player:{type:'string'}, team:{type:['string','null']}, market:{type:'string'},
-        side:{type:'string',enum:['over','under','yes','no']}, line:{type:['number','null']}, inclusive:{type:'boolean'}, originalText:{type:'string'}
+        side:{type:'string',enum:['over','under','yes','no']}, line:{type:['number','null']}, inclusive:{type:'boolean'}, originalText:{type:'string'}, oddsAmerican:{type:['integer','null']}, sportsbook:{type:['string','null']}
       },
-      required:['sport','player','team','market','side','line','inclusive','originalText']
+      required:['sport','player','team','market','side','line','inclusive','originalText','oddsAmerican','sportsbook']
     }}}
     ,required:['legs']
   };
