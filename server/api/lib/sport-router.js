@@ -1,6 +1,6 @@
 const { analyzeSlip: analyzeNflSlip, normalizeLeg, encodeSlip } = require('./parlay-engine');
 const { analyzeNcaafSlip } = require('./ncaaf-engine');
-const { analyzeMlbSlip } = require('./mlb-engine-v2');
+const { analyzeMlbSlip } = require('./mlb-engine-v3');
 const { analyzeNhlSlip } = require('./nhl-engine');
 const { applyCorrelationSafety } = require('./analysis-safety');
 const { analyzeBasketballSlip } = require('../../lib/basketball-adapter');
