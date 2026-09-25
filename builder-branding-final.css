@@ -1,4 +1,4 @@
-/* Final branding pass requested by JT. Loaded after all other builder layers. */
+/* Final ParlayPing branding layer. Only the approved wordmark and approved icon are rendered. */
 
 .brand,
 .brand::before,
@@ -7,7 +7,7 @@
   mix-blend-mode:normal!important;
 }
 .brand .pp-acceptance-lockup{
-  content:url('/parlayping-approved-builder-header.webp')!important;
+  content:url('/parlayping-approved-wordmark.webp')!important;
   width:268px!important;
   max-width:46vw!important;
   height:auto!important;
@@ -17,6 +17,11 @@
   filter:none!important;
   mix-blend-mode:normal!important;
   isolation:isolate!important;
+}
+.profile-button[data-signed-out-profile="true"] svg{
+  width:23px;
+  height:23px;
+  display:block;
 }
 
 .concept-hero.pp-acceptance-hero{position:relative!important;isolation:isolate!important}
