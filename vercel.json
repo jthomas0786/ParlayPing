@@ -6,14 +6,16 @@
     "X_AUTOREPLY_ENABLED": "true"
   },
   "redirects": [
-    { "source": "/parlayping-approved-lockup.svg", "destination": "/parlayping-approved-wordmark.webp", "permanent": true },
-    { "source": "/parlayping-logo.svg", "destination": "/parlayping-approved-wordmark.webp", "permanent": true },
-    { "source": "/parlayping-approved-logo.png", "destination": "/parlayping-approved-wordmark.webp", "permanent": true },
-    { "source": "/parlayping-approved-builder-header.webp", "destination": "/parlayping-approved-wordmark.webp", "permanent": true },
+    { "source": "/parlayping-approved-wordmark.webp", "destination": "/brand/parlayping-wordmark.png", "permanent": false },
+    { "source": "/parlayping-approved-lockup.svg", "destination": "/brand/parlayping-wordmark.png", "permanent": false },
+    { "source": "/parlayping-logo.svg", "destination": "/brand/parlayping-wordmark.png", "permanent": false },
+    { "source": "/parlayping-approved-logo.png", "destination": "/brand/parlayping-wordmark.png", "permanent": false },
+    { "source": "/parlayping-approved-builder-header.webp", "destination": "/brand/parlayping-wordmark.png", "permanent": false },
     { "source": "/parlayping-mark.svg", "destination": "/parlayping-approved-hero.webp", "permanent": true },
     { "source": "/favicon.svg", "destination": "/parlayping-approved-hero.webp", "permanent": true }
   ],
   "rewrites": [
+    { "source": "/brand/parlayping-wordmark.png", "destination": "/api/index?__pp_route=brand-wordmark" },
     { "source": "/api/analyze", "destination": "/api/index?__pp_route=analyze" },
     { "source": "/api/parse", "destination": "/api/index?__pp_route=parse" },
     { "source": "/api/status", "destination": "/api/index?__pp_route=status" },

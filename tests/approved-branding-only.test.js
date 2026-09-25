@@ -38,6 +38,26 @@ test('legacy logo entrypoints can only render the two approved designs',()=>{
   assert.doesNotMatch(lockup,/BET SMARTER TOGETHER/);
 });
 
+test('approved wordmark is served from clean PNG data instead of the compressed tinted WebP bytes',()=>{
+  const api=read('api/index.js');
+  const vercel=JSON.parse(read('vercel.json'));
+  const endpoint=read('server/api/brand-wordmark.js');
+  const renderer=read('server/api/lib/share-renderer.js');
+  const redirect=vercel.redirects.find(item=>item.source==='/parlayping-approved-wordmark.webp');
+  const route=vercel.rewrites.find(item=>item.source==='/brand/parlayping-wordmark.png');
+  assert.match(api,/brand-wordmark/);
+  assert.ok(redirect);
+  assert.equal(redirect.destination,'/brand/parlayping-wordmark.png');
+  assert.equal(redirect.permanent,false);
+  assert.ok(route);
+  assert.equal(route.destination,'/api/index?__pp_route=brand-wordmark');
+  assert.match(endpoint,/approved-wordmark-data/);
+  assert.match(endpoint,/Content-Type/);
+  assert.match(endpoint,/image\/png/);
+  assert.match(renderer,/approvedWordmarkData/);
+  assert.doesNotMatch(renderer,/localAssetDataUri\('parlayping-approved-lockup\.svg'/);
+});
+
 test('signed-out account badges never visibly expose owner initials',()=>{
   const landing=read('app.js');
   const builderJs=read('builder-branding-final.js');
