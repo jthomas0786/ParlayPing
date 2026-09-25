@@ -66,7 +66,7 @@ const snapshot=()=>page.evaluate(()=>{
 
 const before=await snapshot();
 if(before.shell.width<900||before.shell.width>1200)throw new Error(`desktop shell width drift: ${before.shell.width}`);
-if(before.brandSrc!=='/parlayping-approved-lockup.svg')throw new Error(`approved header lockup missing: ${before.brandSrc}`);
+if(before.brandSrc!=='/parlayping-approved-wordmark.webp')throw new Error(`approved header wordmark missing: ${before.brandSrc}`);
 if(before.legacyBrand!==0)throw new Error(`legacy header wordmark survived: ${before.legacyBrand}`);
 if(before.heroWatermarkDisplay!=='none'||before.heroTools!==3)throw new Error('hero regressed');
 if(before.groups!==2||before.legRows!==3)throw new Error(`game grouping failed: ${before.groups}/${before.legRows}`);
