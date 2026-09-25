@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { finiteOrNull, probabilityOrNull } = require('./share-slip');
 const { isTrustedImageUrl } = require('./headshot-ensure');
+const approvedWordmarkData = require('./approved-wordmark-data');
 
 const WIDTH = 1200;
 const HEIGHT = 675;
@@ -204,7 +205,7 @@ function statusColor(status) {
 }
 
 function approvedWordmarkSvg(x, y, width = 318, height = 82) {
-  const href = localAssetDataUri('parlayping-approved-lockup.svg', 'image/svg+xml');
+  const href = approvedWordmarkData;
   if (!href) return `<text x="${x}" y="${y+48}" font-family="Arial,sans-serif" font-size="42" font-weight="900" fill="#f7fbff">Parlay<tspan fill="#20e8c1">Ping</tspan></text>`;
   return `<image href="${href}" x="${x}" y="${y}" width="${width}" height="${height}" preserveAspectRatio="xMinYMid meet"/>`;
 }
