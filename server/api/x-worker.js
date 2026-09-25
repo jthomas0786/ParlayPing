@@ -1,14 +1,22 @@
 const crypto = require('crypto');
 const { parseSlip } = require('../lib/slip-parser-wrapper');
 const { analyzeMultiSport } = require('./lib/sport-router');
+const { enrichSportsbookMarkets } = require('./lib/sportsbook-enrich');
 const { applyCorrelationSafety, replyReadiness, buildPublicReply } = require('./lib/analysis-safety');
 const { claimMention, markMentionReplied, markMentionError, releaseMention } = require('./lib/x-idempotency');
 const { tryBuildXShareBundle } = require('./lib/x-share-bundle');
 const { hasExplicitMention, hasVisibleBodyMention } = require('./lib/x-explicit-mention');
+const {
+  parseMentionCommand,
+  applyMentionCommand,
+  mergeAnalyzedContext,
+  commandReplyText
+} = require('./lib/x-mention-command');
 
 const X_API = 'https://api.x.com/2';
 const X_USERNAME = process.env.X_USERNAME || 'ParlayPing';
 const ANALYSIS_ADAPTERS=['NFL','NCAAF','MLB','NHL','NBA','NCAAB','WNBA','SOCCER','TENNIS','MMA','ESPORTS','TABLE_TENNIS','VOLLEYBALL','CRICKET','RUGBY_LEAGUE','AFL','BOXING','GOLF'];
+
 function pct(value){return encodeURIComponent(String(value)).replace(/!/g,'%21').replace(/'/g,'%27').replace(/\(/g,'%28').replace(/\)/g,'%29').replace(/\*/g,'%2A');}
 function oauthCredentials(){const apiKey=process.env.X_API_KEY,apiSecret=process.env.X_API_SECRET,accessToken=process.env.X_ACCESS_TOKEN,accessTokenSecret=process.env.X_ACCESS_TOKEN_SECRET;if(!apiKey||!apiSecret||!accessToken||!accessTokenSecret)throw new Error('X OAuth 1.0a credentials are incomplete. Configure X_API_KEY, X_API_SECRET, X_ACCESS_TOKEN, and X_ACCESS_TOKEN_SECRET.');return{apiKey,apiSecret,accessToken,accessTokenSecret};}
 function xTimeoutMs(){const configured=Number(process.env.X_REQUEST_TIMEOUT_MS);return Number.isFinite(configured)?Math.max(3000,Math.min(30000,Math.round(configured))):12000;}
@@ -19,7 +27,38 @@ async function probeXAuth(){const me=await xGet('/users/me?user.fields=id,userna
 async function resolveBotUserId(){if(process.env.X_USER_ID)return String(process.env.X_USER_ID);return (await probeXAuth()).userId;}
 function replyTarget(tweet){return (tweet?.referenced_tweets||[]).find(r=>r.type==='replied_to')?.id||(tweet?.referenced_tweets||[]).find(r=>r.type==='quoted')?.id||null;}
 function collectMediaUrls(tweet,mediaByKey){const out=[];for(const key of tweet?.attachments?.media_keys||[]){const media=mediaByKey.get(String(key));const url=media?.url||media?.preview_image_url;if(url)out.push(url);}return out;}
-function buildMentionInput(mention,parent,mediaByKey){const tweets=[parent,mention].filter(Boolean),textParts=[],mediaUrls=[],seenMedia=new Set();for(const tweet of tweets){const value=String(tweet?.text||'').trim();if(value&&!textParts.includes(value))textParts.push(value);for(const url of collectMediaUrls(tweet,mediaByKey)){if(seenMedia.has(url))continue;seenMedia.add(url);mediaUrls.push(url);if(mediaUrls.length>=4)break;}if(mediaUrls.length>=4)break;}return{text:textParts.join('\n'),mediaUrls,referenceTime:parent?.created_at||mention?.created_at||null,sourceMode:parent?'parent-plus-mention':'direct-mention'};}
+
+function buildMentionInput(mention,parent,mediaByKey){
+  const command=parseMentionCommand(mention?.text,X_USERNAME);
+  const tweets=[parent,mention].filter(Boolean),mediaUrls=[],seenMedia=new Set();
+  for(const tweet of tweets){
+    for(const url of collectMediaUrls(tweet,mediaByKey)){
+      if(seenMedia.has(url))continue;
+      seenMedia.add(url);mediaUrls.push(url);
+      if(mediaUrls.length>=4)break;
+    }
+    if(mediaUrls.length>=4)break;
+  }
+
+  let text='';
+  if(command.recognized&&parent){
+    text=String(parent?.text||'').trim();
+  }else if(command.recognized&&!parent&&mediaUrls.length){
+    text='';
+  }else{
+    const textParts=[];
+    for(const tweet of tweets){const value=String(tweet?.text||'').trim();if(value&&!textParts.includes(value))textParts.push(value);}
+    text=textParts.join('\n');
+  }
+  return {
+    text,
+    mediaUrls,
+    referenceTime:parent?.created_at||mention?.created_at||null,
+    sourceMode:parent?'parent-plus-mention':'direct-mention',
+    command
+  };
+}
+
 function hasCurrentMention(mention){return hasExplicitMention(mention?.text,X_USERNAME);}
 function isActionableMention(mention,replied,botUserId,options={}){
   if(replied.has(String(mention?.id))||mention?.possibly_sensitive||/\b(stop|unsubscribe|opt\s*out)\b/i.test(mention?.text||''))return false;
@@ -37,9 +76,46 @@ function isActionableMention(mention,replied,botUserId,options={}){
   }
   return true;
 }
+
 async function hydrateMissingParents(mentions,includesTweets,mediaByKey){const missing=[...new Set(mentions.map(replyTarget).filter(Boolean).map(String).filter(id=>!includesTweets.has(id)))];if(!missing.length)return;const q=new URLSearchParams({ids:missing.join(','),'tweet.fields':'author_id,attachments,created_at,conversation_id,possibly_sensitive,referenced_tweets,text',expansions:'attachments.media_keys','media.fields':'media_key,type,url,preview_image_url'});const fetched=await xGet(`/tweets?${q}`);for(const tweet of fetched.data||[])includesTweets.set(String(tweet.id),tweet);for(const media of fetched.includes?.media||[])mediaByKey.set(String(media.media_key),media);}
 async function getContext(userId){const q=new URLSearchParams({max_results:'20','tweet.fields':'author_id,attachments,created_at,conversation_id,possibly_sensitive,referenced_tweets,text',expansions:'author_id,attachments.media_keys,referenced_tweets.id,referenced_tweets.id.attachments.media_keys','media.fields':'media_key,type,url,preview_image_url','user.fields':'username,name'});const mentions=await xGet(`/users/${userId}/mentions?${q}`);const own=await xGet(`/users/${userId}/tweets?max_results=100&tweet.fields=referenced_tweets,created_at,conversation_id`);const replied=new Set(),botConversations=new Set();for(const tweet of own.data||[]){const conversationId=String(tweet?.conversation_id||'');if(conversationId)botConversations.add(conversationId);for(const ref of tweet.referenced_tweets||[])if(ref.type==='replied_to')replied.add(String(ref.id));}return{mentions,replied,botConversations};}
-async function probeMentions(){const userId=await resolveBotUserId();const{mentions,replied,botConversations}=await getContext(userId);const users=new Map((mentions.includes?.users||[]).map(user=>[String(user.id),user]));const includesTweets=new Map((mentions.includes?.tweets||[]).map(t=>[String(t.id),t]));const mediaByKey=new Map((mentions.includes?.media||[]).map(m=>[String(m.media_key),m]));const rows=(mentions.data||[]).slice(0,20);await hydrateMissingParents(rows,includesTweets,mediaByKey);return rows.map(mention=>{const author=users.get(String(mention.author_id));const parentId=replyTarget(mention),parent=parentId?includesTweets.get(String(parentId)):null;return{mentionId:String(mention.id),authorId:String(mention.author_id||''),authorUsername:author?.username||null,createdAt:mention.created_at||null,conversationId:mention.conversation_id||null,parentId:parentId||null,possiblySensitive:Boolean(mention.possibly_sensitive),alreadyReplied:replied.has(String(mention.id)),explicitMention:hasCurrentMention(mention),visibleBodyMention:hasVisibleBodyMention(mention?.text,X_USERNAME),conversationAlreadyHasBot:botConversations.has(String(mention?.conversation_id||'')),eligible:isActionableMention(mention,replied,userId,{parent,botConversations}),text:String(mention.text||'').slice(0,500),references:mention.referenced_tweets||[]};});}
+async function probeMentions(){const userId=await resolveBotUserId();const{mentions,replied,botConversations}=await getContext(userId);const users=new Map((mentions.includes?.users||[]).map(user=>[String(user.id),user]));const includesTweets=new Map((mentions.includes?.tweets||[]).map(t=>[String(t.id),t]));const mediaByKey=new Map((mentions.includes?.media||[]).map(m=>[String(m.media_key),m]));const rows=(mentions.data||[]).slice(0,20);await hydrateMissingParents(rows,includesTweets,mediaByKey);return rows.map(mention=>{const author=users.get(String(mention.author_id));const parentId=replyTarget(mention),parent=parentId?includesTweets.get(String(parentId)):null;const command=parseMentionCommand(mention?.text,X_USERNAME);return{mentionId:String(mention.id),authorId:String(mention.author_id||''),authorUsername:author?.username||null,createdAt:mention.created_at||null,conversationId:mention.conversation_id||null,parentId:parentId||null,possiblySensitive:Boolean(mention.possibly_sensitive),alreadyReplied:replied.has(String(mention.id)),explicitMention:hasCurrentMention(mention),visibleBodyMention:hasVisibleBodyMention(mention?.text,X_USERNAME),conversationAlreadyHasBot:botConversations.has(String(mention?.conversation_id||'')),eligible:isActionableMention(mention,replied,userId,{parent,botConversations}),commandRecognized:command.recognized,commandText:command.commandText||null,text:String(mention.text||'').slice(0,500),references:mention.referenced_tweets||[]};});}
+
+async function analyzeLegs(legs,baseUrl,referenceTime){
+  const raw=await analyzeMultiSport(legs,{baseUrl,referenceTime});
+  return applyCorrelationSafety(raw);
+}
+
+async function executeMentionCommand(parsedLegs,analysis,command){
+  if(!command?.recognized)return{commandResult:{recognized:false,changed:false,legs:parsedLegs,applied:[],skipped:[],summary:null},effectiveLegs:parsedLegs,analysis};
+  const contextual=mergeAnalyzedContext(parsedLegs,analysis);
+  const enriched=await enrichSportsbookMarkets({legs:contextual});
+  const commandResult=applyMentionCommand({legs:enriched.legs,analysis,command});
+  return{commandResult,effectiveLegs:commandResult.changed?commandResult.legs:parsedLegs,analysis};
+}
+
+async function postReplyWithIdempotency({mention,row,idempotencySecret}){
+  const claim=await claimMention(idempotencySecret,String(mention.id));
+  row.idempotency={claimed:Boolean(claim?.claimed),status:claim?.status||null,replyId:claim?.replyId||null};
+  if(!claim?.claimed){
+    row.status=claim?.status==='replied'?'already-replied':'duplicate-blocked';
+    row.replyId=claim?.replyId||null;
+    return;
+  }
+  try{
+    const posted=await xPost('/tweets',{text:row.replyText,reply:{in_reply_to_tweet_id:String(mention.id)}});
+    const replyId=posted?.data?.id||null;
+    if(!replyId)throw new Error('X post succeeded without returning a reply id.');
+    await markMentionReplied(idempotencySecret,String(mention.id),String(replyId));
+    row.status='replied';row.replyId=replyId;row.idempotency={claimed:true,status:'replied',replyId};
+  }catch(error){
+    try{
+      if(error?.status===429)await releaseMention(idempotencySecret,String(mention.id));
+      else await markMentionError(idempotencySecret,String(mention.id),error?.message||'X post failed.');
+    }catch(idempotencyError){console.error('ParlayPing idempotency finalization',idempotencyError);}
+    throw error;
+  }
+}
 
 async function processMentions({dryRun,idempotencySecret}){
   const userId=await resolveBotUserId();const{mentions,replied,botConversations}=await getContext(userId);const includesTweets=new Map((mentions.includes?.tweets||[]).map(t=>[String(t.id),t]));const mediaByKey=new Map((mentions.includes?.media||[]).map(m=>[String(m.media_key),m]));const initialMentions=(mentions.data||[]).filter(mention=>isActionableMention(mention,replied,userId));await hydrateMissingParents(initialMentions,includesTweets,mediaByKey);
@@ -48,34 +124,60 @@ async function processMentions({dryRun,idempotencySecret}){
   for(const mention of [...actionableMentions].reverse()){
     const parentId=replyTarget(mention),parent=parentId?includesTweets.get(String(parentId)):null;
     if(parent?.possibly_sensitive){candidates.push({mentionId:mention.id,parentId,status:'ignored-sensitive-parent'});continue;}
-    const input=buildMentionInput(mention,parent,mediaByKey),parsed=await parseSlip({text:input.text,mediaUrls:input.mediaUrls});if(!parsed.legs.length){candidates.push({mentionId:mention.id,parentId:parentId||null,status:'unparsed',sourceMode:input.sourceMode,parentAvailable:Boolean(parent),parser:parsed.method,mediaCount:input.mediaUrls.length});continue;}
+    const input=buildMentionInput(mention,parent,mediaByKey);
+    const parsed=await parseSlip({text:input.text,mediaUrls:input.mediaUrls});
+    if(!parsed.legs.length){candidates.push({mentionId:mention.id,parentId:parentId||null,status:'unparsed',sourceMode:input.sourceMode,parentAvailable:Boolean(parent),parser:parsed.method,mediaCount:input.mediaUrls.length,commandRecognized:Boolean(input.command?.recognized),commandText:input.command?.commandText||null});continue;}
+
     const baseUrl=process.env.PUBLIC_BASE_URL||'https://parlayping.net';
-    const raw=await analyzeMultiSport(parsed.legs,{baseUrl,referenceTime:input.referenceTime});
-    const analysis=applyCorrelationSafety(raw),readiness=replyReadiness(analysis);
-    const share=readiness.ready?tryBuildXShareBundle({parsedLegs:parsed.legs,analysis,sourceReference:`x:${parentId||mention.id}`,baseUrl,maxReplyLegs:3}):{ready:false,reason:readiness.reason,shareUrl:null,cardUrl:null,xReplyCardUrl:null,replyText:null};
-    const row={mentionId:mention.id,parentId:parentId||null,status:readiness.ready?'ready':'needs-match',sourceMode:input.sourceMode,parentAvailable:Boolean(parent),parser:parsed.method,sports:parsed.sports||[],mediaCount:input.mediaUrls.length,counts:analysis.counts,readiness,unresolvedLegs:(analysis.results||[]).filter(r=>r?.status==='UNRESOLVED').map(r=>({sport:r.sport||null,player:r.player||null,team:r.team||null,market:r.market||null,side:r.side||null,line:r.line??null,originalText:r.originalText||null,reason:r.resolutionReason||'unresolved-leg'})),correlation:analysis.correlation,combinedTailProbability:analysis.combinedTailProbability,combinedTailProbabilityMethod:analysis.combinedTailProbabilityMethod,tailUrl:analysis.tailUrl,shareReady:Boolean(share.ready),shareReason:share.reason||null,shareUrl:share.shareUrl||null,cardUrl:share.cardUrl||null,xReplyCardUrl:share.xReplyCardUrl||null,replyText:readiness.ready?(share.replyText||buildPublicReply(analysis,{maxLegs:3})):null};
-    if(!dryRun&&readiness.ready&&row.replyText){
-      const claim=await claimMention(idempotencySecret,String(mention.id));
-      row.idempotency={claimed:Boolean(claim?.claimed),status:claim?.status||null,replyId:claim?.replyId||null};
-      if(!claim?.claimed){
-        row.status=claim?.status==='replied'?'already-replied':'duplicate-blocked';
-        row.replyId=claim?.replyId||null;
-      }else{
-        try{
-          const posted=await xPost('/tweets',{text:row.replyText,reply:{in_reply_to_tweet_id:String(mention.id)}});
-          const replyId=posted?.data?.id||null;
-          if(!replyId)throw new Error('X post succeeded without returning a reply id.');
-          await markMentionReplied(idempotencySecret,String(mention.id),String(replyId));
-          row.status='replied';row.replyId=replyId;row.idempotency={claimed:true,status:'replied',replyId};
-        }catch(error){
-          try{
-            if(error?.status===429)await releaseMention(idempotencySecret,String(mention.id));
-            else await markMentionError(idempotencySecret,String(mention.id),error?.message||'X post failed.');
-          }catch(idempotencyError){console.error('ParlayPing idempotency finalization',idempotencyError);}
-          throw error;
-        }
-      }
+    let analysis=await analyzeLegs(parsed.legs,baseUrl,input.referenceTime);
+    const executed=await executeMentionCommand(parsed.legs,analysis,input.command);
+    let effectiveLegs=executed.effectiveLegs;
+    const commandResult=executed.commandResult;
+    if(commandResult.changed) analysis=await analyzeLegs(effectiveLegs,baseUrl,input.referenceTime);
+
+    const readiness=replyReadiness(analysis);
+    let share={ready:false,reason:readiness.reason,shareUrl:null,cardUrl:null,xReplyCardUrl:null,replyText:null};
+    let replyText=null;
+    if(input.command?.recognized&&commandResult.publicMessage&&!commandResult.changed){
+      replyText=commandResult.publicMessage;
+    }else if(readiness.ready){
+      share=tryBuildXShareBundle({parsedLegs:effectiveLegs,analysis,sourceReference:`x:${parentId||mention.id}`,baseUrl,maxReplyLegs:input.command?.recognized?2:3});
+      const baseReply=share.replyText||buildPublicReply(analysis,{maxLegs:input.command?.recognized?2:3});
+      replyText=commandReplyText(baseReply,commandResult);
     }
+
+    const row={
+      mentionId:mention.id,
+      parentId:parentId||null,
+      status:replyText?(share.ready?'ready':'command-response'):(readiness.ready?'ready':'needs-match'),
+      sourceMode:input.sourceMode,
+      parentAvailable:Boolean(parent),
+      parser:parsed.method,
+      sports:[...new Set(effectiveLegs.map(leg=>leg?.sport).filter(Boolean))],
+      mediaCount:input.mediaUrls.length,
+      commandRecognized:Boolean(input.command?.recognized),
+      commandText:input.command?.commandText||null,
+      commandChanged:Boolean(commandResult.changed),
+      commandSummary:commandResult.summary||null,
+      commandApplied:commandResult.applied||[],
+      commandSkipped:commandResult.skipped||[],
+      effectiveLegCount:effectiveLegs.length,
+      counts:analysis.counts,
+      readiness,
+      unresolvedLegs:(analysis.results||[]).filter(r=>r?.status==='UNRESOLVED').map(r=>({sport:r.sport||null,player:r.player||null,team:r.team||null,market:r.market||null,side:r.side||null,line:r.line??null,originalText:r.originalText||null,reason:r.resolutionReason||'unresolved-leg'})),
+      correlation:analysis.correlation,
+      combinedTailProbability:analysis.combinedTailProbability,
+      combinedTailProbabilityMethod:analysis.combinedTailProbabilityMethod,
+      tailUrl:analysis.tailUrl,
+      shareReady:Boolean(share.ready),
+      shareReason:share.reason||null,
+      shareUrl:share.shareUrl||null,
+      cardUrl:share.cardUrl||null,
+      xReplyCardUrl:share.xReplyCardUrl||null,
+      replyText
+    };
+
+    if(!dryRun&&row.replyText)await postReplyWithIdempotency({mention,row,idempotencySecret});
     candidates.push(row);
   }
   return candidates;
@@ -90,3 +192,4 @@ module.exports.buildMentionInput=buildMentionInput;
 module.exports.isActionableMention=isActionableMention;
 module.exports.xTimeoutMs=xTimeoutMs;
 module.exports.processMentions=processMentions;
+module.exports.executeMentionCommand=executeMentionCommand;
