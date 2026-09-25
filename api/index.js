@@ -13,6 +13,7 @@ const loaders={
   'sportsbook-link':()=>require('../server/api/sportsbook-link'),
   'tracking-refresh':()=>require('../server/api/tracking-refresh'),
   'landing-create':()=>require('../server/api/landing-create'),
+  'brand-wordmark':()=>require('../server/api/brand-wordmark'),
   'v1-analyze':()=>require('../server/api/v1/analyze'),
   'v1-build':()=>require('../server/api/v1/build'),
   'v1-share':()=>require('../server/api/v1/share'),
