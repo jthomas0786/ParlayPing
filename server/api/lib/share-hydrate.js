@@ -1,5 +1,5 @@
 const { analyzeMultiSport } = require('./sport-router-live');
-const { mergeAnalysisIntoSlip, probabilityOrNull } = require('./share-slip');
+const { mergeAnalysisIntoSlip, probabilityOrNull, formatProgress } = require('./share-slip');
 const { enrichShareAssets } = require('./share-assets');
 const { ensureHeadshots } = require('./headshot-ensure');
 const { ensureNflOfficialHeadshots } = require('./nfl-headshot-fallback');
@@ -26,6 +26,19 @@ function preserveDisplayProbabilities(slip, analysis) {
   return { ...slip, legs: nextLegs };
 }
 
+function refreshProgressText(slip) {
+  const legs = Array.isArray(slip?.legs) ? slip.legs : [];
+  if (!legs.length) return slip;
+  const nextLegs = legs.map(leg => {
+    const current = Number(leg?.current);
+    const target = Number(leg?.target ?? leg?.line);
+    if (!Number.isFinite(current) || !Number.isFinite(target)) return leg;
+    const progressText = formatProgress({ ...leg, current, target, progressText:null });
+    return progressText ? { ...leg, progressText } : leg;
+  });
+  return { ...slip, legs: nextLegs };
+}
+
 async function withAssets(slip) {
   let enriched = slip;
   try {
@@ -48,7 +61,7 @@ async function hydrateSharedSlip(slip, options = {}) {
       referenceTime: options.referenceTime || slip.createdAt || null,
       now: options.now,
     });
-    const merged = preserveDisplayProbabilities(mergeAnalysisIntoSlip(slip, analysis), analysis);
+    const merged = refreshProgressText(preserveDisplayProbabilities(mergeAnalysisIntoSlip(slip, analysis), analysis));
     return {
       slip: await withAssets(merged),
       analysis,
@@ -56,7 +69,7 @@ async function hydrateSharedSlip(slip, options = {}) {
       error: null,
     };
   } catch (error) {
-    const merged = mergeAnalysisIntoSlip(slip, {});
+    const merged = refreshProgressText(mergeAnalysisIntoSlip(slip, {}));
     return {
       slip: await withAssets(merged),
       analysis:null,
@@ -66,4 +79,4 @@ async function hydrateSharedSlip(slip, options = {}) {
   }
 }
 
-module.exports = { hydrateSharedSlip, withAssets, preserveDisplayProbabilities };
+module.exports = { hydrateSharedSlip, withAssets, preserveDisplayProbabilities, refreshProgressText };
