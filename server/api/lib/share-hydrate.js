@@ -1,4 +1,4 @@
-const { analyzeMultiSport } = require('./sport-router');
+const { analyzeMultiSport } = require('./sport-router-live');
 const { mergeAnalysisIntoSlip, probabilityOrNull } = require('./share-slip');
 const { enrichShareAssets } = require('./share-assets');
 const { ensureHeadshots } = require('./headshot-ensure');
