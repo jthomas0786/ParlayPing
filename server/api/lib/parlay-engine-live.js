@@ -39,14 +39,28 @@ function liveLegResult(row, current, state) {
   return state === 'in' ? 'LIVE' : 'PENDING';
 }
 
+function unavailableLiveResult(row, state, reason) {
+  return {
+    ...row,
+    gameState: state,
+    status: state === 'post' ? 'UNRESOLVED' : state === 'in' ? 'LIVE' : row?.status,
+    current: null,
+    liveData: false,
+    liveDataUnavailable: true,
+    liveDataUnavailableReason: reason,
+  };
+}
+
 function overlayLiveResult(row, snapshot) {
   const liveGame = gameById(snapshot, row?.gameId);
   if (!liveGame) return row;
   const state = gameState(liveGame);
   if (state === 'pre') return { ...row, gameState: 'pre' };
   const market = normalizeLiveMarket(row?.market);
-  const player = livePlayer(liveGame, row?.player);
+  const player = livePlayer(liveGame, row?.player, row?.team);
+  if (!player) return unavailableLiveResult(row, state, 'player-not-found-in-live-box-score');
   const current = liveValue(player, market);
+  if (!Number.isFinite(current)) return unavailableLiveResult(row, state, 'market-not-found-in-live-box-score');
   const status = liveLegResult(row, current, state);
   return {
     ...row,
@@ -113,5 +127,6 @@ module.exports = {
   analyzeSlip,
   normalizeLiveMarket,
   liveLegResult,
+  unavailableLiveResult,
   overlayLiveResult
 };

@@ -97,7 +97,8 @@ function livePlayer(game, playerName, expectedTeam = null) {
 }
 
 function liveValue(player, market) {
-  const flat = player?.flat || {};
+  if (!player || typeof player !== 'object') return null;
+  const flat = player.flat || {};
   const rushYds = number(flat.rushYds) ?? 0;
   const recYds = number(flat.recYds) ?? 0;
   const rushTds = number(flat.rushTds) ?? 0;
@@ -113,10 +114,7 @@ function liveValue(player, market) {
     case 'recTds': return recTds;
     case 'completions': return completions(flat.compAtt) ?? 0;
     case 'atd': return rushTds + recTds;
-    default: {
-      const value = number(flat[market]);
-      return value == null ? 0 : value;
-    }
+    default: return number(flat[market]);
   }
 }
 
