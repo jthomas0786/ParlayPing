@@ -96,25 +96,34 @@ function livePlayer(game, playerName, expectedTeam = null) {
   return candidates[0] || null;
 }
 
+function explicitNumber(flat, key) {
+  if (!flat || !Object.prototype.hasOwnProperty.call(flat, key)) return null;
+  return number(flat[key]);
+}
+
 function liveValue(player, market) {
   if (!player || typeof player !== 'object') return null;
   const flat = player.flat || {};
-  const rushYds = number(flat.rushYds) ?? 0;
-  const recYds = number(flat.recYds) ?? 0;
-  const rushTds = number(flat.rushTds) ?? 0;
-  const recTds = number(flat.recTds) ?? 0;
   switch (market) {
-    case 'recYds': return recYds;
-    case 'rushYds': return rushYds;
-    case 'rushRecYds': return rushYds + recYds;
-    case 'passYds': return number(flat.passYds) ?? 0;
-    case 'receptions': return number(flat.receptions) ?? 0;
-    case 'passTds': return number(flat.passTds) ?? 0;
-    case 'rushTds': return rushTds;
-    case 'recTds': return recTds;
-    case 'completions': return completions(flat.compAtt) ?? 0;
-    case 'atd': return rushTds + recTds;
-    default: return number(flat[market]);
+    case 'recYds': return explicitNumber(flat, 'recYds');
+    case 'rushYds': return explicitNumber(flat, 'rushYds');
+    case 'rushRecYds': {
+      const rushYds = explicitNumber(flat, 'rushYds');
+      const recYds = explicitNumber(flat, 'recYds');
+      return Number.isFinite(rushYds) && Number.isFinite(recYds) ? rushYds + recYds : null;
+    }
+    case 'passYds': return explicitNumber(flat, 'passYds');
+    case 'receptions': return explicitNumber(flat, 'receptions');
+    case 'passTds': return explicitNumber(flat, 'passTds');
+    case 'rushTds': return explicitNumber(flat, 'rushTds');
+    case 'recTds': return explicitNumber(flat, 'recTds');
+    case 'completions': return Object.prototype.hasOwnProperty.call(flat, 'compAtt') ? completions(flat.compAtt) : null;
+    case 'atd': {
+      const rushTds = explicitNumber(flat, 'rushTds');
+      const recTds = explicitNumber(flat, 'recTds');
+      return Number.isFinite(rushTds) && Number.isFinite(recTds) ? rushTds + recTds : null;
+    }
+    default: return explicitNumber(flat, market);
   }
 }
 

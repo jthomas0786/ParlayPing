@@ -104,6 +104,14 @@ test('ATL @ GB benchmark uses the exact live values for all eight tracked legs',
   }
 });
 
+test('explicit zero is preserved but an absent stat field is never invented as zero', () => {
+  assert.equal(liveValue({ flat:{ receptions:'0' } }, 'receptions'), 0);
+  assert.equal(liveValue({ flat:{ recYds:'0' } }, 'recYds'), 0);
+  assert.equal(liveValue({ flat:{ rushYds:'12' } }, 'recYds'), null);
+  assert.equal(liveValue({ flat:{ rushYds:'12' } }, 'rushRecYds'), null);
+  assert.equal(liveValue({ flat:{ rushTds:'0' } }, 'atd'), null);
+});
+
 test('missing live player data never becomes a fabricated zero', () => {
   assert.equal(liveValue(null, 'receptions'), null);
   const result = overlayLiveResult({
@@ -123,6 +131,27 @@ test('missing live player data never becomes a fabricated zero', () => {
   assert.equal(result.liveData, false);
   assert.equal(result.liveDataUnavailable, true);
   assert.equal(result.liveDataUnavailableReason, 'player-not-found-in-live-box-score');
+});
+
+test('missing live market data stays unknown instead of becoming a fabricated zero', () => {
+  const partialSnapshot = JSON.parse(JSON.stringify(benchmarkSnapshot));
+  partialSnapshot.games['401872948'].playerStats.byId['4360248'].flat = { recYds:'17' };
+  const result = overlayLiveResult({
+    id:'missing-live-market',
+    gameId:'401872948',
+    team:'ATL',
+    player:'Kyle Pitts',
+    market:'receptions',
+    side:'over',
+    line:5,
+    inclusive:true,
+    status:'PENDING',
+    current:0,
+  }, partialSnapshot);
+  assert.equal(result.status, 'LIVE');
+  assert.equal(result.current, null);
+  assert.equal(result.liveDataUnavailable, true);
+  assert.equal(result.liveDataUnavailableReason, 'market-not-found-in-live-box-score');
 });
 
 test('missing final live player data stays unresolved instead of grading a false miss', () => {
