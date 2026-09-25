@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/account.css?v=20260924b">
+  <link rel="stylesheet" href="/account.css?v=20260924c">
 </head>
 <body>
   <header class="site-header">
@@ -65,7 +65,19 @@
           <div class="card-heading"><div><span class="eyebrow">YOUR PROFILE</span><h2>Profile details</h2></div><span class="privacy-pill">YOU CONTROL THIS</span></div>
           <label>Display name<input id="displayName" maxlength="80" placeholder="How your name appears"></label>
           <label>X username<input id="xUsername" maxlength="80" placeholder="ParlayPing"></label>
-          <label>Avatar image URL<input id="avatarUrl" type="url" placeholder="https://..."></label>
+          <div class="avatar-upload-field">
+            <span class="avatar-upload-label">Profile picture</span>
+            <div class="avatar-upload-row">
+              <div id="avatarEditorPreview" class="avatar-editor-preview" aria-hidden="true">PP</div>
+              <div class="avatar-upload-actions">
+                <input id="avatarFile" class="avatar-file-input" type="file" accept="image/*">
+                <label for="avatarFile" class="avatar-file-button">Choose from device</label>
+                <button id="avatarRemoveBtn" class="avatar-remove-button hidden" type="button">Remove photo</button>
+                <small>Choose a photo from your phone or computer. ParlayPing crops it square and optimizes it automatically.</small>
+              </div>
+            </div>
+          </div>
+          <input id="avatarUrl" type="hidden">
           <label>Website <span>(optional)</span><input id="websiteUrl" type="url" placeholder="https://..."></label>
           <button type="submit">Save profile</button>
         </form>
@@ -81,6 +93,6 @@
       <div id="accountStatus" class="status hidden" role="status"></div>
     </section>
   </main>
-  <script src="/account.js?v=20260924b" defer></script>
+  <script src="/account.js?v=20260924c" defer></script>
 </body>
 </html>
