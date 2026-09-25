@@ -1,5 +1,5 @@
 (()=>{
-  const VERSION='20260924c';
+  const VERSION='20260925a';
   const LINKS=[
     {key:'build',label:'Build',icon:'⚡',href:'/'},
     {key:'explore',label:'Explore',icon:'⊕',href:'/#trending'},
@@ -38,7 +38,7 @@
   function markup(){
     return `<header class="pp-app-header" data-pp-app-nav>
       <div class="pp-app-nav-shell">
-        <a class="pp-app-brand" href="/" aria-label="ParlayPing home"><img src="/parlayping-approved-lockup.svg" alt="ParlayPing"></a>
+        <a class="pp-app-brand" href="/" aria-label="ParlayPing home"><img src="/parlayping-approved-wordmark.webp" alt="ParlayPing"></a>
         <nav class="pp-app-nav-links" aria-label="Primary navigation">${LINKS.map(link=>linkHtml(link)).join('')}</nav>
         <button class="pp-app-menu-button" type="button" aria-label="Open navigation" aria-expanded="false" aria-controls="ppAppMobileMenu"><span></span><span></span><span></span></button>
       </div>
