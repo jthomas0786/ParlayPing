@@ -5,7 +5,7 @@ const path=require('node:path');
 
 function read(name){return fs.readFileSync(path.join(__dirname,'..',name),'utf8');}
 
-test('Tracking cards use the approved ParlayPing watermark and linked brand lockup',()=>{
+test('Tracking cards use the approved ParlayPing watermark and linked wordmark',()=>{
   const html=read('profile.html');
   const css=read('tracking-branding.css');
   const js=read('tracking-branding.js');
@@ -14,7 +14,7 @@ test('Tracking cards use the approved ParlayPing watermark and linked brand lock
   assert.match(css,/parlayping-approved-hero\.webp/);
   assert.match(css,/tracking-card::after/);
   assert.match(css,/opacity:\.075/);
-  assert.match(js,/parlayping-approved-lockup\.svg/);
+  assert.match(js,/parlayping-approved-wordmark\.webp/);
   assert.match(css,/\.tracking-brand img[\s\S]*filter:none/);
   assert.match(css,/\.tracking-brand img[\s\S]*mix-blend-mode:normal/);
   assert.match(js,/tracking-brand/);
