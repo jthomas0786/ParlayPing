@@ -60,7 +60,7 @@ const snap=()=>page.evaluate(()=>{
 
 const metrics=await snap();
 if(metrics.acceptance!=='ready')throw new Error(`acceptance layer not ready: ${metrics.acceptance}`);
-if(metrics.brandSrc!=='/parlayping-approved-lockup.svg'||metrics.legacyBrand!==0)throw new Error('approved lockup is not authoritative');
+if(metrics.brandSrc!=='/parlayping-approved-wordmark.webp'||metrics.legacyBrand!==0)throw new Error('approved wordmark is not authoritative');
 if(metrics.heroBeforeDisplay!=='none'||metrics.heroTools!==3)throw new Error('hero regressed');
 if(metrics.gameGroups!==1||metrics.legRows!==2||metrics.gameHeaders.join('|')!=='SEA @ LVA')throw new Error(`same-game grouping failed: ${JSON.stringify(metrics.gameHeaders)}`);
 if(!metrics.players.includes("A'ja Wilson")||!metrics.players.includes('Jackie Young'))throw new Error(`player names missing: ${metrics.players.join(', ')}`);

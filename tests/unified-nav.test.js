@@ -8,7 +8,7 @@ const read=file=>fs.readFileSync(path.join(root,file),'utf8');
 test('shared app navigation exposes all primary ParlayPing destinations',()=>{
   const nav=read('app-nav.js');
   for(const label of ['Build','Explore','Community','Insights','Tracking','Account'])assert.match(nav,new RegExp(`label:'${label}'`));
-  assert.match(nav,/parlayping-approved-lockup\.svg/);
+  assert.match(nav,/parlayping-approved-wordmark\.webp/);
   assert.match(nav,/profile\?tab=community/);
   assert.match(nav,/#communityInsights/);
 });

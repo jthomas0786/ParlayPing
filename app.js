@@ -58,6 +58,23 @@ presets.forEach(btn => {
   btn.addEventListener("click", () => setPreset(btn.dataset.preset));
 });
 
+function neutralizeSignedOutProfile(){
+  document.querySelectorAll('.pp-profile').forEach(node=>{
+    if(String(node.textContent||'').trim().toUpperCase()!=='JT')return;
+    node.innerHTML='<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="8" r="3.25" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M5.5 19c.7-4 3-6 6.5-6s5.8 2 6.5 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+    node.setAttribute('aria-label','Sign in or open account');
+    node.dataset.signedOutProfile='true';
+  });
+}
+
+function watchSignedOutProfile(){
+  neutralizeSignedOutProfile();
+  if(!document.body||typeof MutationObserver!=='function')return;
+  const observer=new MutationObserver(neutralizeSignedOutProfile);
+  observer.observe(document.body,{childList:true,subtree:true});
+  setTimeout(()=>observer.disconnect(),5000);
+}
+
 function loadLandingHub(){
   if(document.querySelector('script[data-pp-landing-hub]'))return;
   const script=document.createElement('script');
@@ -70,12 +87,13 @@ function loadLandingHub(){
 function loadAppNav(){
   if(document.querySelector('script[data-pp-app-nav]'))return;
   const script=document.createElement('script');
-  script.src='/app-nav.js?v=20260924c';
+  script.src='/app-nav.js?v=20260925a';
   script.async=false;
   script.dataset.ppAppNav='1';
   document.body.appendChild(script);
 }
 
 updateBuilder();
+watchSignedOutProfile();
 loadLandingHub();
 loadAppNav();
