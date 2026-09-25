@@ -18,6 +18,8 @@
   mix-blend-mode:normal!important;
   isolation:isolate!important;
 }
+/* Never expose the old owner initials while signed out. JS replaces this hidden text with a neutral account glyph. */
+.profile-button{font-size:0!important}
 .profile-button[data-signed-out-profile="true"] svg{
   width:23px;
   height:23px;
