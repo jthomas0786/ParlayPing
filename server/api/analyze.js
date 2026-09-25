@@ -1,4 +1,4 @@
-const { analyzeMultiSport } = require('./lib/sport-router');
+const { analyzeMultiSport } = require('./lib/sport-router-live');
 const { applyCorrelationSafety, buildPublicReply } = require('./lib/analysis-safety');
 
 function parseBody(req) {
