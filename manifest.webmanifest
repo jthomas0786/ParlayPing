@@ -10,9 +10,9 @@
   "theme_color": "#031421",
   "icons": [
     {
-      "src": "/parlayping-approved-logo.png",
-      "sizes": "any",
-      "type": "image/png",
+      "src": "/parlayping-approved-hero.webp",
+      "sizes": "120x120",
+      "type": "image/webp",
       "purpose": "any maskable"
     }
   ]
