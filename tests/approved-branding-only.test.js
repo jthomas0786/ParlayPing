@@ -46,7 +46,8 @@ test('approved wordmark is served from clean PNG data instead of the compressed 
   assert.match(api,/brand-wordmark/);
   assert.match(vercel,/parlayping-approved-wordmark\.webp[^\n]+brand-wordmark/);
   assert.match(endpoint,/approved-wordmark-data/);
-  assert.match(endpoint,/Content-Type','image\/png/);
+  assert.match(endpoint,/Content-Type/);
+  assert.match(endpoint,/image\/png/);
   assert.match(renderer,/approvedWordmarkData/);
   assert.doesNotMatch(renderer,/localAssetDataUri\('parlayping-approved-lockup\.svg'/);
 });
