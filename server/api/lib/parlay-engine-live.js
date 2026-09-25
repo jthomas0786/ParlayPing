@@ -1,5 +1,5 @@
 const base = require('./parlay-engine');
-const { getNflLiveSnapshot, gameById, gameState, livePlayer, liveValue } = require('./nfl-live-feed');
+const { getNflLiveSnapshot, gameById, gameState, livePlayer, liveValue, finalAtdValue } = require('./nfl-live-feed');
 
 function normalizeLiveMarket(value) {
   const raw = String(value || '').trim();
@@ -59,7 +59,10 @@ function overlayLiveResult(row, snapshot) {
   const market = normalizeLiveMarket(row?.market);
   const player = livePlayer(liveGame, row?.player, row?.team);
   if (!player) return unavailableLiveResult(row, state, 'player-not-found-in-live-box-score');
-  const current = liveValue(player, market);
+  let current = liveValue(player, market);
+  if (!Number.isFinite(current) && market === 'atd' && state === 'post') {
+    current = finalAtdValue(liveGame, row?.player, row?.team);
+  }
   if (!Number.isFinite(current)) return unavailableLiveResult(row, state, 'market-not-found-in-live-box-score');
   const status = liveLegResult(row, current, state);
   return {
