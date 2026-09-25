@@ -76,6 +76,10 @@ function overlayLiveResult(row, snapshot) {
   };
 }
 
+function overlayLiveResults(rows, snapshot) {
+  return (Array.isArray(rows) ? rows : []).map(row => overlayLiveResult(row, snapshot));
+}
+
 function summarize(results) {
   const pending = results.filter(row => row.status === 'PENDING');
   const combinedTailProbability = pending.length && pending.every(row => Number.isFinite(row.probability))
@@ -104,7 +108,7 @@ async function analyzeSlip(rawLegs, options = {}) {
   }
   if (!snapshot?.games) return analysis;
 
-  const results = (analysis.results || []).map(row => row?.status === 'UNRESOLVED' ? row : overlayLiveResult(row, snapshot));
+  const results = overlayLiveResults(analysis.results, snapshot);
   const summary = summarize(results);
   const usedLive = results.some(row => row?.liveData);
   return {
@@ -128,5 +132,6 @@ module.exports = {
   normalizeLiveMarket,
   liveLegResult,
   unavailableLiveResult,
-  overlayLiveResult
+  overlayLiveResult,
+  overlayLiveResults
 };
