@@ -190,5 +190,6 @@ module.exports.probeMentions=probeMentions;
 module.exports.hasCurrentMention=hasCurrentMention;
 module.exports.buildMentionInput=buildMentionInput;
 module.exports.isActionableMention=isActionableMention;
+module.exports.xTimeoutMs=xTimeoutMs;
 module.exports.processMentions=processMentions;
 module.exports.executeMentionCommand=executeMentionCommand;
