@@ -40,11 +40,17 @@ test('legacy logo entrypoints can only render the two approved designs',()=>{
 
 test('approved wordmark is served from clean PNG data instead of the compressed tinted WebP bytes',()=>{
   const api=read('api/index.js');
-  const vercel=read('vercel.json');
+  const vercel=JSON.parse(read('vercel.json'));
   const endpoint=read('server/api/brand-wordmark.js');
   const renderer=read('server/api/lib/share-renderer.js');
+  const redirect=vercel.redirects.find(item=>item.source==='/parlayping-approved-wordmark.webp');
+  const route=vercel.rewrites.find(item=>item.source==='/brand/parlayping-wordmark.png');
   assert.match(api,/brand-wordmark/);
-  assert.match(vercel,/parlayping-approved-wordmark\.webp[^\n]+brand-wordmark/);
+  assert.ok(redirect);
+  assert.equal(redirect.destination,'/brand/parlayping-wordmark.png');
+  assert.equal(redirect.permanent,false);
+  assert.ok(route);
+  assert.equal(route.destination,'/api/index?__pp_route=brand-wordmark');
   assert.match(endpoint,/approved-wordmark-data/);
   assert.match(endpoint,/Content-Type/);
   assert.match(endpoint,/image\/png/);
