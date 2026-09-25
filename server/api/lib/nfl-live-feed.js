@@ -127,6 +127,56 @@ function liveValue(player, market) {
   }
 }
 
+function shortPlayerToken(value) {
+  const parts = normName(value).split(' ').filter(Boolean);
+  if (!parts.length) return '';
+  const first = parts[0] || '';
+  const last = parts[parts.length - 1] || '';
+  return `${first.slice(0, 1)}${last}`;
+}
+
+function isTouchdownPlay(play) {
+  const text = String(play?.text || '');
+  const type = String(play?.type || '');
+  return /touchdown/i.test(text) || /touchdown/i.test(type);
+}
+
+function finalAtdValue(game, playerName, expectedTeam = null) {
+  if (gameState(game) !== 'post') return null;
+  if (!Object.prototype.hasOwnProperty.call(game || {}, 'scoringPlays') || !Array.isArray(game?.scoringPlays)) return null;
+  const player = livePlayer(game, playerName, expectedTeam);
+  if (!player) return null;
+
+  const team = expectedTeam ? normTeam(expectedTeam) : normTeam(player?.team);
+  const wanted = normName(playerName);
+  const token = shortPlayerToken(playerName);
+  if (!wanted || !token) return null;
+
+  const touchdownPlays = game.scoringPlays.filter(play => {
+    if (!isTouchdownPlay(play)) return false;
+    const playTeam = normTeam(play?.team);
+    return !team || !playTeam || playTeam === team;
+  });
+
+  let matched = false;
+  for (const play of touchdownPlays) {
+    const text = normName(play?.text);
+    if (!text) continue;
+    const words = text.split(' ').filter(Boolean);
+    if (text.includes(wanted) || words.includes(token)) {
+      matched = true;
+      break;
+    }
+  }
+  if (!matched) return 0;
+
+  const sameToken = uniquePlayers(game).filter(candidate => {
+    if (team && normTeam(candidate?.team) && normTeam(candidate.team) !== team) return false;
+    return shortPlayerToken(candidate?.name) === token;
+  });
+  return sameToken.length === 1 ? 1 : null;
+}
+
 function resetLiveCache() { cache = { ts: 0, value: null }; }
 
 module.exports = {
@@ -136,6 +186,7 @@ module.exports = {
   gameState,
   livePlayer,
   liveValue,
+  finalAtdValue,
   normLiveName: normName,
   normLiveTeam: normTeam,
   resetLiveCache
