@@ -52,7 +52,7 @@ const snapshot=()=>page.evaluate(()=>{
   const visible=s=>[...document.querySelectorAll(s)].filter(el=>{const style=getComputedStyle(el),r=el.getBoundingClientRect();return style.display!=='none'&&style.visibility!=='hidden'&&r.width>0&&r.height>0;});
   const hero=document.querySelector('.concept-hero');
   return {
-    shell:rect('main.app-shell'),brandSrc:document.querySelector('.pp-acceptance-lockup')?.getAttribute('src')||'',legacyBrand:document.querySelectorAll('.pp-brand-lockup').length,
+    shell:rect('main.app-shell'),brandSrc:document.querySelector('.pp-builder-brand img')?.getAttribute('src')||'',legacyBrand:document.querySelectorAll('.pp-brand-lockup').length,
     heroWatermarkDisplay:getComputedStyle(hero,'::before').display,heroTools:document.querySelectorAll('.concept-hero .hero-tool').length,
     groups:document.querySelectorAll('.pp-game-group').length,groupHeadings:[...document.querySelectorAll('.pp-game-copy strong')].map(el=>el.textContent.trim()),legRows:document.querySelectorAll('.pp-leg-row').length,
     photos:[...document.querySelectorAll('.pp-player-photo')].map(el=>({tag:el.tagName,src:el.getAttribute('src')||'',width:el.getBoundingClientRect().width,height:el.getBoundingClientRect().height})),

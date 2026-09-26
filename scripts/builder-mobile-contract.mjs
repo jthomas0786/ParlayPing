@@ -48,7 +48,7 @@ await page.waitForTimeout(250);
 const snap=()=>page.evaluate(()=>{
   const visible=s=>[...document.querySelectorAll(s)].filter(el=>{const style=getComputedStyle(el),r=el.getBoundingClientRect();return style.display!=='none'&&style.visibility!=='hidden'&&r.width>0&&r.height>0;});
   return {
-    acceptance:document.documentElement.dataset.ppAcceptance,brandSrc:document.querySelector('.pp-acceptance-lockup')?.getAttribute('src')||'',legacyBrand:document.querySelectorAll('.pp-brand-lockup').length,
+    acceptance:document.documentElement.dataset.ppAcceptance,brandSrc:document.querySelector('.pp-builder-brand img')?.getAttribute('src')||'',legacyBrand:document.querySelectorAll('.pp-brand-lockup').length,
     heroBeforeDisplay:getComputedStyle(document.querySelector('.concept-hero'),'::before').display,heroTools:document.querySelectorAll('.concept-hero .hero-tool').length,
     gameGroups:document.querySelectorAll('.pp-game-group').length,gameHeaders:[...document.querySelectorAll('.pp-game-copy strong')].map(el=>el.textContent.trim()),legRows:document.querySelectorAll('.pp-leg-row').length,
     players:[...document.querySelectorAll('.pp-leg-copy strong')].map(el=>el.textContent.trim()),headshots:[...document.querySelectorAll('.pp-player-photo')].map(el=>({tag:el.tagName,src:el.getAttribute('src')||'',width:el.getBoundingClientRect().width,height:el.getBoundingClientRect().height})),
