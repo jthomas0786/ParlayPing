@@ -87,7 +87,7 @@ function loadLandingHub(){
 function loadAppNav(){
   if(document.querySelector('script[data-pp-app-nav]'))return;
   const script=document.createElement('script');
-  script.src='/app-nav.js?v=20260925a';
+  script.src='/app-nav.js?v=20260925b';
   script.async=false;
   script.dataset.ppAppNav='1';
   document.body.appendChild(script);
