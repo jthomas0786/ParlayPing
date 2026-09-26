@@ -1,5 +1,5 @@
 (()=>{
-  if(!document.querySelector('script[data-pp-app-nav]')){const script=document.createElement('script');script.src='/app-nav.js?v=20260924c';script.dataset.ppAppNav='1';document.head.appendChild(script);}
+  if(!document.querySelector('script[data-pp-app-nav]')){const script=document.createElement('script');script.src='/app-nav.js?v=20260925b';script.dataset.ppAppNav='1';document.head.appendChild(script);}
   const $=id=>document.getElementById(id);
   function toast(message){const node=$('profileToast');if(!node)return;node.textContent=message;node.classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>node.classList.remove('show'),2600);}
   function ensureButton(){let button=$('movementAlerts');if(button)return button;const refresh=$('refreshTracking');if(!refresh)return null;const wrap=document.createElement('div');wrap.className='tracking-toolbar-actions';button=document.createElement('button');button.id='movementAlerts';button.type='button';button.className='refresh-button alert-button';button.textContent='🔔 Enable Alerts';wrap.append(button);refresh.parentNode.insertBefore(wrap,refresh);wrap.append(refresh);button.addEventListener('click',enable);return button;}
