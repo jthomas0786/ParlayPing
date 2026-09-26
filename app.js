@@ -87,7 +87,7 @@ function loadLandingHub(){
 function loadHomeTrendingV2(){
   if(document.querySelector('script[data-pp-home-trending-v2]'))return;
   const script=document.createElement('script');
-  script.src='/landing-trending-home-v2.js?v=20260926a';
+  script.src='/landing-trending-home-v2.js?v=20260926b';
   script.async=false;
   script.dataset.ppHomeTrendingV2='1';
   document.body.appendChild(script);
