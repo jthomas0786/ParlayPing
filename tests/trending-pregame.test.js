@@ -36,10 +36,14 @@ test('Trending UI uses stable sport buttons and only requests confirmed future s
   assert.match(hub,/Upcoming only/);
 });
 
-test('discovery route is wrapped by pregame validation and schema migration is committed',()=>{
+test('v7 discovery route still wraps every approved trend with pregame validation',()=>{
   const api=read('api/index.js');
+  const v7=read('server/api/discovery-worker-v2.js');
   const sql=read('sql/trending-betslips-pregame.sql');
-  assert.match(api,/discovery-worker-pregame/);
+  assert.match(api,/'discovery-worker':\(\)=>require\('\.\.\/server\/api\/discovery-worker-v2'\)/);
+  assert.match(v7,/require\('\.\/discovery-worker-pregame'\)/);
+  assert.match(v7,/validateTrend\(row\)/);
+  assert.match(v7,/futurePendingAnalysis/);
   assert.match(sql,/is_pregame_confirmed/);
   assert.match(sql,/event_start_at/);
   assert.match(sql,/parlayping_apply_trending_pregame/);
