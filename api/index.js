@@ -20,6 +20,7 @@ const loaders={
   'x-dry-run':()=>require('../server/api/x-dry-run'),
   'x-scheduler':()=>require('../server/api/x-scheduler'),
   'x-worker':()=>require('../server/api/x-worker'),
+  'discovery-worker':()=>require('../server/api/discovery-worker'),
 };
 
 const accountRoutes=new Set(['account','api-keys','plans','billing-checkout','billing-portal']);
