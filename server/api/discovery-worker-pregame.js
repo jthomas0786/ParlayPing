@@ -96,8 +96,55 @@ function resolveLegFromSnapshot(leg,doc){
   }
   return null;
 }
+
+function responseText(payload){if(typeof payload?.output_text==='string')return payload.output_text;for(const item of payload?.output||[])for(const part of item?.content||[])if(typeof part?.text==='string')return part.text;return '';}
+async function inspectPublicSlip(row){
+  if(!process.env.OPENAI_API_KEY||!row?.media_url)return null;
+  const sports=['NFL','NCAAF','NBA','WNBA','NCAAB','MLB','NHL','UNKNOWN'];
+  const instructions=[
+    'Inspect this public sportsbook betslip screenshot only for event identity and whether the wager is pregame versus already live/settled.',
+    'Extract each distinct sporting event represented by visible selections, including team names when visible and a player name when that is the only useful event clue.',
+    'Do not invent teams, players, dates, status, or sport. Ignore promotional hashtags in the post text when identifying the sport.',
+    'Mark showsLiveOrSettled true if the screenshot visibly shows LIVE, in-game scores/clocks, settled/won/lost results, cash-out progress, completed-leg checkmarks, or similar evidence that any represented event has started.',
+    'A normal unchecked pregame selection is not live. If status is not visibly clear, use UNKNOWN; the server will verify the event against the current slate.'
+  ].join(' ');
+  const schema={type:'object',additionalProperties:false,properties:{showsLiveOrSettled:{type:'boolean'},sport:{type:'string',enum:[...sports,'MIXED']},events:{type:'array',maxItems:12,items:{type:'object',additionalProperties:false,properties:{sport:{type:'string',enum:sports},team1:{type:['string','null']},team2:{type:['string','null']},player:{type:['string','null']},status:{type:'string',enum:['PREGAME','LIVE','SETTLED','UNKNOWN']}},required:['sport','team1','team2','player','status']}}},required:['showsLiveOrSettled','sport','events']};
+  const response=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{'content-type':'application/json',authorization:`Bearer ${process.env.OPENAI_API_KEY}`},signal:AbortSignal.timeout(14000),body:JSON.stringify({model:process.env.OPENAI_MODEL||'gpt-5.6-luna',store:false,reasoning:{effort:'none'},max_output_tokens:1300,input:[{role:'user',content:[{type:'input_text',text:`${instructions}\n\nPublic post text (context only): ${corePostText(row?.text)}`},{type:'input_image',image_url:row.media_url,detail:'high'}]}],text:{format:{type:'json_schema',name:'parlayping_pregame_events',strict:true,schema}}})});
+  const payload=await response.json();if(!response.ok)throw new Error(payload?.error?.message||`Pregame vision failed (${response.status})`);
+  const raw=responseText(payload);return raw?JSON.parse(raw):null;
+}
+async function resolveVisualEvents(inspection){
+  if(!inspection||inspection.showsLiveOrSettled)return {ok:false,reason:'visibly-live-or-settled'};
+  const events=(Array.isArray(inspection.events)?inspection.events:[]).filter(event=>SUPPORTED_SPORTS.has(String(event?.sport||'').toUpperCase()));
+  if(!events.length)return {ok:false,reason:'no-visible-events'};
+  const snapshots=new Map(),resolved=[];
+  for(const event of events){
+    const sport=String(event.sport).toUpperCase();
+    if(['LIVE','SETTLED'].includes(String(event.status||'').toUpperCase()))return {ok:false,reason:'visibly-live-or-settled'};
+    if(!snapshots.has(sport))snapshots.set(sport,await loadPregameSnapshot(sport));
+    const matchup=[event.team1,event.team2].filter(Boolean).join(' @ ');
+    const hit=resolveLegFromSnapshot({sport,player:event.player||'',team:event.team1||event.team2||'',matchup},snapshots.get(sport));
+    if(!hit)return {ok:false,reason:'unconfirmed-visible-event',sport};
+    resolved.push({...hit,sport});
+  }
+  const earliest=Math.min(...resolved.map(item=>Date.parse(item.start)).filter(Number.isFinite));
+  if(!Number.isFinite(earliest)||earliest<=Date.now()+START_BUFFER_MS)return {ok:false,reason:'started'};
+  const sports=[...new Set(resolved.map(item=>item.sport))];
+  const sport=sports.length===1?sports[0]:sports.length>1?'MIXED':String(inspection.sport||'').toUpperCase();
+  const labels=[...new Set(resolved.map(item=>item.label).filter(Boolean))];
+  return {ok:true,sport,event_start_at:new Date(earliest).toISOString(),event_label:labels.length===1?labels[0]:labels.length>1?'Multi-game parlay':null,resolvedCount:resolved.length};
+}
+
 async function validateTrend(row,now=Date.now()){
   const postText=corePostText(row?.text);
+  try{
+    const inspection=await inspectPublicSlip(row);
+    if(inspection){
+      const visual=await resolveVisualEvents(inspection);
+      if(visual.ok)return {ok:true,tweet_id:String(row.tweet_id),sport:visual.sport,event_start_at:visual.event_start_at,event_label:visual.event_label,validation:{method:'visible-events-plus-current-slate',eventCount:visual.resolvedCount,checkedAt:new Date(now).toISOString()}};
+      if(visual.reason==='visibly-live-or-settled')return {ok:false,tweet_id:String(row?.tweet_id||''),reason:visual.reason};
+    }
+  }catch(error){console.error('ParlayPing pregame visual inspection fallback',clean(error?.message||error,180));}
   let parsed;
   try{parsed=await parseSlip({text:postText,mediaUrls:row?.media_url?[row.media_url]:[]});}
   catch(error){return {ok:false,tweet_id:String(row?.tweet_id||''),reason:'parse-failed',detail:clean(error?.message||error,180)};}
@@ -162,5 +209,7 @@ module.exports.corePostText=corePostText;
 module.exports.fallbackSport=fallbackSport;
 module.exports.rowSport=rowSport;
 module.exports.resolveLegFromSnapshot=resolveLegFromSnapshot;
+module.exports.inspectPublicSlip=inspectPublicSlip;
+module.exports.resolveVisualEvents=resolveVisualEvents;
 module.exports.validateTrend=validateTrend;
 module.exports.postprocessTrending=postprocessTrending;
