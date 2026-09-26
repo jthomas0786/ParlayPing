@@ -84,6 +84,15 @@ function loadLandingHub(){
   document.body.appendChild(script);
 }
 
+function loadLandingCommunityMode(){
+  if(document.querySelector('script[data-pp-community-mode]'))return;
+  const script=document.createElement('script');
+  script.src='/landing-community-mode.js?v=20260926a';
+  script.async=false;
+  script.dataset.ppCommunityMode='1';
+  document.body.appendChild(script);
+}
+
 function loadHomeTrendingV2(){
   if(document.querySelector('script[data-pp-home-trending-v2]'))return;
   const script=document.createElement('script');
@@ -96,7 +105,7 @@ function loadHomeTrendingV2(){
 function loadAppNav(){
   if(document.querySelector('script[data-pp-app-nav]'))return;
   const script=document.createElement('script');
-  script.src='/app-nav.js?v=20260926a';
+  script.src='/app-nav.js?v=20260926b';
   script.async=false;
   script.dataset.ppAppNav='1';
   document.body.appendChild(script);
@@ -105,5 +114,6 @@ function loadAppNav(){
 updateBuilder();
 watchSignedOutProfile();
 loadLandingHub();
+loadLandingCommunityMode();
 loadHomeTrendingV2();
 loadAppNav();
