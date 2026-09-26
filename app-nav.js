@@ -16,7 +16,7 @@
     if(path==='/submit'||path==='/submit.html')return 'submit';
     if((path==='/profile'||path==='/profile.html')&&params.get('tab')==='community')return 'community';
     if(path==='/trending'||path==='/trending.html')return 'explore';
-    if(hash.includes('trending')||hash.includes('similar')||hash.includes('explore'))return 'explore';
+    if(hash.includes('communityinsights')||hash.includes('trending')||hash.includes('similar')||hash.includes('explore'))return 'explore';
     if(hash.includes('community'))return 'community';
     if(path==='/'||path==='/index.html'||path.startsWith('/build/')||path==='/build'||path.startsWith('/tail'))return 'build';
     return null;
