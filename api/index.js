@@ -15,6 +15,7 @@ const loaders={
   'tracking-refresh':()=>require('../server/api/tracking-refresh'),
   'landing-create':()=>require('../server/api/landing-create'),
   'trending-build':()=>require('../server/api/trending-build'),
+  'community-submit':()=>require('../server/api/community-submit'),
   'brand-wordmark':()=>require('../server/api/brand-wordmark'),
   'v1-analyze':()=>require('../server/api/v1/analyze'),
   'v1-build':()=>require('../server/api/v1/build'),

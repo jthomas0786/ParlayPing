@@ -3,7 +3,7 @@
   "trailingSlash": false,
   "env": {
     "X_AI_REPLY_APPROVED": "true",
-    "X_AUTOREPLY_ENABLED": "true",
+    "X_AUTOREPLY_ENABLED": "false",
     "X_PULSE_AUTOPUBLISH_ENABLED": "false",
     "X_PULSE_MIN_INTERVAL_MINUTES": "90",
     "X_PULSE_REFRESH_HOURS": "4"
@@ -34,6 +34,7 @@
     { "source": "/api/tracking-refresh", "destination": "/api/index?__pp_route=tracking-refresh" },
     { "source": "/api/landing-create", "destination": "/api/index?__pp_route=landing-create" },
     { "source": "/api/trending-build", "destination": "/api/index?__pp_route=trending-build" },
+    { "source": "/api/community-submit", "destination": "/api/index?__pp_route=community-submit" },
     { "source": "/api/v1/analyze", "destination": "/api/index?__pp_route=v1-analyze" },
     { "source": "/api/v1/build", "destination": "/api/index?__pp_route=v1-build" },
     { "source": "/api/v1/share", "destination": "/api/index?__pp_route=v1-share" },

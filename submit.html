@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#071725" />
+  <meta name="description" content="Submit a betslip screenshot to ParlayPing for pregame verification and a shareable Builder link." />
+  <title>Submit a Betslip — ParlayPing</title>
+  <link rel="icon" href="/parlayping-approved-hero.webp" type="image/webp" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/app-nav.css?v=20260926b" data-pp-app-nav-css />
+  <link rel="stylesheet" href="/submit-page.css?v=20260926a" />
+</head>
+<body>
+  <main class="submit-page">
+    <section class="submit-hero">
+      <div>
+        <span class="submit-kicker">COMMUNITY-POWERED · ZERO X API READS</span>
+        <h1>Submit a betslip.<br><span>Get it verified.</span></h1>
+        <p>Upload a screenshot, ParlayPing reads the legs, checks that every event is still pregame, and creates a shareable Builder link you can post anywhere.</p>
+      </div>
+      <aside class="founding-card">
+        <span>FOUNDING 100</span>
+        <strong>Help build the first real ParlayPing community.</strong>
+        <p>Early members help seed the network, shape the product, and become the first public contributors.</p>
+      </aside>
+    </section>
+
+    <section class="submit-shell">
+      <div class="submit-form-card">
+        <div class="submit-step"><b>1</b><div><strong>Upload the betslip screenshot</strong><span>JPG, PNG or WebP. Crop tightly around the bet.</span></div></div>
+        <label class="dropzone" id="dropzone" for="betImage">
+          <input id="betImage" type="file" accept="image/jpeg,image/png,image/webp" />
+          <div id="dropEmpty"><strong>Drop screenshot here</strong><span>or click to choose an image</span></div>
+          <img id="imagePreview" alt="Betslip preview" hidden />
+          <button id="replaceImage" type="button" hidden>Choose another</button>
+        </label>
+        <p class="privacy-note"><strong>Privacy:</strong> crop out your name, account number, balance, or anything personal. The screenshot is analyzed for this request and is not stored by ParlayPing; the verified bet data is what gets saved.</p>
+
+        <div class="submit-step"><b>2</b><div><strong>Add the original X post <em>optional</em></strong><span>Used only for attribution. ParlayPing does not fetch it through the X API.</span></div></div>
+        <label class="field"><span>X post URL</span><input id="sourceUrl" type="url" inputmode="url" placeholder="https://x.com/.../status/..." /></label>
+        <label class="field"><span>Community title <small>optional</small></span><input id="submissionTitle" type="text" maxlength="120" placeholder="Sunday NFL 4-leg" /></label>
+
+        <div class="account-state" id="accountState">Checking your ParlayPing account…</div>
+        <button class="verify-button" id="verifyButton" type="button" disabled>Verify & add to Community</button>
+        <div class="submit-status" id="submitStatus" aria-live="polite"></div>
+      </div>
+
+      <aside class="submit-explainer">
+        <span class="submit-kicker">WHAT HAPPENS NEXT</span>
+        <div class="explain-row"><b>01</b><div><strong>Parse</strong><p>ParlayPing reads the players, markets and lines from the screenshot.</p></div></div>
+        <div class="explain-row"><b>02</b><div><strong>Pregame check</strong><p>Every leg must resolve to an event that has not started.</p></div></div>
+        <div class="explain-row"><b>03</b><div><strong>Build</strong><p>You get an editable Builder link with the verified legs and available probability data.</p></div></div>
+        <div class="explain-row"><b>04</b><div><strong>Share</strong><p>Your public community build can bring the next person into ParlayPing.</p></div></div>
+      </aside>
+    </section>
+
+    <section class="submit-success" id="submitSuccess" hidden>
+      <span class="verified-mark">✓ VERIFIED PREGAME</span>
+      <h2 id="successTitle">Your betslip is ready.</h2>
+      <p id="successSummary"></p>
+      <div class="success-actions">
+        <a id="openBuilder" href="#">Open Builder</a>
+        <a id="openShare" href="#">View share page</a>
+        <button id="shareResult" type="button">Share</button>
+        <button id="copyResult" type="button">Copy post</button>
+      </div>
+      <small>Screenshot discarded · verified build saved to your Community profile</small>
+    </section>
+  </main>
+  <script src="/app-nav.js?v=20260926b" data-pp-app-nav></script>
+  <script src="/submit-page.js?v=20260926a"></script>
+</body>
+</html>
