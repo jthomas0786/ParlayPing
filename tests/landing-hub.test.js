@@ -12,6 +12,7 @@ test('landing page loads the ParlayPing bet creation and sports discovery hub',(
   const css=read('landing-hub.css');
   const intelCss=read('landing-insights-trends.css');
   assert.match(app,/landing-hub\.js\?v=20260925c/);
+  assert.match(app,/landing-community-mode\.js\?v=20260926a/);
   assert.match(hub,/Image to Betslip/);
   assert.match(hub,/Trending betslips/);
   assert.match(hub,/LIVE SPORTS INSIGHTS/);
@@ -26,17 +27,20 @@ test('landing page loads the ParlayPing bet creation and sports discovery hub',(
   assert.match(intelCss,/\.pp-x-trend-card/);
 });
 
-test('landing Insights and Trending use hourly public discovery rather than Community or bet history',()=>{
+test('landing zero-X mode uses cached public discovery plus a community submission CTA',()=>{
   const hub=read('landing-hub.js');
+  const mode=read('landing-community-mode.js');
   assert.match(hub,/sports_insights\?is_active=eq\.true/);
   assert.match(hub,/x_trending_betslips\?is_active=eq\.true/);
   assert.match(hub,/source_url/);
   assert.match(hub,/tweet_url/);
-  assert.match(hub,/public X engagement, traffic, and freshness/i);
+  assert.match(mode,/Community submissions are verified pregame/);
+  assert.match(mode,/Previously captured X slips remain as cached context/);
+  assert.match(mode,/live X crawling is off/i);
+  assert.match(mode,/\/submit/);
+  assert.match(mode,/no live X API crawling/i);
   assert.match(hub,/data-pp-trend-sport/);
   assert.match(hub,/data-pp-discovery-refresh/);
-  assert.match(hub,/No Community or personal betting data is used here/);
-  assert.doesNotMatch(hub,/community_parlays/);
   assert.doesNotMatch(hub,/function computeIntel\(/);
   assert.doesNotMatch(hub,/function trendScore\(/);
   assert.doesNotMatch(hub,/POPULAR BUILD/);
