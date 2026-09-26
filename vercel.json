@@ -3,7 +3,10 @@
   "trailingSlash": false,
   "env": {
     "X_AI_REPLY_APPROVED": "true",
-    "X_AUTOREPLY_ENABLED": "true"
+    "X_AUTOREPLY_ENABLED": "true",
+    "X_PULSE_AUTOPUBLISH_ENABLED": "false",
+    "X_PULSE_MIN_INTERVAL_MINUTES": "90",
+    "X_PULSE_REFRESH_HOURS": "4"
   },
   "redirects": [
     { "source": "/parlayping-approved-wordmark.webp", "destination": "/brand/parlayping-wordmark.png", "permanent": false },
@@ -37,6 +40,7 @@
     { "source": "/api/x-dry-run", "destination": "/api/index?__pp_route=x-dry-run" },
     { "source": "/api/x-scheduler", "destination": "/api/index?__pp_route=x-scheduler" },
     { "source": "/api/x-worker", "destination": "/api/index?__pp_route=x-worker" },
+    { "source": "/api/x-pulse-worker", "destination": "/api/index?__pp_route=x-pulse-worker" },
     { "source": "/api/discovery-worker", "destination": "/api/index?__pp_route=discovery-worker" },
     { "source": "/build/:token", "destination": "/api/index?__pp_route=builder-page&slip=:token" },
     { "source": "/slip/:token", "destination": "/api/index?__pp_route=share-page&slip=:token" },

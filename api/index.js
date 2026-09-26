@@ -22,6 +22,7 @@ const loaders={
   'x-dry-run':()=>require('../server/api/x-dry-run'),
   'x-scheduler':()=>require('../server/api/x-scheduler'),
   'x-worker':()=>require('../server/api/x-worker'),
+  'x-pulse-worker':()=>require('../server/api/x-pulse-worker'),
   'discovery-worker':()=>require('../server/api/discovery-worker-v2'),
 };
 
