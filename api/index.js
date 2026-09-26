@@ -10,6 +10,7 @@ const loaders={
   'share-card':()=>require('../server/api/share-card'),
   'share-page':()=>require('../server/api/share-page-with-nav'),
   'builder-page':()=>require('../server/api/builder-page'),
+  'verified-page':()=>require('../server/api/verified-page'),
   'sportsbook-link':()=>require('../server/api/sportsbook-link'),
   'tracking-refresh':()=>require('../server/api/tracking-refresh'),
   'landing-create':()=>require('../server/api/landing-create'),
