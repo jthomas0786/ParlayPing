@@ -18,12 +18,14 @@ test('canonical app navigation matches the Builder header destinations and actio
   assert.match(nav,/#communityInsights/);
 });
 
-test('home builder tracking account and tail all load the same canonical nav',()=>{
+test('home builder tracking account tail and shared slips all load the same canonical nav',()=>{
   assert.match(read('app.js'),/app-nav\.js\?v=20260925b/);
   assert.match(read('server/api/builder-page.js'),/app-nav\.js\?v=20260925b/);
   assert.match(read('profile.html'),/app-nav\.js\?v=20260925b/);
   assert.match(read('account.html'),/app-nav\.js\?v=20260925b/);
   assert.match(read('tail.html'),/app-nav\.js\?v=20260925b/);
+  assert.match(read('api/index.js'),/share-page-with-nav/);
+  assert.match(read('server/api/share-page-with-nav.js'),/app-nav\.js\?v=20260925b/);
 });
 
 test('canonical nav preserves the Builder desktop and two-row mobile geometry',()=>{
