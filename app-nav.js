@@ -1,8 +1,8 @@
 (()=>{
-  const VERSION='20260925b';
+  const VERSION='20260926a';
   const LINKS=[
     {key:'build',label:'Build',icon:'⚡',href:'/'},
-    {key:'explore',label:'Explore',icon:'⊕',href:'/#trending'},
+    {key:'explore',label:'Explore',icon:'⊕',href:'/trending'},
     {key:'community',label:'Community',icon:'♧',href:'/profile?tab=community'},
     {key:'insights',label:'Insights',icon:'▥',href:'/#communityInsights',iconClass:'bars'}
   ];
@@ -21,6 +21,7 @@
     const hash=String(location.hash||'').toLowerCase();
     const params=new URLSearchParams(location.search);
     if((path==='/profile'||path==='/profile.html')&&params.get('tab')==='community')return 'community';
+    if(path==='/trending'||path==='/trending.html')return 'explore';
     if(hash.includes('communityinsights')||hash.includes('insights'))return 'insights';
     if(hash.includes('trending')||hash.includes('similar')||hash.includes('explore'))return 'explore';
     if(hash.includes('community'))return 'community';
@@ -67,7 +68,7 @@
     document.querySelector('.pp-builder-search-button')?.addEventListener('click',()=>{
       const searchTarget=document.querySelector('[data-pp-search],#searchInput,input[type="search"]');
       if(searchTarget&&typeof searchTarget.focus==='function'){searchTarget.focus();return;}
-      location.assign('/#trending');
+      location.assign('/trending');
     });
   }
 

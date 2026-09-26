@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#071725" />
+  <meta name="description" content="Explore upcoming public betslips trending on X, ranked by ParlayPing probability and public attention." />
+  <title>Trending Bets — ParlayPing</title>
+  <link rel="icon" href="/parlayping-approved-hero.webp" type="image/webp" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/app-nav.css?v=20260926a" data-pp-app-nav-css />
+  <link rel="stylesheet" href="/trending-page.css?v=20260926a" />
+</head>
+<body>
+  <main class="trend-page">
+    <section class="trend-hero">
+      <div><span class="trend-kicker">EXPLORE</span><h1>Trending <span>bets</span></h1><p>Upcoming public betslips discovered on X, verified against games that have not started, and analyzed by ParlayPing when the underlying legs can be modeled.</p></div>
+      <div class="trend-hero-stat"><strong id="trendCount">—</strong><span>pregame bets ready to build</span></div>
+    </section>
+    <section class="trend-controls" aria-label="Trending bet filters">
+      <div class="trend-control-group"><span>Sport</span><div class="trend-pills" id="trendSportFilters"></div></div>
+      <div class="trend-control-group"><span>Sort by</span><div class="trend-pills" id="trendSortFilters"></div></div>
+      <button class="trend-refresh" id="trendRefresh" type="button">↻ Refresh</button>
+    </section>
+    <div class="trend-status" id="trendStatus">Loading the latest upcoming trends…</div>
+    <section class="trend-grid" id="trendGrid" aria-live="polite"></section>
+    <div class="trend-more"><button id="trendLoadMore" type="button" hidden>Show more trending bets</button></div>
+  </main>
+  <script src="/app-nav.js?v=20260926a" data-pp-app-nav></script>
+  <script src="/trending-page.js?v=20260926a"></script>
+</body>
+</html>

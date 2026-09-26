@@ -13,6 +13,7 @@ const loaders={
   'sportsbook-link':()=>require('../server/api/sportsbook-link'),
   'tracking-refresh':()=>require('../server/api/tracking-refresh'),
   'landing-create':()=>require('../server/api/landing-create'),
+  'trending-build':()=>require('../server/api/trending-build'),
   'brand-wordmark':()=>require('../server/api/brand-wordmark'),
   'v1-analyze':()=>require('../server/api/v1/analyze'),
   'v1-build':()=>require('../server/api/v1/build'),
@@ -20,7 +21,7 @@ const loaders={
   'x-dry-run':()=>require('../server/api/x-dry-run'),
   'x-scheduler':()=>require('../server/api/x-scheduler'),
   'x-worker':()=>require('../server/api/x-worker'),
-  'discovery-worker':()=>require('../server/api/discovery-worker-pregame'),
+  'discovery-worker':()=>require('../server/api/discovery-worker-v2'),
 };
 
 const accountRoutes=new Set(['account','api-keys','plans','billing-checkout','billing-portal']);

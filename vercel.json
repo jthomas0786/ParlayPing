@@ -29,6 +29,7 @@
     { "source": "/api/sportsbook-link", "destination": "/api/index?__pp_route=sportsbook-link" },
     { "source": "/api/tracking-refresh", "destination": "/api/index?__pp_route=tracking-refresh" },
     { "source": "/api/landing-create", "destination": "/api/index?__pp_route=landing-create" },
+    { "source": "/api/trending-build", "destination": "/api/index?__pp_route=trending-build" },
     { "source": "/api/v1/analyze", "destination": "/api/index?__pp_route=v1-analyze" },
     { "source": "/api/v1/build", "destination": "/api/index?__pp_route=v1-build" },
     { "source": "/api/v1/share", "destination": "/api/index?__pp_route=v1-share" },
