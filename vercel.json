@@ -41,6 +41,7 @@
     { "source": "/api/x-scheduler", "destination": "/api/index?__pp_route=x-scheduler" },
     { "source": "/api/x-worker", "destination": "/api/index?__pp_route=x-worker" },
     { "source": "/api/x-pulse-worker", "destination": "/api/index?__pp_route=x-pulse-worker" },
+    { "source": "/api/x-prop-observation-worker", "destination": "/api/index?__pp_route=x-prop-observation-worker" },
     { "source": "/api/discovery-worker", "destination": "/api/index?__pp_route=discovery-worker" },
     { "source": "/build/:token", "destination": "/api/index?__pp_route=builder-page&slip=:token" },
     { "source": "/slip/:token", "destination": "/api/index?__pp_route=share-page&slip=:token" },
