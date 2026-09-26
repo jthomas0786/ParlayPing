@@ -29,6 +29,7 @@ test('single-function dispatcher preserves all public API URLs',()=>{
     '/api/x-dry-run':'/api/index?__pp_route=x-dry-run',
     '/api/x-scheduler':'/api/index?__pp_route=x-scheduler',
     '/api/x-worker':'/api/index?__pp_route=x-worker',
+    '/api/discovery-worker':'/api/index?__pp_route=discovery-worker',
     '/slip/:token':'/api/index?__pp_route=share-page&slip=:token',
     '/share/:token.png':'/api/index?__pp_route=share-card&slip=:token'
   };
