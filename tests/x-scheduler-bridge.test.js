@@ -14,10 +14,14 @@ test('Supabase scheduler bridge authenticates by SHA-256 without storing the bea
   assert.equal(scheduler.schedulerAuthorized(makeReq(),expected),false);
 });
 
-test('scheduler bridge source contains only a fixed SHA-256 digest for production scheduler auth',()=>{
-  const source=fs.readFileSync(path.join(__dirname,'..','api','x-scheduler.js'),'utf8');
-  const match=source.match(/SCHEDULER_SECRET_SHA256='([a-f0-9]{64})'/);
+test('shared scheduler auth contains only the fixed production digest and no bearer secret',()=>{
+  const root=path.join(__dirname,'..');
+  const bridge=fs.readFileSync(path.join(root,'server','api','x-scheduler.js'),'utf8');
+  const auth=fs.readFileSync(path.join(root,'server','api','lib','scheduler-auth.js'),'utf8');
+  const match=auth.match(/SCHEDULER_SECRET_SHA256='([a-f0-9]{64})'/);
   assert.ok(match,'production scheduler SHA-256 digest is missing');
   assert.equal(match[1].length,64);
-  assert.doesNotMatch(source,/vault\.decrypted_secrets|parlayping_scheduler_secret/);
+  assert.match(bridge,/require\('\.\/lib\/scheduler-auth'\)/);
+  assert.doesNotMatch(`${bridge}\n${auth}`,/vault\.decrypted_secrets|parlayping_scheduler_secret/);
+  assert.doesNotMatch(`${bridge}\n${auth}`,/unit-test-scheduler-secret/);
 });
