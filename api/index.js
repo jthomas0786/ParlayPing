@@ -20,7 +20,7 @@ const loaders={
   'x-dry-run':()=>require('../server/api/x-dry-run'),
   'x-scheduler':()=>require('../server/api/x-scheduler'),
   'x-worker':()=>require('../server/api/x-worker'),
-  'discovery-worker':()=>require('../server/api/discovery-worker'),
+  'discovery-worker':()=>require('../server/api/discovery-worker-pregame'),
 };
 
 const accountRoutes=new Set(['account','api-keys','plans','billing-checkout','billing-portal']);
@@ -36,9 +36,8 @@ module.exports=async function handler(req,res){
   }
 
   let selected;
-  try{
-    selected=load();
-  }catch(error){
+  try{selected=load();}
+  catch(error){
     console.error('ParlayPing API route initialization failed',{route,error});
     if(!res.headersSent){
       res.setHeader('Cache-Control','no-store');
@@ -53,9 +52,8 @@ module.exports=async function handler(req,res){
     req.query.route=route;
   }
 
-  try{
-    return await selected(req,res);
-  }catch(error){
+  try{return await selected(req,res);}
+  catch(error){
     console.error('ParlayPing API route failed',{route,error});
     if(!res.headersSent){
       res.setHeader('Cache-Control','no-store');
