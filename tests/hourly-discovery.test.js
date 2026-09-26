@@ -56,21 +56,22 @@ test('sport detection covers core ParlayPing sports',()=>{
   assert.equal(worker.detectSport('NHL shots on goal parlay'),'NHL');
 });
 
-test('Home discovery UI is independent from Community and bet history',()=>{
+test('Home can show cached discovery while community mode clearly disables live X crawling',()=>{
   const hub=read('landing-hub.js');
+  const communityMode=read('landing-community-mode.js');
   assert.match(hub,/sports_insights/);
   assert.match(hub,/x_trending_betslips/);
-  assert.doesNotMatch(hub,/community_parlays/);
-  assert.match(hub,/never your bet history or Community activity/);
-  assert.match(hub,/High-attention public betslips on X/);
+  assert.match(communityMode,/Community submissions are verified pregame/);
+  assert.match(communityMode,/live X crawling is off/i);
+  assert.match(communityMode,/href='\/submit'|href="\/submit"/);
   assert.match(hub,/source_url/);
   assert.match(hub,/tweet_url/);
 });
 
-test('discovery worker is routed through the one-function Vercel dispatcher',()=>{
+test('discovery worker is routed through the v7 one-function Vercel dispatcher',()=>{
   const api=read('api/index.js');
   const config=JSON.parse(read('vercel.json'));
-  assert.match(api,/'discovery-worker':\(\)=>require\('\.\.\/server\/api\/discovery-worker'\)/);
+  assert.match(api,/'discovery-worker':\(\)=>require\('\.\.\/server\/api\/discovery-worker-v2'\)/);
   assert.ok(config.rewrites.some(item=>item.source==='/api/discovery-worker'&&item.destination==='/api/index?__pp_route=discovery-worker'));
 });
 
