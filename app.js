@@ -78,7 +78,7 @@ function watchSignedOutProfile(){
 function loadLandingHub(){
   if(document.querySelector('script[data-pp-landing-hub]'))return;
   const script=document.createElement('script');
-  script.src='/landing-hub.js?v=20260924b';
+  script.src='/landing-hub.js?v=20260925c';
   script.async=false;
   script.dataset.ppLandingHub='1';
   document.body.appendChild(script);
