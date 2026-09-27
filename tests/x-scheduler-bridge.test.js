@@ -25,3 +25,15 @@ test('shared scheduler auth contains only the fixed production digest and no bea
   assert.doesNotMatch(`${bridge}\n${auth}`,/vault\.decrypted_secrets|parlayping_scheduler_secret/);
   assert.doesNotMatch(`${bridge}\n${auth}`,/unit-test-scheduler-secret/);
 });
+
+test('trusted scheduler can run mention processing while direct worker keeps its autoreply gate',()=>{
+  const root=path.join(__dirname,'..');
+  const bridge=fs.readFileSync(path.join(root,'server','api','x-scheduler.js'),'utf8');
+  const worker=fs.readFileSync(path.join(root,'server','api','x-worker.js'),'utf8');
+  assert.match(bridge,/if\(!schedulerAuthorized\(req\)\)return/);
+  assert.match(bridge,/X_AI_REPLY_APPROVED/);
+  assert.match(bridge,/xWorker\.processMentions\(\{dryRun:false,idempotencySecret\}\)/);
+  assert.match(bridge,/autoReplyMode:'trusted-scheduler'/);
+  assert.match(worker,/X_AUTOREPLY_ENABLED/);
+  assert.match(worker,/if\(!\(approved&&enabled\)\)return/);
+});
