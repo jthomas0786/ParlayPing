@@ -214,9 +214,10 @@
     if(Array.isArray(data?.selections))data.selections.forEach((selection,index)=>{
       const leg=legs[index];if(!leg||!selection)return;
       const selectionLink=safeHttps(selection.selectionLink);
+      const selectionPrice=finiteOdds(selection.price);
       leg.bookOffers=leg.bookOffers&&typeof leg.bookOffers==='object'?leg.bookOffers:{};
       const existing=entryForBook(leg.bookOffers,book)||{};
-      leg.bookOffers[book]={...existing,...(selectionLink?{selectionLink}:{}),...(selection.selectionId?{selectionId:String(selection.selectionId)}:{}),...(selection.marketId?{marketId:String(selection.marketId)}:{})};
+      leg.bookOffers[book]={...existing,...(selectionPrice!=null?{oddsAmerican:selectionPrice}:{}),...(selectionLink?{selectionLink}:{}),...(selection.selectionId?{selectionId:String(selection.selectionId)}:{}),...(selection.marketId?{marketId:String(selection.marketId)}:{}),...(selection.marketKey?{marketKey:String(selection.marketKey)}:{}),...(selection.line!=null?{matchedLine:Number(selection.line)}:{})};
     });
     return url;
   }

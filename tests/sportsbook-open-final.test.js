@@ -114,3 +114,14 @@ test('partial sportsbook coverage is excluded from the parlay sportsbook section
   assert.equal(api.legOddsForBook(slip.legs[0],'Bovada'),-475);
   assert.equal(api.legOddsForBook(slip.legs[1],'Bovada'),null);
 });
+
+
+test('resolved sportsbook selections hydrate their exact prices',()=>{
+  const slip={legs:[{id:'rice',bookOffers:{}}]};
+  const api=runOpenFinal(slip);
+  const url='https://account.sportsbook.fanduel.com/sportsbook/addToBetslip?marketId%5B0%5D=42&selectionId%5B0%5D=99';
+  api.applyResolvedSelections('FanDuel',{url,selections:[{price:-340,line:29.5,marketKey:'player_reception_yds_alternate',marketId:'42',selectionId:'99',selectionLink:'https://sportsbook.fanduel.com/addToBetslip?marketId=42&selectionId=99'}]});
+  assert.equal(slip.legs[0].bookOffers.FanDuel.oddsAmerican,-340);
+  assert.equal(slip.legs[0].bookOffers.FanDuel.matchedLine,29.5);
+  assert.equal(slip.legs[0].bookOffers.FanDuel.marketKey,'player_reception_yds_alternate');
+});
