@@ -9,12 +9,14 @@ const MARKET_ALIASES = {
   receptions: 'receptions', catches: 'receptions',
   passingtds: 'passTds', passtds: 'passTds', passTds: 'passTds',
   completions: 'completions',
-  anytimeTD: 'atd', anytimetd: 'atd', anytime_touchdown: 'atd', atd: 'atd'
+  anytimeTD: 'atd', anytimetd: 'atd', anytime_touchdown: 'atd', atd: 'atd',
+  firstTD: 'firstTd', firsttd: 'firstTd', firsttouchdown: 'firstTd', firsttouchdownscorer: 'firstTd'
 };
 
 const MARKET_LABELS = {
-  recYds: 'REC YDS', rushYds: 'RUSH YDS', passYds: 'PASS YDS', receptions: 'REC', passTds: 'PASS TD', completions: 'COMP', atd: 'ATD'
+  recYds: 'REC YDS', rushYds: 'RUSH YDS', passYds: 'PASS YDS', receptions: 'REC', passTds: 'PASS TD', completions: 'COMP', atd: 'ATD', firstTd: '1ST TD'
 };
+const TD_BINARY_MARKETS = new Set(['atd','firstTd']);
 
 async function fetchJson(name) {
   const now = Date.now();
@@ -90,8 +92,9 @@ function normalizeMarket(value) {
 
 function normalizeLeg(input, index = 0) {
   const market = normalizeMarket(input.market);
-  const side = market === 'atd' ? 'yes' : String(input.side || 'over').toLowerCase();
-  const line = market === 'atd' ? 0.5 : Number(input.line);
+  const binaryTd = TD_BINARY_MARKETS.has(market);
+  const side = binaryTd ? 'yes' : String(input.side || 'over').toLowerCase();
+  const line = binaryTd ? 0.5 : Number(input.line);
   return {
     id: input.id || `leg-${index + 1}`,
     sport: String(input.sport || 'NFL').toUpperCase(),
@@ -156,8 +159,20 @@ function normalCdf(x, mean, sd) {
   return 0.5 * (1 + erf((x - mean) / (sd * Math.SQRT2)));
 }
 
+function firstTdProbability(player) {
+  const direct = Number(player?.probabilities?.firstTd);
+  if (Number.isFinite(direct)) return clamp(direct, .001, .5);
+  const atd = Number(player?.probabilities?.atd);
+  if (!Number.isFinite(atd)) return null;
+  const usage = clamp((Number(player?.usage) || 65) / 100, .35, .95);
+  const rz = clamp((Number(player?.rz) || 8) / 24, 0, 1.35);
+  const roleShare = clamp(.17 + usage * .10 + rz * .12, .20, .43);
+  return clamp(atd * roleShare, .015, .22);
+}
+
 function probabilityFromDistribution(player, market, line, side) {
   if (market === 'atd') return clamp(Number(player?.probabilities?.atd ?? 0));
+  if (market === 'firstTd') return firstTdProbability(player);
   const exact = player?.sportsbook?.[side]?.[market];
   if (exact && Number.isFinite(Number(exact.line)) && Math.abs(Number(exact.line) - Number(line)) < 0.01 && Number.isFinite(Number(exact.probability))) {
     return clamp(Number(exact.probability));
@@ -173,6 +188,10 @@ function probabilityFromDistribution(player, market, line, side) {
 
 function currentValue(player, market) {
   if (market === 'atd') return Number(player?.current?.rushTds || 0) + Number(player?.current?.recTds || 0);
+  if (market === 'firstTd') {
+    const value = Number(player?.current?.firstTd);
+    return Number.isFinite(value) ? value : null;
+  }
   const v = Number(player?.current?.[market]);
   return Number.isFinite(v) ? v : 0;
 }
@@ -188,6 +207,12 @@ function legResult(leg, current, state) {
   if (leg.market === 'atd') {
     if (current >= 1) return state === 'pre' ? 'PENDING' : 'HIT';
     return state === 'post' ? 'MISS' : state === 'in' ? 'LIVE' : 'PENDING';
+  }
+  if (leg.market === 'firstTd') {
+    if (state === 'pre') return 'PENDING';
+    if (!Number.isFinite(current)) return 'UNRESOLVED';
+    if (current >= 1) return 'HIT';
+    return state === 'post' ? 'MISS' : 'LIVE';
   }
   if (!Number.isFinite(leg.line)) return state === 'in' ? 'LIVE' : state === 'post' ? 'FINAL' : 'PENDING';
   if (leg.side === 'under') {
@@ -210,9 +235,9 @@ function americanImplied(price) {
 function buildMarketOptions(leg, simPlayer, oddsPlayer) {
   const market = oddsPlayer?.odds?.[leg.market];
   if (!market) return [];
-  if (leg.market === 'atd') {
+  if (TD_BINARY_MARKETS.has(leg.market)) {
     const best = market.best || null;
-    return [{ line: null, side: 'yes', probability: probabilityFromDistribution(simPlayer, 'atd', 0.5, 'over'), book: best?.book || null, price: best?.price ?? null, link: best?.link || null }];
+    return [{ line: null, side: 'yes', probability: probabilityFromDistribution(simPlayer, leg.market, 0.5, 'over'), impliedProbability: americanImplied(best?.price), book: best?.book || null, price: best?.price ?? null, link: best?.link || null }];
   }
   const rows = [];
   const pushRow = row => {
@@ -242,6 +267,7 @@ function buildMarketOptions(leg, simPlayer, oddsPlayer) {
 function pct(v) { return Number.isFinite(v) ? Math.round(v * 1000) / 10 : null; }
 function formatLine(leg) {
   if (leg.market === 'atd') return 'ATD';
+  if (leg.market === 'firstTd') return '1ST TD';
   if (!Number.isFinite(leg.line)) return MARKET_LABELS[leg.market] || leg.market;
   if (leg.inclusive && leg.side !== 'under') return `${leg.line}+ ${MARKET_LABELS[leg.market] || leg.market}`;
   return `${leg.side === 'under' ? 'U' : 'O'}${leg.line} ${MARKET_LABELS[leg.market] || leg.market}`;
@@ -292,7 +318,7 @@ async function analyzeSlip(rawLegs, options = {}) {
       status,
       displayMarket: formatLine(leg),
       current,
-      target: leg.market === 'atd' ? 1 : leg.line,
+      target: TD_BINARY_MARKETS.has(leg.market) ? 1 : leg.line,
       probability,
       probabilityPct: pct(probability),
       marketOptions
@@ -326,4 +352,4 @@ async function analyzeSlip(rawLegs, options = {}) {
   };
 }
 
-module.exports = { analyzeSlip, normalizeLeg, encodeSlip, teamMatches };
+module.exports = { analyzeSlip, normalizeLeg, encodeSlip, teamMatches, firstTdProbability, probabilityFromDistribution };
