@@ -1,0 +1,143 @@
+name: One-time X mention sportsbook bridge
+
+on:
+  push:
+    paths:
+      - '.github/workflows/one-time-x-mention-sportsbook-bridge.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Patch mention sportsbook enrichment and builder fallback
+        shell: python
+        run: |
+          from pathlib import Path
+
+          x = Path('server/api/x-worker.js')
+          s = x.read_text()
+          old = """    const baseUrl=process.env.PUBLIC_BASE_URL||'https://parlayping.net';
+    let analysis=await analyzeLegs(parsed.legs,baseUrl,input.referenceTime);
+    const executed=await executeMentionCommand(parsed.legs,analysis,input.command);
+    let effectiveLegs=executed.effectiveLegs;
+"""
+          new = """    const baseUrl=process.env.PUBLIC_BASE_URL||'https://parlayping.net';
+    let analysis=await analyzeLegs(parsed.legs,baseUrl,input.referenceTime);
+    const contextualLegs=mergeAnalyzedContext(parsed.legs,analysis);
+    const enrichedBase=await enrichSportsbookMarkets({legs:contextualLegs});
+    const mentionLegs=enrichedBase.legs;
+    const executed=await executeMentionCommand(mentionLegs,analysis,input.command);
+    let effectiveLegs=executed.effectiveLegs;
+"""
+          if old not in s:
+              raise SystemExit('x-worker mention block not found')
+          x.write_text(s.replace(old,new,1))
+
+          b = Path('builder-acceptance-final.js')
+          s = b.read_text()
+          old = """  const BOOK_MARK={'DraftKings':'DK','FanDuel':'F','bet365':'bet','Caesars':'C','theScore Bet':'S','BetMGM':'M','Fanatics':'F'};
+"""
+          new = """  const BOOK_MARK={'DraftKings':'DK','FanDuel':'F','bet365':'bet','Caesars':'C','theScore Bet':'S','BetMGM':'M','Fanatics':'F'};
+  const BOOK_HOME={'DraftKings':'https://sportsbook.draftkings.com/','FanDuel':'https://sportsbook.fanduel.com/','bet365':'https://www.bet365.com/','Caesars':'https://www.caesars.com/sportsbook-and-casino','BetMGM':'https://sports.betmgm.com/en/sports','Fanatics':'https://sportsbook.fanatics.com/'};
+"""
+          if old not in s:
+              raise SystemExit('builder book mark block not found')
+          s = s.replace(old,new,1)
+
+          old = """  function exactSportsbookLinks(){
+    const out={};
+    const explicit=slip.sportsbookLinks&&typeof slip.sportsbookLinks==='object'?slip.sportsbookLinks:{};
+    for(const [book,value] of Object.entries(explicit)){const name=normalizeBook(book);const url=safeHttps(value);if(name&&url)out[name]=url;}
+    const books=[...new Set(legs.map(leg=>normalizeBook(leg.sportsbook)).filter(Boolean))];
+    for(const book of books){
+      if(out[book])continue;
+      if(!legs.every(leg=>normalizeBook(leg.sportsbook)===book))continue;
+      const links=[...new Set(legs.map(leg=>safeHttps(leg.sportsbookLink)).filter(Boolean))];
+      if(links.length===1)out[book]=links[0];
+    }
+    return out;
+  }
+"""
+          new = """  function exactSportsbookLinks(){
+    const out={};
+    const explicit=slip.sportsbookLinks&&typeof slip.sportsbookLinks==='object'?slip.sportsbookLinks:{};
+    for(const [book,value] of Object.entries(explicit)){const name=normalizeBook(book);const url=safeHttps(value);if(name&&url)out[name]=url;}
+    const books=[...new Set(legs.map(leg=>normalizeBook(leg.sportsbook)).filter(Boolean))];
+    for(const book of books){
+      if(out[book])continue;
+      if(!legs.every(leg=>normalizeBook(leg.sportsbook)===book))continue;
+      const links=[...new Set(legs.map(leg=>safeHttps(leg.sportsbookLink)).filter(Boolean))];
+      if(links.length===1)out[book]=links[0];
+    }
+    const offerBooks=new Set();
+    for(const leg of legs)for(const key of Object.keys(leg?.bookOffers||{})){const name=normalizeBook(key);if(name)offerBooks.add(name);}
+    for(const book of offerBooks){
+      if(out[book])continue;
+      const offers=legs.map(leg=>entryForBook(leg?.bookOffers,book));
+      if(!offers.every(offer=>Number.isFinite(Number(offer?.oddsAmerican))))continue;
+      const betslipUrls=[...new Set(offers.map(offer=>safeHttps(offer?.betslipUrl)).filter(Boolean))];
+      if(betslipUrls.length===1)out[book]=betslipUrls[0];
+      else if(BOOK_HOME[book])out[book]=BOOK_HOME[book];
+    }
+    return out;
+  }
+  function isSportsbookHomeFallback(book){return Boolean(book&&BOOK_HOME[book]&&activeBookLinks[book]===BOOK_HOME[book]);}
+"""
+          if old not in s:
+              raise SystemExit('builder exact sportsbook block not found')
+          s = s.replace(old,new,1)
+
+          old = """    grid.innerHTML=names.map(book=>`<button class=\"book-card${book===selectedBook?' active':''}\" type=\"button\" data-book=\"${esc(book)}\" data-exact-url=\"${esc(activeBookLinks[book])}\" role=\"listitem\"><span class=\"book-logo ${esc(BOOK_CLASS[book]||'more')}\">${esc(BOOK_MARK[book]||book.slice(0,2).toUpperCase())}</span><span><strong>${esc(book)}</strong><small>Open Exact Betslip</small></span></button>`).join('');
+    const open=oldOpen.cloneNode(true);oldOpen.replaceWith(open);
+    const sync=()=>{const current=q('.book-card.active');selectedBook=current?.dataset.book||selectedBook||names[0];const currentLabel=q('#selectedBookLabel');if(currentLabel)currentLabel.textContent=selectedBook;open.disabled=!activeBookLinks[selectedBook];open.classList.toggle('unavailable',!activeBookLinks[selectedBook]);};
+"""
+          new = """    grid.innerHTML=names.map(book=>{const homeFallback=BOOK_HOME[book]===activeBookLinks[book];return `<button class=\"book-card${book===selectedBook?' active':''}\" type=\"button\" data-book=\"${esc(book)}\" data-exact-url=\"${esc(activeBookLinks[book])}\" role=\"listitem\"><span class=\"book-logo ${esc(BOOK_CLASS[book]||'more')}\">${esc(BOOK_MARK[book]||book.slice(0,2).toUpperCase())}</span><span><strong>${esc(book)}</strong><small>${homeFallback?'Verified prices · Open Sportsbook':'Open Exact Betslip'}</small></span></button>`;}).join('');
+    const open=oldOpen.cloneNode(true);oldOpen.replaceWith(open);
+    const sync=()=>{const current=q('.book-card.active');selectedBook=current?.dataset.book||selectedBook||names[0];const currentLabel=q('#selectedBookLabel');if(currentLabel)currentLabel.textContent=selectedBook;const available=Boolean(activeBookLinks[selectedBook]);open.disabled=!available;open.classList.toggle('unavailable',!available);if(available){const homeFallback=isSportsbookHomeFallback(selectedBook);open.innerHTML=`<span class=\"link-icon\">↗</span> <strong>${homeFallback?`Open ${esc(selectedBook)}`:'Open Exact Betslip'}</strong>`;}};
+"""
+          if old not in s:
+              raise SystemExit('builder sportsbook cards block not found')
+          b.write_text(s.replace(old,new,1))
+
+          t = Path('tests/x-mention-sportsbook-bridge.test.js')
+          t.write_text("""const test=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+
+test('normal X mentions enrich sportsbook markets before sharing',()=>{
+  const source=fs.readFileSync('server/api/x-worker.js','utf8');
+  assert.match(source,/const contextualLegs=mergeAnalyzedContext\(parsed\.legs,analysis\)/);
+  assert.match(source,/const enrichedBase=await enrichSportsbookMarkets\(\{legs:contextualLegs\}\)/);
+  assert.match(source,/executeMentionCommand\(mentionLegs,analysis,input\.command\)/);
+});
+
+test('builder exposes verified common-book prices even without provider deep links',()=>{
+  const source=fs.readFileSync('builder-acceptance-final.js','utf8');
+  assert.match(source,/const BOOK_HOME=/);
+  assert.match(source,/Object\.keys\(leg\?\.bookOffers\|\|\{\}\)/);
+  assert.match(source,/Verified prices · Open Sportsbook/);
+  assert.match(source,/Open Exact Betslip/);
+});
+""")
+
+      - name: Run tests
+        run: npm test
+
+      - name: Commit patch
+        run: |
+          git config user.name "parlayping-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add server/api/x-worker.js builder-acceptance-final.js tests/x-mention-sportsbook-bridge.test.js
+          git commit -m "Attach sportsbook prices to X mention builds"
+          git push origin main
