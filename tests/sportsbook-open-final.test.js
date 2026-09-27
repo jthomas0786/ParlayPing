@@ -101,3 +101,16 @@ test('non-sportsbook source brands never render as books and missing prices stay
   assert.equal(api.fmtOdds(null),'—');
   assert.equal(api.legOddsForBook(slip.legs[0],'Playbook'),null);
 });
+
+
+test('partial sportsbook coverage is excluded from the parlay sportsbook section',()=>{
+  const slip={legs:[
+    {id:'one',bookOffers:{Bovada:{oddsAmerican:-475},FanDuel:{oddsAmerican:-500}}},
+    {id:'two',bookOffers:{FanDuel:{oddsAmerican:-300}}},
+    {id:'three',bookOffers:{FanDuel:{oddsAmerican:-250}}}
+  ]};
+  const api=runOpenFinal(slip);
+  assert.deepEqual([...api.orderedBooks()],['FanDuel']);
+  assert.equal(api.legOddsForBook(slip.legs[0],'Bovada'),-475);
+  assert.equal(api.legOddsForBook(slip.legs[1],'Bovada'),null);
+});

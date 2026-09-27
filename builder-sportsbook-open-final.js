@@ -56,14 +56,20 @@
     return out;
   }
   function pricedSportsbooks(){
-    const books=new Set(Object.keys(exactSportsbookLinks()));
+    const exactLinks=exactSportsbookLinks();
+    const candidates=new Set(Object.keys(exactLinks).map(sportsbookName).filter(Boolean));
     for(const leg of legs){
       for(const [raw,offer] of Object.entries(leg?.bookOffers||{})){
-        if(finiteOdds(offer?.oddsAmerican)!=null){const book=sportsbookName(raw);if(book)books.add(book);}
+        if(finiteOdds(offer?.oddsAmerican)!=null){const book=sportsbookName(raw);if(book)candidates.add(book);}
       }
-      if(finiteOdds(leg?.oddsAmerican)!=null){const book=sportsbookName(leg?.sportsbook);if(book)books.add(book);}
+      if(finiteOdds(leg?.oddsAmerican)!=null){const book=sportsbookName(leg?.sportsbook);if(book)candidates.add(book);}
     }
-    return [...books];
+    const books=[];
+    for(const book of candidates){
+      if(exactLinks[book]){books.push(book);continue;}
+      if(legs.length&&legs.every(leg=>legOddsForBook(leg,book)!=null))books.push(book);
+    }
+    return books;
   }
   function orderedBooks(){
     const names=pricedSportsbooks();
