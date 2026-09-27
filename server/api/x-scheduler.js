@@ -4,13 +4,27 @@ const {schedulerAuthorized,hashSecret}=require('./lib/scheduler-auth');
 module.exports=async function handler(req,res){
   res.setHeader('Cache-Control','no-store');
   if(!schedulerAuthorized(req))return res.status(401).json({ok:false,error:'Unauthorized scheduler request.'});
-  if(!process.env.X_WORKER_SECRET)return res.status(503).json({ok:false,error:'Primary worker protection is not configured.'});
-  req.headers={...(req.headers||{}),'x-parlayping-secret':process.env.X_WORKER_SECRET};
-  // Only this scheduler-secret-authenticated in-process bridge can enable the
-  // operational mention-reply path. Direct /api/x-worker calls still require
-  // the normal X_AUTOREPLY_ENABLED environment gate.
-  req.__parlaypingSchedulerAutoReply=true;
-  return xWorker(req,res);
+
+  const approved=String(process.env.X_AI_REPLY_APPROVED||'').toLowerCase()==='true';
+  if(!approved)return res.status(200).json({ok:true,active:false,dryRun:true,reason:'x-approval-disabled',username:process.env.X_USERNAME||'ParlayPing',processed:0,candidates:[]});
+
+  try{
+    const idempotencySecret=req.headers['x-parlayping-scheduler-secret'];
+    const candidates=await xWorker.processMentions({dryRun:false,idempotencySecret});
+    return res.status(200).json({
+      ok:true,
+      active:true,
+      dryRun:false,
+      username:process.env.X_USERNAME||'ParlayPing',
+      xApprovalRecorded:true,
+      autoReplyMode:'trusted-scheduler',
+      processed:candidates.length,
+      candidates
+    });
+  }catch(error){
+    console.error('ParlayPing trusted X scheduler',error);
+    return res.status(error?.status===429?429:500).json({ok:false,active:false,error:error?.message||'X mention scheduler failed.',retryAfter:error?.retryAfter||null});
+  }
 };
 
 module.exports.schedulerAuthorized=schedulerAuthorized;
