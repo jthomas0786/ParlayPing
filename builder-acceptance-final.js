@@ -45,6 +45,7 @@
   const BOOK_ORDER=['DraftKings','FanDuel','bet365','Caesars','theScore Bet','BetMGM','Fanatics'];
   const BOOK_CLASS={'DraftKings':'dk','FanDuel':'fd','bet365':'b365','Caesars':'cz','theScore Bet':'score','BetMGM':'mgm','Fanatics':'fanatics'};
   const BOOK_MARK={'DraftKings':'DK','FanDuel':'F','bet365':'bet','Caesars':'C','theScore Bet':'S','BetMGM':'M','Fanatics':'F'};
+  const BOOK_HOME={'DraftKings':'https://sportsbook.draftkings.com/','FanDuel':'https://sportsbook.fanduel.com/','bet365':'https://www.bet365.com/','Caesars':'https://www.caesars.com/sportsbook-and-casino','BetMGM':'https://sports.betmgm.com/en/sports','Fanatics':'https://sportsbook.fanatics.com/'};
   function normalizeBook(value){const raw=String(value||'').trim();const key=raw.toLowerCase().replace(/[^a-z0-9]/g,'');const aliases={draftkings:'DraftKings',dk:'DraftKings',fanduel:'FanDuel',fd:'FanDuel',bet365:'bet365','365':'bet365',caesars:'Caesars',williamhill:'Caesars',caesarssportsbook:'Caesars',thescorebet:'theScore Bet',thescore:'theScore Bet',betmgm:'BetMGM',mgm:'BetMGM',fanatics:'Fanatics',fanaticssportsbook:'Fanatics'};return aliases[key]||raw;}
   function safeHttps(value){try{const url=new URL(String(value||''));return url.protocol==='https:'?url.toString():null;}catch{return null;}}
   function entryForBook(map,book){if(!map||typeof map!=='object'||!book)return null;const wanted=normalizeBook(book);for(const [key,value] of Object.entries(map)){if(normalizeBook(key)===wanted)return value;}return null;}
@@ -79,8 +80,19 @@
       const links=[...new Set(legs.map(leg=>safeHttps(leg.sportsbookLink)).filter(Boolean))];
       if(links.length===1)out[book]=links[0];
     }
+    const offerBooks=new Set();
+    for(const leg of legs)for(const key of Object.keys(leg?.bookOffers||{})){const name=normalizeBook(key);if(name)offerBooks.add(name);}
+    for(const book of offerBooks){
+      if(out[book])continue;
+      const offers=legs.map(leg=>entryForBook(leg?.bookOffers,book));
+      if(!offers.every(offer=>Number.isFinite(Number(offer?.oddsAmerican))))continue;
+      const betslipUrls=[...new Set(offers.map(offer=>safeHttps(offer?.betslipUrl)).filter(Boolean))];
+      if(betslipUrls.length===1)out[book]=betslipUrls[0];
+      else if(BOOK_HOME[book])out[book]=BOOK_HOME[book];
+    }
     return out;
   }
+  function isSportsbookHomeFallback(book){return Boolean(book&&BOOK_HOME[book]&&activeBookLinks[book]===BOOK_HOME[book]);}
   let activeBookLinks=exactSportsbookLinks();
   function orderedBookNames(){const keys=Object.keys(activeBookLinks);return [...BOOK_ORDER.filter(book=>keys.includes(book)),...keys.filter(book=>!BOOK_ORDER.includes(book)).sort()];}
   function allAltBookNames(){const keys=new Set();for(const leg of legs){for(const key of Object.keys(leg?.altLinesByBook||{}))keys.add(normalizeBook(key));}return [...keys].filter(Boolean);}
@@ -98,9 +110,9 @@
       if(label)label.textContent=selectedBook||'Sportsbook';
       return;
     }
-    grid.innerHTML=names.map(book=>`<button class="book-card${book===selectedBook?' active':''}" type="button" data-book="${esc(book)}" data-exact-url="${esc(activeBookLinks[book])}" role="listitem"><span class="book-logo ${esc(BOOK_CLASS[book]||'more')}">${esc(BOOK_MARK[book]||book.slice(0,2).toUpperCase())}</span><span><strong>${esc(book)}</strong><small>Open Exact Betslip</small></span></button>`).join('');
+    grid.innerHTML=names.map(book=>{const homeFallback=BOOK_HOME[book]===activeBookLinks[book];return `<button class="book-card${book===selectedBook?' active':''}" type="button" data-book="${esc(book)}" data-exact-url="${esc(activeBookLinks[book])}" role="listitem"><span class="book-logo ${esc(BOOK_CLASS[book]||'more')}">${esc(BOOK_MARK[book]||book.slice(0,2).toUpperCase())}</span><span><strong>${esc(book)}</strong><small>${homeFallback?'Verified prices · Open Sportsbook':'Open Exact Betslip'}</small></span></button>`;}).join('');
     const open=oldOpen.cloneNode(true);oldOpen.replaceWith(open);
-    const sync=()=>{const current=q('.book-card.active');selectedBook=current?.dataset.book||selectedBook||names[0];const currentLabel=q('#selectedBookLabel');if(currentLabel)currentLabel.textContent=selectedBook;open.disabled=!activeBookLinks[selectedBook];open.classList.toggle('unavailable',!activeBookLinks[selectedBook]);};
+    const sync=()=>{const current=q('.book-card.active');selectedBook=current?.dataset.book||selectedBook||names[0];const currentLabel=q('#selectedBookLabel');if(currentLabel)currentLabel.textContent=selectedBook;const available=Boolean(activeBookLinks[selectedBook]);open.disabled=!available;open.classList.toggle('unavailable',!available);if(available){const homeFallback=isSportsbookHomeFallback(selectedBook);open.innerHTML=`<span class="link-icon">↗</span> <strong>${homeFallback?`Open ${esc(selectedBook)}`:'Open Exact Betslip'}</strong>`;}};
     qa('.book-card',grid).forEach(card=>card.addEventListener('click',()=>{qa('.book-card',grid).forEach(node=>node.classList.remove('active'));card.classList.add('active');sync();renderPicks();}));
     open.addEventListener('click',()=>{const url=activeBookLinks[selectedBook];if(!url)return;window.open(url,'_blank','noopener,noreferrer');});
     sync();

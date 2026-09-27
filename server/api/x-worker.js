@@ -130,7 +130,10 @@ async function processMentions({dryRun,idempotencySecret}){
 
     const baseUrl=process.env.PUBLIC_BASE_URL||'https://parlayping.net';
     let analysis=await analyzeLegs(parsed.legs,baseUrl,input.referenceTime);
-    const executed=await executeMentionCommand(parsed.legs,analysis,input.command);
+    const contextualLegs=mergeAnalyzedContext(parsed.legs,analysis);
+    const enrichedBase=await enrichSportsbookMarkets({legs:contextualLegs});
+    const mentionLegs=enrichedBase.legs;
+    const executed=await executeMentionCommand(mentionLegs,analysis,input.command);
     let effectiveLegs=executed.effectiveLegs;
     const commandResult=executed.commandResult;
     if(commandResult.changed) analysis=await analyzeLegs(effectiveLegs,baseUrl,input.referenceTime);
