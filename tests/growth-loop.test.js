@@ -24,7 +24,7 @@ test('join page captures referral attribution without requiring X API reads',()=
   const account=read('account.html');
   assert.match(join,/parlayping_referral_code_v1/);
   assert.match(join,/member_badges/);
-  assert.match(join,/searchParams/);
+  assert.match(join,/URLSearchParams/);
   assert.match(account,/referral-capture\.js\?v=20260926a/);
   assert.match(read('referral-capture.js'),/member_referrals/);
 });
