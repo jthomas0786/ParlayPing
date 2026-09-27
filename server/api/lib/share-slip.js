@@ -142,6 +142,11 @@ function normalizeSport(value) {
 
 function canonicalLeg(input = {}, index = 0) {
   const line = finiteOrNull(input.line);
+  const originalText = cleanText(input.originalText, 300);
+  const rawMarket = cleanText(input.market ?? input.prop_key ?? input.propKey, 120);
+  const firstTdText = /\b(first|1st)\s+(?:touchdown|td)(?:\s+scorer)?\b/i.test(String(originalText || input.displayMarket || input.selectionText || ''));
+  const market = firstTdText && /^(?:atd|anytime(?:td|touchdown)?)$/i.test(String(rawMarket || '')) ? 'firstTd' : rawMarket;
+  const displayMarket = market === 'firstTd' ? '1ST TD' : cleanText(input.displayMarket ?? input.selectionText, 180);
   const oddsAmerican = finiteOrNull(input.oddsAmerican ?? input.odds ?? input.price);
   const current = finiteOrNull(input.current ?? input.currentValue);
   const target = finiteOrNull(input.target ?? input.targetValue ?? line);
@@ -165,12 +170,12 @@ function canonicalLeg(input = {}, index = 0) {
     teamLogoUrl: cleanUrl(input.teamLogoUrl ?? input.team_logo_url ?? input.logoUrl),
     gameId: cleanText(input.gameId ?? input.eventId ?? input.event_id ?? input.game_pk, 120),
     matchup: cleanText(input.matchup, 120),
-    market: cleanText(input.market ?? input.prop_key ?? input.propKey, 120),
-    displayMarket: cleanText(input.displayMarket ?? input.selectionText, 180),
+    market,
+    displayMarket,
     side: cleanText(input.side ?? input.selection, 24),
     line,
     inclusive: Boolean(input.inclusive),
-    originalText: cleanText(input.originalText, 300),
+    originalText,
     oddsAmerican,
     sportsbook: normalizeSportsbookName(input.sportsbook ?? input.book ?? input.bookName),
     sportsbookLink: cleanUrl(input.sportsbookLink ?? input.link ?? input.deepLink),
