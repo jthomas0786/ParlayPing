@@ -1,0 +1,12 @@
+(()=>{
+  const SUPABASE_URL='https://avwqjgiitxqphvmitolw.supabase.co';
+  const SUPABASE_KEY='sb_publishable_7mYXjjkRrQq3iRig7UYHNQ_b6EZZiJA';
+  let byBuilder=new Map();
+  function normUrl(value){try{return new URL(String(value||''),location.origin).href;}catch{return String(value||'');}}
+  async function get(path){const r=await fetch(`${SUPABASE_URL}/rest/v1/${path}`,{headers:{apikey:SUPABASE_KEY}});if(!r.ok)return[];const p=await r.json();return Array.isArray(p)?p:[];}
+  function style(){if(document.getElementById('ppGrowthTrendStyle'))return;const s=document.createElement('style');s.id='ppGrowthTrendStyle';s.textContent='.pp-founder-chip{display:inline-flex;align-items:center;padding:5px 8px;margin-left:7px;border:1px solid rgba(73,220,206,.32);border-radius:999px;background:rgba(73,220,206,.09);color:#76e6dc;font-size:10px;font-weight:900;letter-spacing:.055em;white-space:nowrap}';document.head.appendChild(s);}
+  function decorate(){document.querySelectorAll('#trendGrid .trend-card').forEach(card=>{if(card.dataset.ppFounderDecorated)return;const badge=card.querySelector('.verified-badge');if(!badge||!String(badge.textContent||'').includes('COMMUNITY'))return;const build=card.querySelector('.trend-add[href]');if(!build)return;const meta=byBuilder.get(normUrl(build.getAttribute('href')));if(!meta?.founding_number){card.dataset.ppFounderDecorated='1';return;}const chip=document.createElement('span');chip.className='pp-founder-chip';chip.textContent=`FOUNDING #${String(meta.founding_number).padStart(3,'0')}`;badge.insertAdjacentElement('afterend',chip);card.dataset.ppFounderDecorated='1';});}
+  async function load(){const [posts,badges]=await Promise.all([get('community_parlays?is_active=eq.true&verified_pregame=eq.true&select=user_id,builder_url&limit=250'),get('member_badges?founding_number=not.is.null&select=user_id,founding_number,referral_code&limit=100')]);const badgeMap=new Map(badges.map(row=>[row.user_id,row]));byBuilder=new Map(posts.map(row=>[normUrl(row.builder_url),badgeMap.get(row.user_id)]).filter(([,value])=>value));decorate();}
+  function init(){style();load();const grid=document.getElementById('trendGrid');if(grid&&typeof MutationObserver==='function')new MutationObserver(decorate).observe(grid,{childList:true,subtree:true});}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
+})();
