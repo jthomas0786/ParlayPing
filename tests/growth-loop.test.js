@@ -57,7 +57,7 @@ test('submitted and shared slips carry the contributor referral loop',()=>{
 test('Explore decorates verified community cards with Founding badges',()=>{
   const html=read('trending.html');
   const growth=read('trending-growth.js');
-  assert.match(html,/trending-growth\.js\?v=20260926a/);
+  assert.match(html,/trending-growth\.js\?v=20260927a/);
   assert.match(growth,/member_badges/);
   assert.match(growth,/COMMUNITY/);
   assert.match(growth,/FOUNDING #/);
