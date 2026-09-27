@@ -1,0 +1,49 @@
+name: Inspect FanDuel exact-line resolver
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/inspect-fanduel-resolver.yml'
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Query production FanDuel resolver
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat >/tmp/body.json <<'JSON'
+          {
+            "book":"FanDuel",
+            "legs":[
+              {"sport":"NFL","player":"Patrick Mahomes","team":"KC","matchup":"KC @ MIA","market":"passYds","side":"over","line":225,"inclusive":true,"startTimeUTC":"2026-09-27T17:00:00Z"},
+              {"sport":"NFL","player":"Rashee Rice","team":"KC","matchup":"KC @ MIA","market":"recYds","side":"over","line":30,"inclusive":true,"startTimeUTC":"2026-09-27T17:00:00Z"},
+              {"sport":"NFL","player":"Kenneth Walker III","team":"KC","matchup":"KC @ MIA","market":"rushYds","side":"over","line":70,"inclusive":true,"startTimeUTC":"2026-09-27T17:00:00Z"},
+              {"sport":"NFL","player":"Jaxon Smith-Njigba","team":"SEA","matchup":"SEA @ WSH","market":"recYds","side":"over","line":80,"inclusive":true,"startTimeUTC":"2026-09-27T17:00:00Z"},
+              {"sport":"NFL","player":"Sam Darnold","team":"SEA","matchup":"SEA @ WSH","market":"passYds","side":"over","line":175,"inclusive":true,"startTimeUTC":"2026-09-27T17:00:00Z"},
+              {"sport":"NFL","player":"Stefon Diggs","team":"WSH","matchup":"SEA @ WSH","market":"recYds","side":"over","line":20,"inclusive":true,"startTimeUTC":"2026-09-27T17:00:00Z"}
+            ]
+          }
+          JSON
+          curl -fsS -X POST \
+            -H 'content-type: application/json' \
+            --data-binary @/tmp/body.json \
+            https://www.parlayping.net/api/sportsbook-link \
+            -o /tmp/result.json
+          python3 - <<'PY'
+          import json
+          d=json.load(open('/tmp/result.json'))
+          print('ok',d.get('ok'),'book',d.get('book'),'exact',d.get('exact'),'has_url',bool(d.get('url')))
+          for row in d.get('selections') or []:
+              if not row:
+                  print('selection MISSING')
+                  continue
+              print(json.dumps({
+                'index':row.get('index'),'player':row.get('player'),'marketKey':row.get('marketKey'),
+                'line':row.get('line'),'price':row.get('price'),'side':row.get('side'),
+                'has_selection_link':bool(row.get('selectionLink')),
+                'has_selection_id':bool(row.get('selectionId')),'has_market_id':bool(row.get('marketId'))
+              },separators=(',',':')))
+          PY
