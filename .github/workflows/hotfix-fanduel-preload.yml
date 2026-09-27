@@ -1,0 +1,35 @@
+name: Hotfix FanDuel preload fallback
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/hotfix-fanduel-preload.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Apply FanDuel preload fallback
+        run: node scripts/apply-fanduel-preload-fallback.mjs
+      - name: Run sportsbook fallback tests
+        run: node --test tests/exact-sportsbook-enrich.test.js tests/sportsbook-open-final.test.js tests/sportsbook-inclusive-threshold.test.js
+      - name: Commit hotfix
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git config user.name "parlayping-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add server/api/builder-page.js builder-sportsbook-open-final.js tests/exact-sportsbook-enrich.test.js tests/sportsbook-open-final.test.js
+          git commit -m "Preload exact FanDuel coverage before builder render"
+          git push origin HEAD:main
