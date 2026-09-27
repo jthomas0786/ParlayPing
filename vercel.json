@@ -18,7 +18,6 @@
     { "source": "/favicon.svg", "destination": "/parlayping-approved-hero.webp", "permanent": true }
   ],
   "rewrites": [
-    { "source": "/join/:code", "destination": "/join.html?ref=:code" },
     { "source": "/verified/:tweet", "destination": "/api/index?__pp_route=verified-page&tweet=:tweet" },
     { "source": "/brand/parlayping-wordmark.png", "destination": "/api/index?__pp_route=brand-wordmark" },
     { "source": "/api/analyze", "destination": "/api/index?__pp_route=analyze" },
