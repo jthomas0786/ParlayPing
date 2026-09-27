@@ -6,6 +6,10 @@ module.exports=async function handler(req,res){
   if(!schedulerAuthorized(req))return res.status(401).json({ok:false,error:'Unauthorized scheduler request.'});
   if(!process.env.X_WORKER_SECRET)return res.status(503).json({ok:false,error:'Primary worker protection is not configured.'});
   req.headers={...(req.headers||{}),'x-parlayping-secret':process.env.X_WORKER_SECRET};
+  // Only this scheduler-secret-authenticated in-process bridge can enable the
+  // operational mention-reply path. Direct /api/x-worker calls still require
+  // the normal X_AUTOREPLY_ENABLED environment gate.
+  req.__parlaypingSchedulerAutoReply=true;
   return xWorker(req,res);
 };
 
