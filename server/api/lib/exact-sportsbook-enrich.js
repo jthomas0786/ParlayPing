@@ -1,9 +1,19 @@
 const { resolveSportsbookBetslip } = require('./odds-api-deeplink');
+const { validateResolvedSelections, hasFullExactCoverage } = require('./exact-selection-validation');
 
 function finiteOdds(value) {
   if (value === null || value === undefined || value === '') return null;
   const n = Number(value);
   return Number.isFinite(n) && n !== 0 ? n : null;
+}
+
+function safeHttps(value) {
+  try {
+    const url = new URL(String(value || ''));
+    return url.protocol === 'https:' ? url.toString() : null;
+  } catch {
+    return null;
+  }
 }
 
 function bookOffer(leg, book) {
@@ -23,12 +33,12 @@ function hasFullBookPricing(slip, book) {
 
 function applyExactResolution(slip, book, result) {
   const legs = Array.isArray(slip?.legs) ? slip.legs : [];
-  const selections = Array.isArray(result?.selections) ? result.selections : [];
-  if (!result?.exact || !result?.url || !legs.length || selections.length !== legs.length || selections.some(row => !row)) return slip;
+  const selections = validateResolvedSelections(legs, result?.selections);
+  if (!hasFullExactCoverage(legs, selections, { requirePrice: true })) return slip;
 
   const nextLegs = legs.map((leg, index) => {
-    const selection = selections[index] || {};
-    const price = finiteOdds(selection.price);
+    const selection = selections[index];
+    const price = finiteOdds(selection?.price);
     const existingOffers = leg?.bookOffers && typeof leg.bookOffers === 'object' ? leg.bookOffers : {};
     const existing = bookOffer(leg, book) || {};
     return {
@@ -37,7 +47,7 @@ function applyExactResolution(slip, book, result) {
         ...existingOffers,
         [book]: {
           ...existing,
-          ...(price != null ? { oddsAmerican: price } : {}),
+          oddsAmerican: price,
           ...(selection.selectionLink ? { selectionLink: selection.selectionLink } : {}),
           ...(selection.selectionId ? { selectionId: String(selection.selectionId) } : {}),
           ...(selection.marketId ? { marketId: String(selection.marketId) } : {}),
@@ -49,19 +59,20 @@ function applyExactResolution(slip, book, result) {
     };
   });
 
-  return {
-    ...slip,
-    sportsbookLinks: {
+  const url = safeHttps(result?.url);
+  const next = { ...slip, legs: nextLegs };
+  if (url) {
+    next.sportsbookLinks = {
       ...(slip?.sportsbookLinks && typeof slip.sportsbookLinks === 'object' ? slip.sportsbookLinks : {}),
-      [book]: result.url,
-    },
-    legs: nextLegs,
-  };
+      [book]: url,
+    };
+  }
+  return next;
 }
 
 async function enrichMissingExactSportsbooks(slip, options = {}) {
   let enriched = slip;
-  const books = Array.isArray(options.books) && options.books.length ? options.books : ['FanDuel'];
+  const books = Array.isArray(options.books) && options.books.length ? options.books : ['FanDuel', 'DraftKings'];
   const resolve = typeof options.resolve === 'function' ? options.resolve : resolveSportsbookBetslip;
 
   for (const book of books) {

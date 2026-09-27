@@ -49,7 +49,7 @@ function renderBuilderHtml({ slip, token, liveDataAvailable }) {
     .replace(/\.\/parlayping-logo\.svg/g, '/parlayping-logo.svg')
     .replace(/\.\/account\.html/g, '/account.html')
     .replace(/\.\/styles\.css/g, '/builder.css')
-    .replace(/<script src="\.\/app\.js"><\/script>/, `<script>window.__PARLAYPING_BUILDER__=${payload};</script><script src="/builder-sportsbook-sanitize-prep.js?v=20260927a"></script><script src="/builder-sportsbook-links-prep.js"></script><script src="/builder-precision-runtime.js"></script><script src="/builder-concept-finish.js"></script><script src="/builder-mobile-fix.js"></script><script src="/builder-mobile-final.js"></script><script src="/builder-acceptance-final.js"></script><script src="/builder-summary-odds-hotfix.js"></script><script src="/builder-acceptance-icons.js"></script><script src="/builder-branding-final.js"></script><script src="/builder-sportsbook-open-final.js?v=20260927e"></script><script src="/builder-sportsbook-partial-coverage.js?v=20260927a"></script><script src="/builder-community-features.js?v=20260924a"></script><script src="/push-client.js?v=20260924a"></script><script src="/builder-tracking.js?v=20260924a"></script><script src="/builder-title-notifications.js?v=20260924a"></script><script src="/app-nav.js?v=20260925b" data-pp-app-nav></script>`)
+    .replace(/<script src="\.\/app\.js"><\/script>/, `<script>window.__PARLAYPING_BUILDER__=${payload};</script><script src="/builder-sportsbook-sanitize-prep.js?v=20260927a"></script><script src="/builder-sportsbook-links-prep.js"></script><script src="/builder-precision-runtime.js"></script><script src="/builder-concept-finish.js"></script><script src="/builder-mobile-fix.js"></script><script src="/builder-mobile-final.js"></script><script src="/builder-acceptance-final.js"></script><script src="/builder-summary-odds-hotfix.js"></script><script src="/builder-acceptance-icons.js"></script><script src="/builder-branding-final.js"></script><script src="/builder-sportsbook-open-final.js?v=20260927f"></script><script src="/builder-community-features.js?v=20260924a"></script><script src="/push-client.js?v=20260924a"></script><script src="/builder-tracking.js?v=20260924a"></script><script src="/builder-title-notifications.js?v=20260924a"></script><script src="/app-nav.js?v=20260925b" data-pp-app-nav></script>`)
     .replace(/<title>[^<]*<\/title>/, `<title>${title}</title>`)
     .replace(/<meta name="description" content="[^"]*" \/>/, `<meta name="description" content="${description}" />`)
     .replace(/<meta property="og:title" content="[^"]*" \/>/, `<meta property="og:title" content="${title}" />`)
@@ -73,10 +73,9 @@ module.exports = async function handler(req, res) {
     const saved = decodeShareSlip(token);
     const hydrated = await hydrateSharedSlip(saved, { baseUrl: publicBaseUrl() });
     const pricedSlip = await enrichSportsbookMarkets(hydrated.slip);
-    // If the snapshot is missing even one FanDuel milestone/alternate price,
-    // verify the whole slip against the exact FanDuel resolver before render.
-    // This keeps partial provider coverage from hiding a bet FanDuel actually offers.
-    const sportsbookSlip = await enrichMissingExactSportsbooks(pricedSlip, { books:['FanDuel'] });
+    // Cached snapshots can miss a book even when every exact selection exists there.
+    // Proactively verify missing full-slip coverage for the books with exact resolvers.
+    const sportsbookSlip = await enrichMissingExactSportsbooks(pricedSlip, { books:['FanDuel','DraftKings'] });
     const html = renderBuilderHtml({ slip: sportsbookSlip, token, liveDataAvailable: hydrated.liveDataAvailable });
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('Content-Type', 'text/html; charset=utf-8');

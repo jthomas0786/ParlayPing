@@ -1,4 +1,5 @@
 const { resolveSportsbookBetslip } = require('./lib/odds-api-deeplink');
+const { validateResolvedSelections, hasFullExactCoverage } = require('./lib/exact-selection-validation');
 
 function cleanLeg(input={}){
   const text=(value,max=180)=>value==null?null:String(value).replace(/\s+/g,' ').trim().slice(0,max)||null;
@@ -15,6 +16,20 @@ function cleanLeg(input={}){
     inclusive:Boolean(input.inclusive),
     startTimeUTC:text(input.startTimeUTC,80)
   };
+}
+
+function safeHttps(value){
+  try{
+    const url=new URL(String(value||''));
+    return url.protocol==='https:'?url.toString():null;
+  }catch{return null;}
+}
+
+function finalizeResolution(legs,result={}){
+  const selections=validateResolvedSelections(legs,result?.selections);
+  const exact=hasFullExactCoverage(legs,selections);
+  const url=exact?safeHttps(result?.url):null;
+  return {...result,selections,exact,url,prefilled:Boolean(url)};
 }
 
 module.exports=async function handler(req,res){
@@ -35,7 +50,8 @@ module.exports=async function handler(req,res){
     if(!source.length||source.length>25)return res.status(400).json({ok:false,error:'Provide between 1 and 25 betslip legs.'});
     const legs=source.map(cleanLeg);
     if(legs.some(leg=>!leg.sport||!leg.player||!leg.market))return res.status(400).json({ok:false,error:'Each leg requires sport, player, and market.'});
-    const result=await resolveSportsbookBetslip({book,legs});
+    const raw=await resolveSportsbookBetslip({book,legs});
+    const result=finalizeResolution(legs,raw);
     return res.status(200).json({ok:true,...result});
   }catch(error){
     console.error('ParlayPing sportsbook deeplink resolver failed',error);
@@ -48,3 +64,4 @@ module.exports=async function handler(req,res){
 };
 
 module.exports.cleanLeg=cleanLeg;
+module.exports.finalizeResolution=finalizeResolution;
