@@ -2,7 +2,7 @@
   const SUPABASE_URL='https://avwqjgiitxqphvmitolw.supabase.co';
   const SUPABASE_KEY='sb_publishable_7mYXjjkRrQq3iRig7UYHNQ_b6EZZiJA';
   const SESSION_KEY='parlayping_supabase_session_v1';
-  const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
+  const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   function session(){try{return JSON.parse(localStorage.getItem(SESSION_KEY)||'null');}catch{return null;}}
   async function getUser(token){const r=await fetch(`${SUPABASE_URL}/auth/v1/user`,{headers:{apikey:SUPABASE_KEY,authorization:`Bearer ${token}`}});if(!r.ok)return null;return r.json();}
   async function getBadge(userId,token){const r=await fetch(`${SUPABASE_URL}/rest/v1/member_badges?user_id=eq.${encodeURIComponent(userId)}&select=referral_code,founding_number,invite_count,verified_submission_count&limit=1`,{headers:{apikey:SUPABASE_KEY,authorization:`Bearer ${token}`}});if(!r.ok)return null;const rows=await r.json();return Array.isArray(rows)?rows[0]||null:null;}
