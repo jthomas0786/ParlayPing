@@ -17,8 +17,10 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
-      - name: Apply sportsbook hotfix
+      - name: Apply sportsbook source and threshold hotfixes
         run: node scripts/apply-real-sportsbook-hotfix.mjs
+      - name: Require complete parlay sportsbook coverage
+        run: node scripts/apply-full-sportsbook-coverage-hotfix.mjs
       - name: Run targeted sportsbook tests
         run: node --test tests/sportsbook-open-final.test.js tests/sportsbook-inclusive-threshold.test.js
       - name: Commit hotfix
@@ -31,5 +33,5 @@ jobs:
           git config user.name "parlayping-bot"
           git config user.email "actions@users.noreply.github.com"
           git add builder-sportsbook-open-final.js server/api/lib/sportsbook-enrich.js server/api/builder-page.js tests/sportsbook-open-final.test.js tests/sportsbook-inclusive-threshold.test.js
-          git commit -m "Fix real sportsbook matching for plus thresholds"
+          git commit -m "Require full sportsbook coverage for builder parlays"
           git push origin HEAD:main
