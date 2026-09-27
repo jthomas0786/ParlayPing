@@ -30,6 +30,17 @@ alter table public.member_badges
   add column if not exists push_count integer not null default 0,
   add column if not exists void_count integer not null default 0;
 
+alter table public.member_badges drop constraint if exists member_badges_settled_nonnegative;
+alter table public.member_badges add constraint member_badges_settled_nonnegative check (settled_submission_count >= 0);
+alter table public.member_badges drop constraint if exists member_badges_win_nonnegative;
+alter table public.member_badges add constraint member_badges_win_nonnegative check (win_count >= 0);
+alter table public.member_badges drop constraint if exists member_badges_loss_nonnegative;
+alter table public.member_badges add constraint member_badges_loss_nonnegative check (loss_count >= 0);
+alter table public.member_badges drop constraint if exists member_badges_push_nonnegative;
+alter table public.member_badges add constraint member_badges_push_nonnegative check (push_count >= 0);
+alter table public.member_badges drop constraint if exists member_badges_void_nonnegative;
+alter table public.member_badges add constraint member_badges_void_nonnegative check (void_count >= 0);
+
 create or replace view public.community_public_posts with (security_invoker=true) as
 select c.id,c.user_id,c.share_token,c.builder_url,c.title,c.author_name,c.x_username,c.sport,c.leg_count,c.legs,c.sportsbook,c.is_active,c.created_at,c.updated_at,c.verified_pregame,c.source_url,c.bet_probability_pct,c.analysis_summary,
        coalesce(r.result_status,'PENDING') as result_status,r.result_summary,r.graded_at,r.updated_at as result_updated_at
@@ -72,8 +83,8 @@ begin
   into v_result from public.community_parlays c join touched t on t.community_parlay_id=c.id;
   return v_result;
 end;$$;
-revoke all on function public.parlayping_community_grade_candidates(text,integer,timestamptz) from public;
-grant execute on function public.parlayping_community_grade_candidates(text,integer,timestamptz) to anon,authenticated;
+revoke all on function public.parlayping_community_grade_candidates(text,integer,timestamptz) from public, authenticated;
+grant execute on function public.parlayping_community_grade_candidates(text,integer,timestamptz) to anon;
 
 create or replace function public.parlayping_apply_community_grades(p_scheduler_secret text,p_rows jsonb default '[]'::jsonb,p_run_at timestamptz default now())
 returns jsonb language plpgsql security definer set search_path='pg_catalog','public' as $$
@@ -102,8 +113,8 @@ begin
   ) s where b.user_id=s.user_id;
   return jsonb_build_object('ok',true,'updated',v_updated,'runAt',p_run_at);
 end;$$;
-revoke all on function public.parlayping_apply_community_grades(text,jsonb,timestamptz) from public;
-grant execute on function public.parlayping_apply_community_grades(text,jsonb,timestamptz) to anon,authenticated;
+revoke all on function public.parlayping_apply_community_grades(text,jsonb,timestamptz) from public, authenticated;
+grant execute on function public.parlayping_apply_community_grades(text,jsonb,timestamptz) to anon;
 
 -- Scheduler: refresh public Community records without consuming X API credits.
 do $$ declare v_jobid bigint; begin select jobid into v_jobid from cron.job where jobname='parlayping-community-grade' limit 1; if v_jobid is not null then perform cron.unschedule(v_jobid); end if; end $$;
