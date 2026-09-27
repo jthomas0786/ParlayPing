@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#071725" />
-  <meta name="description" content="Explore verified upcoming betslips and see which NFL players and props are trending across ParlayPing community submissions and cached public X observations." />
-  <title>Trending Bets & NFL Betting Pulse — ParlayPing</title>
+  <meta name="description" content="Explore verified upcoming betslips and transparent Community records across ParlayPing." />
+  <title>Trending Bets & Community Records — ParlayPing</title>
   <link rel="icon" href="/parlayping-approved-hero.webp" type="image/webp" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -16,7 +16,7 @@
 <body>
   <main class="trend-page">
     <section class="trend-hero">
-      <div><span class="trend-kicker">VERIFIED BETSLIP NETWORK</span><h1>Trending <span>bets</span></h1><p>Pregame-verified community submissions plus the public X betslips ParlayPing already captured. Submitters get an editable Builder link, a public share page, and Founding 100 credit while spots remain.</p><a class="trend-refresh" href="/submit">Submit your betslip →</a></div>
+      <div><span class="trend-kicker">VERIFIED BETSLIP NETWORK</span><h1>Trending <span>bets</span></h1><p>Pregame-verified community submissions plus the public X betslips ParlayPing already captured. Community results stay attached to the original submission so wins and losses build a transparent record.</p><a class="trend-refresh" href="/submit">Submit your betslip →</a></div>
       <div class="trend-hero-stat"><strong id="trendCount">—</strong><span>verified upcoming bets ready to build</span></div>
     </section>
 
@@ -33,6 +33,14 @@
       <div class="pulse-grid" id="pulseGrid"><div class="pulse-loading">Building the NFL betting pulse…</div></div>
     </section>
 
+    <section class="pp-contributor-section" id="communityLeaderboard">
+      <div class="pp-contributor-head">
+        <div><span class="trend-kicker">VERIFIED COMMUNITY RECORDS</span><h2>Contributor board</h2><p>Records come from the original pregame-verified submissions. Settled losses remain visible instead of disappearing after the game.</p></div>
+        <span class="pp-contributor-note">AUTO-GRADED</span>
+      </div>
+      <div class="pp-contributor-grid" id="communityLeaderboardGrid"><div class="pp-contributor-empty">Loading verified contributor records…</div></div>
+    </section>
+
     <section class="trend-controls" aria-label="Trending bet filters">
       <div class="trend-control-group"><span>Sport</span><div class="trend-pills" id="trendSportFilters"></div></div>
       <div class="trend-control-group"><span>Sort by</span><div class="trend-pills" id="trendSortFilters"></div></div>
@@ -44,7 +52,7 @@
   </main>
   <script src="/app-nav.js?v=20260926b" data-pp-app-nav></script>
   <script src="/trending-page.js?v=20260926g"></script>
-  <script src="/trending-growth.js?v=20260926a"></script>
+  <script src="/trending-growth.js?v=20260927a"></script>
   <script src="/verified-link-fix.js?v=20260926a"></script>
 </body>
 </html>

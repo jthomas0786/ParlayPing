@@ -35,6 +35,7 @@
     { "source": "/api/landing-create", "destination": "/api/index?__pp_route=landing-create" },
     { "source": "/api/trending-build", "destination": "/api/index?__pp_route=trending-build" },
     { "source": "/api/community-submit", "destination": "/api/index?__pp_route=community-submit" },
+    { "source": "/api/community-grade-worker", "destination": "/api/index?__pp_route=community-grade-worker" },
     { "source": "/api/v1/analyze", "destination": "/api/index?__pp_route=v1-analyze" },
     { "source": "/api/v1/build", "destination": "/api/index?__pp_route=v1-build" },
     { "source": "/api/v1/share", "destination": "/api/index?__pp_route=v1-share" },
