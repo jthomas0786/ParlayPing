@@ -16,6 +16,7 @@ const loaders={
   'landing-create':()=>require('../server/api/landing-create'),
   'trending-build':()=>require('../server/api/trending-build'),
   'community-submit':()=>require('../server/api/community-submit'),
+  'community-grade-worker':()=>require('../server/api/community-grade-worker'),
   'brand-wordmark':()=>require('../server/api/brand-wordmark'),
   'v1-analyze':()=>require('../server/api/v1/analyze'),
   'v1-build':()=>require('../server/api/v1/build'),
