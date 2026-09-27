@@ -40,25 +40,41 @@ test('profiles expose founding badge, invite count and personal referral link',(
   assert.match(growth,/Submit another betslip/);
 });
 
-test('submitted and shared slips carry the contributor referral loop',()=>{
+test('submitted and shared slips carry the contributor referral loop and Discord copy',()=>{
   const submit=read('submit.html');
   const submitGrowth=read('submit-growth.js');
   const share=read('server/api/share-page-with-nav.js');
-  assert.match(submit,/submit-growth\.js\?v=20260926a/);
+  assert.match(submit,/submit-growth\.js\?v=20260927b/);
   assert.match(submitGrowth,/searchParams\.set\('ref',referralCode\)/);
   assert.match(submitGrowth,/\/join\?ref=/);
   assert.match(submitGrowth,/Submit yours free/);
+  assert.match(submitGrowth,/Copy for Discord/);
+  assert.match(submitGrowth,/ParlayPing Verified Pregame/);
   assert.match(share,/Got a slip of your own\?/);
   assert.match(share,/Join & submit yours/);
   assert.match(share,/\/join\?ref=/);
   assert.match(share,/safeReferral/);
 });
 
-test('Explore decorates verified community cards with Founding badges',()=>{
+test('Explore decorates verified community cards with Founding badges and engagement actions',()=>{
   const html=read('trending.html');
   const growth=read('trending-growth.js');
-  assert.match(html,/trending-growth\.js\?v=20260927a/);
+  assert.match(html,/trending-growth\.js\?v=20260927b/);
   assert.match(growth,/member_badges/);
   assert.match(growth,/COMMUNITY/);
   assert.match(growth,/FOUNDING #/);
+  assert.match(growth,/parlayping_record_community_engagement/);
+  assert.match(growth,/data-pp-community-action/);
+  assert.match(growth,/tail_count/);
+  assert.match(growth,/modify_count/);
+});
+
+test('Community engagement SQL deduplicates Tail and Modify counts per browser client',()=>{
+  const sql=read('sql/community-engagement-counters.sql');
+  assert.match(sql,/community_engagement_events/i);
+  assert.match(sql,/action in \('tail','modify'\)/i);
+  assert.match(sql,/unique \(community_parlay_id, action, client_key\)/i);
+  assert.match(sql,/parlayping_record_community_engagement/i);
+  assert.match(sql,/security definer/i);
+  assert.match(sql,/revoke all on public\.community_engagement_events from anon, authenticated/i);
 });
