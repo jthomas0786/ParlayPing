@@ -17,6 +17,16 @@ function normBook(value){
   return map[key]||raw||null;
 }
 function sideOf(leg){const side=String(leg?.side||'over').toLowerCase();return side==='under'||side==='no'?'under':'over';}
+function sportsbookLineForLeg(leg){
+  const line=finite(leg?.line);if(line==null)return null;
+  if(leg?.inclusive===true&&Number.isInteger(line)){
+    const side=sideOf(leg);
+    if(side==='over')return line-0.5;
+    if(side==='under')return line+0.5;
+  }
+  return line;
+}
+function lineMatchesLeg(rowLine,leg){const row=finite(rowLine),wanted=sportsbookLineForLeg(leg);return row!=null&&wanted!=null&&Math.abs(row-wanted)<1e-7;}
 function marketKey(leg){
   const key=compact(leg?.market||leg?.displayMarket||'');
   if(MLB_INTERNAL_MARKETS[key])return MLB_INTERNAL_MARKETS[key];
@@ -89,7 +99,7 @@ function parseRowSnapshot(doc,leg){
     const line=finite(row.line),price=finite(side==='under'?row.underPrice:row.overPrice);
     if(line!=null&&price!=null)pushAlt(altLinesByBook,book,{line,oddsAmerican:price,side,snapshotTime:row.snapshotTime,preserved:row.preserved});
     const binaryMatch=binaryMarket(market)&&side==='over'&&(finite(leg.line)==null||Math.abs(Number(leg.line)-0.5)<1e-7);
-    const exact=binaryMatch||(line!=null&&finite(leg.line)!=null&&Math.abs(line-Number(leg.line))<1e-7);
+    const exact=binaryMatch||lineMatchesLeg(line,leg);
     if(exact&&price!=null){
       const offer={oddsAmerican:price,selectionLink:row.deepLink||row.selectionLink||null,betslipUrl:null,snapshotTime:row.snapshotTime||null,preserved:Boolean(row.preserved),priceKind:row.preserved?'last-verified-pregame':'verified-snapshot'};
       const existing=bookOffers[book];
@@ -131,7 +141,7 @@ function parseNestedSnapshot(doc,leg){
   const source=Array.isArray(slot.alternates)&&slot.alternates.length?slot.alternates:(finite(slot.line)!=null?[{line:Number(slot.line),over:slot.over,under:slot.under}]:[]);
   for(const row of source){
     const line=finite(row?.line);if(line==null)continue;
-    for(const offer of allOffers(row?.[side])){const book=normBook(offer?.book||offer?.sportsbook);const price=finite(offer?.price??offer?.oddsAmerican);if(!book||price==null)continue;pushAlt(altLinesByBook,book,{line,oddsAmerican:price,side,selectionLink:offer?.link||offer?.deepLink||null});const exact=finite(leg.line)!=null&&Math.abs(line-Number(leg.line))<1e-7;if(exact){const existing=bookOffers[book];if(!existing||price>existing.oddsAmerican)bookOffers[book]={oddsAmerican:price,selectionLink:offer?.link||offer?.deepLink||null,betslipUrl:null};if(!preferred||price>preferred.oddsAmerican)preferred={sportsbook:book,oddsAmerican:price,sportsbookLink:offer?.link||offer?.deepLink||null};}}
+    for(const offer of allOffers(row?.[side])){const book=normBook(offer?.book||offer?.sportsbook);const price=finite(offer?.price??offer?.oddsAmerican);if(!book||price==null)continue;pushAlt(altLinesByBook,book,{line,oddsAmerican:price,side,selectionLink:offer?.link||offer?.deepLink||null});const exact=lineMatchesLeg(line,leg);if(exact){const existing=bookOffers[book];if(!existing||price>existing.oddsAmerican)bookOffers[book]={oddsAmerican:price,selectionLink:offer?.link||offer?.deepLink||null,betslipUrl:null};if(!preferred||price>preferred.oddsAmerican)preferred={sportsbook:book,oddsAmerican:price,sportsbookLink:offer?.link||offer?.deepLink||null};}}
   }
   return Object.keys(bookOffers).length||Object.keys(altLinesByBook).length?{altLinesByBook,bookOffers,preferred,gameId:String(hit.game?.gameId||''),startTimeUTC:hit.game?.startDateUTC||hit.game?.startTimeUTC||null}:null;
 }
@@ -195,4 +205,4 @@ async function enrichSportsbookMarkets(slip){
   const enriched=await Promise.all(legs.map(enrichLeg));
   return {...slip,legs:enriched};
 }
-module.exports={enrichSportsbookMarkets,enrichLeg,loadSnapshot,parseRowSnapshot,parseNestedSnapshot,parseMlbPublicSlate,marketKey,normBook,mlbGameMatches,sameEvent};
+module.exports={enrichSportsbookMarkets,enrichLeg,loadSnapshot,parseRowSnapshot,parseNestedSnapshot,parseMlbPublicSlate,marketKey,normBook,mlbGameMatches,sameEvent,sportsbookLineForLeg,lineMatchesLeg};

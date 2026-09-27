@@ -89,3 +89,15 @@ test('iPhone runtime is detected for direct app-friendly navigation',()=>{
   const api=runOpenFinal({legs:[]},{userAgent:'Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X)'});
   assert.equal(api.mobileLike(),true);
 });
+
+
+test('non-sportsbook source brands never render as books and missing prices stay unavailable',()=>{
+  const slip={sportsbook:'Playbook',legs:[{id:'mahomes',sportsbook:'Playbook',oddsAmerican:null,bookOffers:{}}]};
+  const api=runOpenFinal(slip);
+  assert.deepEqual([...api.orderedBooks()],[]);
+  assert.equal(api.sportsbookName('Playbook'),null);
+  assert.equal(api.finiteOdds(null),null);
+  assert.equal(api.finiteOdds(0),null);
+  assert.equal(api.fmtOdds(null),'—');
+  assert.equal(api.legOddsForBook(slip.legs[0],'Playbook'),null);
+});

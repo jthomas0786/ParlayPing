@@ -6,7 +6,8 @@
   const qa=(selector,root=document)=>[...root.querySelectorAll(selector)];
   const esc=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 
-  const BOOK_ORDER=['DraftKings','FanDuel','bet365','Caesars','theScore Bet','BetMGM','Fanatics'];
+  const BOOK_ORDER=['DraftKings','FanDuel','bet365','Caesars','theScore Bet','BetMGM','Fanatics','ESPN BET','Hard Rock Bet','BetRivers','Pinnacle','Parx Casino','Bovada','Fliff'];
+  const ACTUAL_SPORTSBOOKS=new Set(BOOK_ORDER);
   const BOOK_CLASS={'DraftKings':'dk','FanDuel':'fd','bet365':'b365','Caesars':'cz','theScore Bet':'score','BetMGM':'mgm','Fanatics':'fanatics'};
   const BOOK_MARK={'DraftKings':'DK','FanDuel':'F','bet365':'bet','Caesars':'C','theScore Bet':'S','BetMGM':'M','Fanatics':'F'};
   const RESOLVABLE_BOOKS=new Set(['DraftKings','FanDuel']);
@@ -23,11 +24,13 @@
   function normalizeBook(value){
     const raw=String(value||'').trim();
     const key=raw.toLowerCase().replace(/[^a-z0-9]/g,'');
-    const aliases={draftkings:'DraftKings',draftkingssportsbook:'DraftKings',dk:'DraftKings',fanduel:'FanDuel',fanduelsportsbook:'FanDuel',fd:'FanDuel',bet365:'bet365','365':'bet365',caesars:'Caesars',williamhill:'Caesars',caesarssportsbook:'Caesars',thescorebet:'theScore Bet',thescore:'theScore Bet',betmgm:'BetMGM',mgm:'BetMGM',fanatics:'Fanatics',fanaticssportsbook:'Fanatics'};
+    const aliases={draftkings:'DraftKings',draftkingssportsbook:'DraftKings',dk:'DraftKings',fanduel:'FanDuel',fanduelsportsbook:'FanDuel',fd:'FanDuel',bet365:'bet365','365':'bet365',caesars:'Caesars',williamhill:'Caesars',caesarssportsbook:'Caesars',thescorebet:'theScore Bet',thescore:'theScore Bet',betmgm:'BetMGM',mgm:'BetMGM',fanatics:'Fanatics',fanaticssportsbook:'Fanatics',espnbet:'ESPN BET',espn:'ESPN BET',hardrock:'Hard Rock Bet',hardrockbet:'Hard Rock Bet',betrivers:'BetRivers',pinnacle:'Pinnacle',parx:'Parx Casino',parxcasino:'Parx Casino',bovada:'Bovada',fliff:'Fliff'};
     return aliases[key]||raw||null;
   }
+  function sportsbookName(value){const book=normalizeBook(value);return book&&ACTUAL_SPORTSBOOKS.has(book)?book:null;}
+  function finiteOdds(value){if(value===null||value===undefined||value==='')return null;const n=Number(value);return Number.isFinite(n)&&n!==0?n:null;}
   function safeHttps(value){try{const url=new URL(String(value||''));return url.protocol==='https:'?url.toString():null;}catch{return null;}}
-  function fmtOdds(value){const n=Number(value);if(!Number.isFinite(n))return '—';return n>0?`+${Math.round(n)}`:`${Math.round(n)}`;}
+  function fmtOdds(value){const n=finiteOdds(value);if(n==null)return '—';return n>0?`+${Math.round(n)}`:`${Math.round(n)}`;}
   function entryForBook(map,book){
     if(!map||typeof map!=='object'||!book)return null;
     const wanted=normalizeBook(book);
@@ -40,13 +43,13 @@
     const out={};
     const explicit=slip.sportsbookLinks&&typeof slip.sportsbookLinks==='object'?slip.sportsbookLinks:{};
     for(const [raw,value] of Object.entries(explicit)){
-      const book=normalizeBook(raw),url=safeHttps(value);
+      const book=sportsbookName(raw),url=safeHttps(value);
       if(book&&url)out[book]=url;
     }
     if(slipMutated)return out;
-    const books=[...new Set(legs.map(leg=>normalizeBook(leg?.sportsbook)).filter(Boolean))];
+    const books=[...new Set(legs.map(leg=>sportsbookName(leg?.sportsbook)).filter(Boolean))];
     for(const book of books){
-      if(out[book]||!legs.length||!legs.every(leg=>normalizeBook(leg?.sportsbook)===book))continue;
+      if(out[book]||!legs.length||!legs.every(leg=>sportsbookName(leg?.sportsbook)===book))continue;
       const urls=[...new Set(legs.map(leg=>safeHttps(leg?.sportsbookLink)).filter(Boolean))];
       if(urls.length===1)out[book]=urls[0];
     }
@@ -56,11 +59,10 @@
     const books=new Set(Object.keys(exactSportsbookLinks()));
     for(const leg of legs){
       for(const [raw,offer] of Object.entries(leg?.bookOffers||{})){
-        if(Number.isFinite(Number(offer?.oddsAmerican))){const book=normalizeBook(raw);if(book)books.add(book);}
+        if(finiteOdds(offer?.oddsAmerican)!=null){const book=sportsbookName(raw);if(book)books.add(book);}
       }
-      if(Number.isFinite(Number(leg?.oddsAmerican))){const book=normalizeBook(leg?.sportsbook);if(book)books.add(book);}
+      if(finiteOdds(leg?.oddsAmerican)!=null){const book=sportsbookName(leg?.sportsbook);if(book)books.add(book);}
     }
-    const requested=normalizeBook(slip?.sportsbook);if(requested)books.add(requested);
     return [...books];
   }
   function orderedBooks(){
@@ -75,9 +77,10 @@
   }
   function legOddsForBook(leg,book){
     const offer=entryForBook(leg?.bookOffers,book);
-    const price=Number(offer?.oddsAmerican);
-    if(Number.isFinite(price))return price;
-    if(normalizeBook(leg?.sportsbook)===book&&Number.isFinite(Number(leg?.oddsAmerican)))return Number(leg.oddsAmerican);
+    const price=finiteOdds(offer?.oddsAmerican);
+    if(price!=null)return price;
+    const legPrice=finiteOdds(leg?.oddsAmerican);
+    if(sportsbookName(leg?.sportsbook)===sportsbookName(book)&&legPrice!=null)return legPrice;
     return null;
   }
   function legForItem(item,index){
@@ -92,12 +95,12 @@
     });
   }
   function altRowsForBook(leg,book){
-    const normalized=normalizeBook(book);
+    const normalized=sportsbookName(book);
     if(!leg||!normalized)return [];
     const side=String(leg?.side||'over').toLowerCase();
     const raw=entryForBook(leg?.altLinesByBook,normalized);
     const rows=(Array.isArray(raw)?raw:[])
-      .filter(row=>row&&row.line!=null&&Number.isFinite(Number(row.oddsAmerican))&&(!row.side||String(row.side).toLowerCase()===side))
+      .filter(row=>row&&row.line!=null&&finiteOdds(row.oddsAmerican)!=null&&(!row.side||String(row.side).toLowerCase()===side))
       .map(row=>({...row,sportsbook:normalized}));
     const currentOdds=legOddsForBook(leg,normalized);
     if(leg.line!=null&&currentOdds!=null&&!rows.some(row=>String(row.line)===String(leg.line)&&(!row.side||String(row.side).toLowerCase()===side))){
@@ -145,9 +148,9 @@
     slip.sportsbookLinks={};
   }
   function updateSelectedAlt(button,book){
-    const normalized=normalizeBook(book);
+    const normalized=sportsbookName(book);
     const item=button?.closest?.('.pp-leg-item');
-    if(!item||!normalized||normalizeBook(button.dataset.book)!==normalized)return;
+    if(!item||!normalized||sportsbookName(button.dataset.book)!==normalized)return;
     const items=qa('.pp-leg-item');
     const index=items.indexOf(item);
     const leg=legForItem(item,index);
@@ -197,7 +200,7 @@
       startTimeUTC:leg?.startTimeUTC||null
     };
   }
-  function canResolveExact(book){return Boolean(RESOLVABLE_BOOKS.has(normalizeBook(book))&&legs.length&&!exactSportsbookLinks()[normalizeBook(book)]);}
+  function canResolveExact(book){const normalized=sportsbookName(book);return Boolean(normalized&&RESOLVABLE_BOOKS.has(normalized)&&legs.length&&!exactSportsbookLinks()[normalized]);}
   function applyResolvedSelections(book,data){
     const url=safeHttps(data?.url);if(!url)return null;
     slip.sportsbookLinks={...(slip.sportsbookLinks&&typeof slip.sportsbookLinks==='object'?slip.sportsbookLinks:{})};
@@ -214,8 +217,8 @@
 
   const resolving=new Map();
   function resolveExactBook(book){
-    const normalized=normalizeBook(book);
-    const existing=exactSportsbookLinks()[normalized];if(existing)return Promise.resolve(existing);
+    const normalized=sportsbookName(book);
+    const existing=normalized?exactSportsbookLinks()[normalized]:null;if(existing)return Promise.resolve(existing);
     if(!RESOLVABLE_BOOKS.has(normalized)||!legs.length||typeof window.fetch!=='function')return Promise.resolve(null);
     if(resolving.has(normalized))return resolving.get(normalized);
     const task=(async()=>{
@@ -242,7 +245,7 @@
     const parent=grid.parentElement;
     qa('.pp-sportsbook-note,.pp-books-price-note',parent||document).forEach(node=>node.remove());
     const books=orderedBooks();
-    const requested=normalizeBook(preferred)||normalizeBook(selectedBook)||normalizeBook(slip?.sportsbook);
+    const requested=sportsbookName(preferred)||sportsbookName(selectedBook)||sportsbookName(slip?.sportsbook);
     selectedBook=(requested&&books.includes(requested)?requested:null)||books[0]||null;
 
     if(!books.length){
@@ -289,7 +292,7 @@
     };
 
     qa('.book-card',grid).forEach(card=>card.addEventListener('click',()=>{
-      selectedBook=normalizeBook(card.dataset.book);
+      selectedBook=sportsbookName(card.dataset.book);
       qa('.book-card',grid).forEach(node=>node.classList.toggle('active',node===card));
       sync();
     }));
@@ -308,7 +311,7 @@
     sync();
   }
 
-  window.__PP_SPORTSBOOK_OPEN_TEST__={normalizeBook,safeHttps,exactSportsbookLinks,pricedSportsbooks,orderedBooks,openTarget,legOddsForBook,altRowsForBook,mobileLike,resolverLeg,canResolveExact,applyResolvedSelections};
+  window.__PP_SPORTSBOOK_OPEN_TEST__={normalizeBook,sportsbookName,finiteOdds,safeHttps,fmtOdds,exactSportsbookLinks,pricedSportsbooks,orderedBooks,openTarget,legOddsForBook,altRowsForBook,mobileLike,resolverLeg,canResolveExact,applyResolvedSelections};
   renderSportsbooks();
   if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>requestAnimationFrame(()=>renderSportsbooks(selectedBook)));
 })();
