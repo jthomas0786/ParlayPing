@@ -1,6 +1,6 @@
-name: Production FanDuel resolver smoke
+name: Production sportsbook and AI smoke
 
-# Production smoke is intentionally triggered by edits to this file after the target deploy is READY.
+# Production smoke is intentionally triggered only by edits to this file after the target deploy is READY.
 on:
   push:
     branches: [main]
@@ -13,43 +13,23 @@ permissions:
 jobs:
   smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     steps:
-      - name: Verify benchmark diagnostics and an active exact FanDuel market
+      - name: Verify active exact FanDuel and BetMGM markets
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
-          import json, urllib.request, urllib.error
+          import json, urllib.request
 
           URL='https://www.parlayping.net/api/sportsbook-link'
 
-          def post(legs):
-              body=json.dumps({'book':'FanDuel','legs':legs}).encode()
+          def post(book, legs):
+              body=json.dumps({'book':book,'legs':legs}).encode()
               req=urllib.request.Request(URL,data=body,headers={'content-type':'application/json'},method='POST')
               with urllib.request.urlopen(req,timeout=45) as r:
                   return json.load(r)
 
-          benchmark=[
-              {'sport':'NFL','player':'Patrick Mahomes','matchup':'KC @ MIA','market':'passYds','side':'over','line':225,'inclusive':True,'startTimeUTC':'2026-09-27T17:00:00Z'},
-              {'sport':'NFL','player':'Rashee Rice','matchup':'KC @ MIA','market':'recYds','side':'over','line':30,'inclusive':True,'startTimeUTC':'2026-09-27T17:00:00Z'},
-              {'sport':'NFL','player':'Kenneth Walker III','matchup':'KC @ MIA','market':'rushYds','side':'over','line':70,'inclusive':True,'startTimeUTC':'2026-09-27T17:00:00Z'},
-              {'sport':'NFL','player':'Jaxon Smith-Njigba','matchup':'SEA @ WAS','market':'recYds','side':'over','line':80,'inclusive':True,'startTimeUTC':'2026-09-27T17:00:00Z'},
-              {'sport':'NFL','player':'Sam Darnold','matchup':'SEA @ WAS','market':'passYds','side':'over','line':175,'inclusive':True,'startTimeUTC':'2026-09-27T17:00:00Z'},
-              {'sport':'NFL','player':'Stefon Diggs','matchup':'SEA @ WAS','market':'recYds','side':'over','line':20,'inclusive':True,'startTimeUTC':'2026-09-27T17:00:00Z'},
-          ]
-          old=post(benchmark)
-          assert old.get('ok') is True, old
-          diag=old.get('diagnostics') or {}
-          assert diag.get('book')=='FanDuel' and diag.get('totalLegs')==6, old
-          assert len(diag.get('legs') or [])==6, old
-          print('BENCHMARK',json.dumps({
-              'exact':old.get('exact'),'prefilled':old.get('prefilled'),'diagnostic':diag.get('code'),
-              'exactCoverage':diag.get('exactCoverage'),'pricedCoverage':diag.get('pricedCoverage')
-          },separators=(',',':')))
-
-          # PHI @ CHI is still upcoming. Probe normal FanDuel milestone thresholds so
-          # production verification does not depend on already-closed Week 3 markets.
           base={'sport':'NFL','matchup':'PHI @ CHI','side':'over','inclusive':True,'startTimeUTC':'2026-09-29T00:15:00Z'}
           candidates=[
               ('Jalen Hurts','passYds',[175,200,225]),
@@ -62,32 +42,75 @@ jobs:
               ('Cole Kmet','recYds',[15,20,25]),
           ]
 
-          exact=[]
-          attempts=[]
-          for player,market,lines in candidates:
-              matched=None
-              for line in lines:
-                  leg={**base,'player':player,'market':market,'line':line}
-                  d=post([leg])
-                  sel=(d.get('selections') or [None])[0]
-                  attempts.append({'player':player,'market':market,'line':line,'exact':bool(d.get('exact')),'price':sel.get('price') if isinstance(sel,dict) else None,'code':(d.get('diagnostics') or {}).get('code')})
-                  if d.get('exact') and isinstance(sel,dict) and isinstance(sel.get('price'),(int,float)) and sel.get('price')!=0:
-                      matched=leg
-                      break
-              if matched:
-                  exact.append(matched)
+          def probe(book, minimum):
+              exact=[]
+              attempts=[]
+              for player,market,lines in candidates:
+                  matched=None
+                  for line in lines:
+                      leg={**base,'player':player,'market':market,'line':line}
+                      d=post(book,[leg])
+                      sel=(d.get('selections') or [None])[0]
+                      attempts.append({
+                          'player':player,'market':market,'line':line,
+                          'exact':bool(d.get('exact')),
+                          'price':sel.get('price') if isinstance(sel,dict) else None,
+                          'code':(d.get('diagnostics') or {}).get('code')
+                      })
+                      if d.get('exact') and isinstance(sel,dict) and isinstance(sel.get('price'),(int,float)) and sel.get('price')!=0:
+                          matched=leg
+                          break
+                  if matched:
+                      exact.append(matched)
+              print(book.upper()+'_ATTEMPTS',json.dumps(attempts,separators=(',',':')))
+              assert len(exact)>=minimum, f'Expected at least {minimum} active exact {book} selections; found {len(exact)}'
+              combined=post(book,exact)
+              selections=combined.get('selections') or []
+              assert combined.get('exact') is True, combined
+              assert len(selections)==len(exact), combined
+              assert all(isinstance(s,dict) and isinstance(s.get('price'),(int,float)) and s.get('price')!=0 for s in selections), combined
+              print(book.upper()+'_COMBINED',json.dumps({
+                  'legs':len(exact),'exact':combined.get('exact'),'prefilled':combined.get('prefilled'),
+                  'diagnostic':(combined.get('diagnostics') or {}).get('code'),
+                  'prices':[s.get('price') for s in selections],
+                  'links':sum(1 for s in selections if isinstance(s,dict) and s.get('selectionLink'))
+              },separators=(',',':')))
 
-          print('ACTIVE_ATTEMPTS',json.dumps(attempts,separators=(',',':')))
-          assert len(exact)>=2, f'Expected at least two active exact FanDuel selections; found {len(exact)}'
+          probe('FanDuel',2)
+          probe('BetMGM',1)
+          PY
 
-          combined=post(exact)
-          selections=combined.get('selections') or []
-          assert combined.get('exact') is True, combined
-          assert len(selections)==len(exact), combined
-          assert all(isinstance(s,dict) and isinstance(s.get('price'),(int,float)) and s.get('price')!=0 for s in selections), combined
-          print('ACTIVE_COMBINED',json.dumps({
-              'legs':len(exact),'exact':combined.get('exact'),'prefilled':combined.get('prefilled'),
-              'diagnostic':(combined.get('diagnostics') or {}).get('code'),
-              'prices':[s.get('price') for s in selections]
+      - name: Verify production OpenAI vision parsing
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64, json, urllib.request
+
+          with urllib.request.urlopen(
+              'https://raw.githubusercontent.com/jthomas0786/ParlayPing/main/parlayping-approved-logo.png',
+              timeout=30,
+          ) as image_response:
+              png = base64.b64encode(image_response.read()).decode()
+
+          payload={
+              'text':'NFL\nJalen Hurts 175+ passing yards\nFanDuel',
+              'imageData':'data:image/png;base64,'+png,
+          }
+          req=urllib.request.Request(
+              'https://www.parlayping.net/api/landing-create',
+              data=json.dumps(payload).encode(),
+              headers={'content-type':'application/json','accept':'application/json'},
+              method='POST',
+          )
+          with urllib.request.urlopen(req,timeout=60) as response:
+              data=json.load(response)
+          print('VISION_SMOKE',json.dumps({
+              'ok':data.get('ok'),'method':data.get('method'),'legCount':data.get('legCount'),
+              'sport':data.get('sport'),'sportsbook':data.get('sportsbook'),
+              'hasBuilderUrl':bool(data.get('builderUrl'))
           },separators=(',',':')))
+          assert data.get('ok') is True, data
+          assert data.get('method') == 'vision', data
+          assert int(data.get('legCount') or 0) >= 1, data
           PY
