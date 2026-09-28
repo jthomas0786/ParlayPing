@@ -1,5 +1,6 @@
 name: Production FanDuel resolver smoke
 
+# Production smoke is intentionally triggered by edits to this file after the target deploy is READY.
 on:
   push:
     branches: [main]
