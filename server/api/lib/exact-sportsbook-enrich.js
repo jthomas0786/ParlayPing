@@ -1,9 +1,10 @@
-const { resolveSportsbookBetslip } = require('./odds-api-deeplink');
+const { resolveSportsbookBetslip, resolveSportsbooksBetslip } = require('./odds-api-deeplink');
 const { validateResolvedSelections, hasFullExactCoverage, buildResolutionDiagnostics } = require('./exact-selection-validation');
 
 const EXACT_RESOLUTION_CACHE_MS = 60_000;
 const exactResolutionCache = new Map();
 const exactResolutionInflight = new Map();
+const exactBatchInflight = new Map();
 
 function finiteOdds(value) {
   if (value === null || value === undefined || value === '') return null;
@@ -77,6 +78,10 @@ function exactResolutionCacheKey(book, legs) {
   return `${String(book || '').toLowerCase()}::${(Array.isArray(legs) ? legs : []).map(resolutionLegKey).join(';;')}`;
 }
 
+function exactBatchCacheKey(books, legs) {
+  return `${(Array.isArray(books) ? books : []).map(book => String(book || '').toLowerCase()).sort().join(',')}::${(Array.isArray(legs) ? legs : []).map(resolutionLegKey).join(';;')}`;
+}
+
 function pruneExactResolutionCache(now = Date.now()) {
   for (const [key, entry] of exactResolutionCache.entries()) {
     if (!entry || entry.expiresAt <= now) exactResolutionCache.delete(key);
@@ -86,6 +91,7 @@ function pruneExactResolutionCache(now = Date.now()) {
 function clearExactResolutionCache() {
   exactResolutionCache.clear();
   exactResolutionInflight.clear();
+  exactBatchInflight.clear();
 }
 
 async function resolveWithCache({ book, legs, resolve, enabled = true, ttlMs = EXACT_RESOLUTION_CACHE_MS }) {
@@ -105,6 +111,16 @@ async function resolveWithCache({ book, legs, resolve, enabled = true, ttlMs = E
     })
     .finally(() => exactResolutionInflight.delete(key));
   exactResolutionInflight.set(key, pending);
+  return pending;
+}
+
+async function resolveBatchWithInflight({ books, legs }) {
+  const key = exactBatchCacheKey(books, legs);
+  if (exactBatchInflight.has(key)) return exactBatchInflight.get(key);
+  const pending = Promise.resolve()
+    .then(() => resolveSportsbooksBetslip({ books, legs }))
+    .finally(() => exactBatchInflight.delete(key));
+  exactBatchInflight.set(key, pending);
   return pending;
 }
 
@@ -147,16 +163,46 @@ function applyExactResolution(slip, book, result) {
   return next;
 }
 
+function logResolution(book, legs, result, options) {
+  const diagnostics = buildResolutionDiagnostics(legs, result?.selections, {
+    book,
+    prefilled: Boolean(safeHttps(result?.url)),
+  });
+  if (options.log !== false) {
+    console.info('ParlayPing exact sportsbook fallback', JSON.stringify(diagnosticLogPayload(diagnostics)));
+  }
+}
+
 async function enrichMissingExactSportsbooks(slip, options = {}) {
   let enriched = slip;
   const books = Array.isArray(options.books) && options.books.length ? options.books : ['FanDuel', 'DraftKings', 'BetMGM', 'BetRivers', 'Bovada', 'theScore Bet'];
   const resolve = typeof options.resolve === 'function' ? options.resolve : resolveSportsbookBetslip;
+  const useDefaultBatch = resolve === resolveSportsbookBetslip && options.batch !== false;
   const useCache = options.cache === true || (options.cache !== false && resolve === resolveSportsbookBetslip);
   const legs = Array.isArray(enriched?.legs) ? enriched.legs : [];
   const missingBooks = books.filter(book => !hasFullBookPricing(enriched, book));
+  if (!missingBooks.length) return enriched;
 
-  // Each sportsbook is independent. Resolve missing books concurrently, then merge only
-  // full exact coverage back into the slip in stable book order.
+  if (useDefaultBatch) {
+    try {
+      // The Odds API treats up to ten explicitly requested bookmakers as one region.
+      // Resolve every missing sportsbook from one provider response per event/market set.
+      const results = await resolveBatchWithInflight({ books: missingBooks, legs });
+      for (const book of missingBooks) {
+        const result = results?.[book] || null;
+        if (!result) continue;
+        logResolution(book, legs, result, options);
+        enriched = applyExactResolution(enriched, book, result);
+      }
+      return enriched;
+    } catch (error) {
+      if (options.log !== false) console.warn('ParlayPing batched exact sportsbook fallback unavailable:', error?.message || error);
+      return enriched;
+    }
+  }
+
+  // Custom/test resolvers remain independently concurrent so regression fixtures can
+  // exercise individual sportsbook behavior without requiring a provider batch API.
   const attempts = await Promise.all(missingBooks.map(async book => {
     try {
       const result = await resolveWithCache({
@@ -166,13 +212,7 @@ async function enrichMissingExactSportsbooks(slip, options = {}) {
         enabled: useCache,
         ttlMs: options.cacheTtlMs,
       });
-      const diagnostics = buildResolutionDiagnostics(legs, result?.selections, {
-        book,
-        prefilled: Boolean(safeHttps(result?.url)),
-      });
-      if (options.log !== false) {
-        console.info('ParlayPing exact sportsbook fallback', JSON.stringify(diagnosticLogPayload(diagnostics)));
-      }
+      logResolution(book, legs, result, options);
       return { book, result };
     } catch (error) {
       if (options.log !== false) console.warn(`ParlayPing ${book} exact fallback unavailable:`, error?.message || error);
@@ -193,8 +233,10 @@ module.exports = {
   hasFullBookPricing,
   diagnosticLogPayload,
   exactResolutionCacheKey,
+  exactBatchCacheKey,
   clearExactResolutionCache,
   resolveWithCache,
+  resolveBatchWithInflight,
   applyExactResolution,
   enrichMissingExactSportsbooks,
 };
