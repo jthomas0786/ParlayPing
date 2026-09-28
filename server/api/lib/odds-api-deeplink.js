@@ -34,6 +34,28 @@ const norm=s=>String(s||'').toLowerCase().normalize('NFKD').replace(/[.'’]/g,'
 const compact=s=>norm(s).replace(/\s+/g,'');
 const safeHttps=value=>{try{const u=new URL(String(value||''));return u.protocol==='https:'?u:null;}catch{return null;}};
 
+const NFL_TEAM_ALIASES={
+  ARI:['ari','arizona cardinals','cardinals'],ATL:['atl','atlanta falcons','falcons'],BAL:['bal','baltimore ravens','ravens'],BUF:['buf','buffalo bills','bills'],
+  CAR:['car','carolina panthers','panthers'],CHI:['chi','chicago bears','bears'],CIN:['cin','cincinnati bengals','bengals'],CLE:['cle','cleveland browns','browns'],
+  DAL:['dal','dallas cowboys','cowboys'],DEN:['den','denver broncos','broncos'],DET:['det','detroit lions','lions'],GB:['gb','green bay packers','packers'],
+  HOU:['hou','houston texans','texans'],IND:['ind','indianapolis colts','colts'],JAX:['jax','jac','jacksonville jaguars','jaguars'],KC:['kc','kansas city chiefs','chiefs'],
+  LV:['lv','lvr','las vegas raiders','raiders'],LAC:['lac','los angeles chargers','chargers'],LAR:['lar','la','los angeles rams','rams'],MIA:['mia','miami dolphins','dolphins'],
+  MIN:['min','minnesota vikings','vikings'],NE:['ne','nwe','new england patriots','patriots'],NO:['no','nor','new orleans saints','saints'],NYG:['nyg','new york giants','giants'],
+  NYJ:['nyj','new york jets','jets'],PHI:['phi','philadelphia eagles','eagles'],PIT:['pit','pittsburgh steelers','steelers'],SEA:['sea','seattle seahawks','seahawks'],
+  SF:['sf','sfo','san francisco 49ers','49ers','niners'],TB:['tb','tam','tampa bay buccaneers','buccaneers','bucs'],TEN:['ten','tennessee titans','titans'],WAS:['was','wsh','washington commanders','commanders']
+};
+const TEAM_ALIAS_INDEX=new Map();
+for(const [code,aliases] of Object.entries(NFL_TEAM_ALIASES)){
+  TEAM_ALIAS_INDEX.set(norm(code),code);
+  for(const alias of aliases)TEAM_ALIAS_INDEX.set(norm(alias),code);
+}
+function teamKey(value){const raw=norm(value);return TEAM_ALIAS_INDEX.get(raw)||raw;}
+function teamMatchScore(a,b){
+  const na=norm(a),nb=norm(b);if(!na||!nb)return 0;
+  if(teamKey(na)===teamKey(nb))return 70;
+  return na.includes(nb)||nb.includes(na)?35:0;
+}
+
 function sportKey(value){return SPORT_KEYS[String(value||'').toUpperCase()]||null;}
 function bookKey(value){return BOOK_KEYS[normBook(value)]||null;}
 function internalMarket(leg){
@@ -97,9 +119,9 @@ async function eventContext(leg){
 }
 function eventScore(event,ctx){
   let score=0,teamSignals=0;
-  const ea=norm(event?.away_team),eh=norm(event?.home_team),ca=norm(ctx?.awayTeam),ch=norm(ctx?.homeTeam);
-  if(ca&&ea){if(ca===ea){score+=70;teamSignals++;}else if(ca.includes(ea)||ea.includes(ca)){score+=35;teamSignals++;}}
-  if(ch&&eh){if(ch===eh){score+=70;teamSignals++;}else if(ch.includes(eh)||eh.includes(ch)){score+=35;teamSignals++;}}
+  const away=teamMatchScore(event?.away_team,ctx?.awayTeam),home=teamMatchScore(event?.home_team,ctx?.homeTeam);
+  if(away){score+=away;teamSignals++;}
+  if(home){score+=home;teamSignals++;}
   const et=Date.parse(event?.commence_time||''),ct=Date.parse(ctx?.commenceTime||'');
   if(Number.isFinite(et)&&Number.isFinite(ct)){
     const diff=Math.abs(et-ct);
@@ -227,4 +249,4 @@ async function resolveSportsbookBetslip({book,legs,apiKey=process.env.ODDS_API_K
   return{book:normalizedBook,exact:Boolean(exact&&url),url:url||null,selections,usage};
 }
 
-module.exports={sportKey,bookKey,internalMarket,marketCandidates,desiredOutcomeName,pointCandidates,snapshotEventContext,eventScore,matchEvent,findOutcome,extractSelectionIds,composeFanDuel,composeDraftKings,composeBetslip,resolveSportsbookBetslip};
+module.exports={sportKey,bookKey,internalMarket,marketCandidates,desiredOutcomeName,pointCandidates,snapshotEventContext,teamKey,teamMatchScore,eventScore,matchEvent,findOutcome,extractSelectionIds,composeFanDuel,composeDraftKings,composeBetslip,resolveSportsbookBetslip};
