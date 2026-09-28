@@ -1,5 +1,5 @@
 const { resolveSportsbookBetslip } = require('./odds-api-deeplink');
-const { validateResolvedSelections, hasFullExactCoverage } = require('./exact-selection-validation');
+const { validateResolvedSelections, hasFullExactCoverage, buildResolutionDiagnostics } = require('./exact-selection-validation');
 
 function finiteOdds(value) {
   if (value === null || value === undefined || value === '') return null;
@@ -29,6 +29,30 @@ function bookOffer(leg, book) {
 function hasFullBookPricing(slip, book) {
   const legs = Array.isArray(slip?.legs) ? slip.legs : [];
   return Boolean(legs.length && legs.every(leg => finiteOdds(bookOffer(leg, book)?.oddsAmerican) != null));
+}
+
+function diagnosticLogPayload(diagnostics) {
+  if (!diagnostics) return null;
+  return {
+    book: diagnostics.book,
+    code: diagnostics.code,
+    exactCoverage: diagnostics.exactCoverage,
+    pricedCoverage: diagnostics.pricedCoverage,
+    providerReferenceCoverage: diagnostics.providerReferenceCoverage,
+    prefilled: diagnostics.prefilled,
+    legs: (diagnostics.legs || []).map(row => ({
+      index: row.index,
+      player: row.player,
+      market: row.market,
+      code: row.code,
+      requestedLine: row.requestedLine,
+      resolvedLine: row.resolvedLine,
+      price: row.price,
+      hasSelectionLink: row.hasSelectionLink,
+      hasSelectionId: row.hasSelectionId,
+      hasMarketId: row.hasMarketId,
+    })),
+  };
 }
 
 function applyExactResolution(slip, book, result) {
@@ -78,7 +102,15 @@ async function enrichMissingExactSportsbooks(slip, options = {}) {
   for (const book of books) {
     if (hasFullBookPricing(enriched, book)) continue;
     try {
-      const result = await resolve({ book, legs: Array.isArray(enriched?.legs) ? enriched.legs : [] });
+      const legs = Array.isArray(enriched?.legs) ? enriched.legs : [];
+      const result = await resolve({ book, legs });
+      const diagnostics = buildResolutionDiagnostics(legs, result?.selections, {
+        book,
+        prefilled: Boolean(safeHttps(result?.url)),
+      });
+      if (options.log !== false) {
+        console.info('ParlayPing exact sportsbook fallback', JSON.stringify(diagnosticLogPayload(diagnostics)));
+      }
       enriched = applyExactResolution(enriched, book, result);
     } catch (error) {
       if (options.log !== false) console.warn(`ParlayPing ${book} exact fallback unavailable:`, error?.message || error);
@@ -91,6 +123,7 @@ module.exports = {
   finiteOdds,
   bookOffer,
   hasFullBookPricing,
+  diagnosticLogPayload,
   applyExactResolution,
   enrichMissingExactSportsbooks,
 };
