@@ -15,6 +15,8 @@ test('maps ParlayPing sports and player markets to The Odds API keys',()=>{
   assert.equal(bookKey('FanDuel'),'fanduel');
   assert.equal(bookKey('DraftKings'),'draftkings');
   assert.equal(bookKey('BetMGM'),'betmgm');
+  assert.equal(bookKey('BetRivers'),'betrivers');
+  assert.equal(bookKey('Bovada'),'bovada');
   assert.deepEqual(marketCandidates({sport:'WNBA',market:'pra'}),['player_points_rebounds_assists','player_points_rebounds_assists_alternate']);
   assert.deepEqual(marketCandidates({sport:'NFL',market:'Anytime Touchdown'}),['player_anytime_td']);
   assert.deepEqual(marketCandidates({sport:'MLB',market:'Home Run'}),['batter_home_runs','batter_home_runs_alternate']);

@@ -14,7 +14,7 @@ const SPORT_KEYS={
   NHL:'icehockey_nhl',
   MLB:'baseball_mlb'
 };
-const BOOK_KEYS={FanDuel:'fanduel',DraftKings:'draftkings',BetMGM:'betmgm'};
+const BOOK_KEYS={FanDuel:'fanduel',DraftKings:'draftkings',BetMGM:'betmgm',BetRivers:'betrivers',Bovada:'bovada'};
 const MARKET_KEYS={
   passYds:'player_pass_yds',rushYds:'player_rush_yds',recYds:'player_reception_yds',receptions:'player_receptions',passTds:'player_pass_tds',completions:'player_pass_completions',atd:'player_anytime_td',firstTd:'player_1st_td',
   points:'player_points',rebounds:'player_rebounds',assists:'player_assists',threes:'player_threes',ptsAsts:'player_points_assists',ptsRebs:'player_points_rebounds',rebsAsts:'player_rebounds_assists',pra:'player_points_rebounds_assists',blocks:'player_blocks',steals:'player_steals',turnovers:'player_turnovers',doubleDouble:'player_double_double',tripleDouble:'player_triple_double',

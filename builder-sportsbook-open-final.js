@@ -18,6 +18,8 @@
     Caesars:'https://sportsbook.caesars.com/',
     'theScore Bet':'https://thescore.bet/',
     BetMGM:'https://sports.betmgm.com/',
+    BetRivers:'https://www.betrivers.com/',
+    Bovada:'https://www.bovada.lv/sports',
     Fanatics:'https://sportsbook.fanatics.com/'
   };
 

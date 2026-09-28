@@ -96,7 +96,7 @@ function applyExactResolution(slip, book, result) {
 
 async function enrichMissingExactSportsbooks(slip, options = {}) {
   let enriched = slip;
-  const books = Array.isArray(options.books) && options.books.length ? options.books : ['FanDuel', 'DraftKings', 'BetMGM'];
+  const books = Array.isArray(options.books) && options.books.length ? options.books : ['FanDuel', 'DraftKings', 'BetMGM', 'BetRivers', 'Bovada'];
   const resolve = typeof options.resolve === 'function' ? options.resolve : resolveSportsbookBetslip;
 
   for (const book of books) {

@@ -75,8 +75,14 @@ test('non-sportsbook source brands stay hidden and missing odds never become zer
   assert.equal(api.finiteOdds(0),null);
 });
 
+test('BetRivers and Bovada remain openable when exact combined betslips are unavailable',()=>{
+  const source=fs.readFileSync(path.join(process.cwd(),'builder-sportsbook-open-final.js'),'utf8');
+  assert.match(source,/BetRivers:'https:\/\/www\.betrivers\.com\/'/);
+  assert.match(source,/Bovada:'https:\/\/www\.bovada\.lv\/sports'/);
+});
+
 test('Builder HTML no longer loads the partial-coverage override runtime',()=>{
   const html=renderBuilderHtml({slip:{legs:[]},token:'test-token',liveDataAvailable:false});
   assert.doesNotMatch(html,/builder-sportsbook-partial-coverage\.js/);
-  assert.match(html,/builder-sportsbook-open-final\.js\?v=20260927f/);
+  assert.match(html,/builder-sportsbook-open-final\.js\?v=20260927g/);
 });
