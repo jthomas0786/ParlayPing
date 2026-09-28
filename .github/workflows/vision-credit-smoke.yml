@@ -21,11 +21,12 @@ jobs:
           python3 - <<'PY'
           import base64, json, urllib.request
 
-          # Valid 1x1 PNG. The explicit bet text gives the vision model a deterministic
-          # selection while method='vision' proves the production OpenAI call succeeded.
-          png = base64.b64encode(base64.b64decode(
-              'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl2nGQAAAAASUVORK5CYII='
-          )).decode()
+          # Use a real production PNG so OpenAI image validation is exercised normally.
+          with urllib.request.urlopen(
+              'https://raw.githubusercontent.com/jthomas0786/ParlayPing/main/parlayping-approved-logo.png',
+              timeout=30,
+          ) as image_response:
+              png = base64.b64encode(image_response.read()).decode()
           payload = {
               'text': 'NFL\nJalen Hurts 175+ passing yards\nFanDuel',
               'imageData': 'data:image/png;base64,' + png,
