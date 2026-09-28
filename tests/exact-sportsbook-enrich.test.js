@@ -1,6 +1,6 @@
 const test=require('node:test');
 const assert=require('node:assert/strict');
-const {hasFullBookPricing,applyExactResolution,enrichMissingExactSportsbooks}=require('../server/api/lib/exact-sportsbook-enrich');
+const {hasFullBookPricing,applyExactResolution,enrichMissingExactSportsbooks,clearExactResolutionCache}=require('../server/api/lib/exact-sportsbook-enrich');
 
 test('sportsbook absent from snapshot is hydrated when every exact selection resolves',async()=>{
   const slip={legs:[
@@ -85,4 +85,45 @@ test('incomplete or wrong-line resolution never fabricates sportsbook coverage',
   const out=await enrichMissingExactSportsbooks(slip,{books:['FanDuel'],log:false,resolve:async()=>nearby});
   assert.equal(out,slip);
   assert.equal(hasFullBookPricing(out,'FanDuel'),false);
+});
+
+test('missing sportsbook resolvers run concurrently instead of serially',async()=>{
+  const slip={legs:[{sport:'NFL',player:'Test Player',market:'recYds',side:'over',line:20,inclusive:true,bookOffers:{}}]};
+  let active=0;
+  let maxActive=0;
+  const resolve=async({book})=>{
+    active+=1;
+    maxActive=Math.max(maxActive,active);
+    await new Promise(resolveDelay=>setTimeout(resolveDelay,20));
+    active-=1;
+    return {exact:true,url:null,selections:[{price:book==='FanDuel'?-120:-115,line:19.5}]};
+  };
+  const out=await enrichMissingExactSportsbooks(slip,{books:['FanDuel','DraftKings','BetMGM'],log:false,resolve});
+  assert.equal(maxActive,3);
+  assert.equal(hasFullBookPricing(out,'FanDuel'),true);
+  assert.equal(hasFullBookPricing(out,'DraftKings'),true);
+  assert.equal(hasFullBookPricing(out,'BetMGM'),true);
+});
+
+test('cached concurrent identical exact requests share one in-flight resolver call',async()=>{
+  clearExactResolutionCache();
+  const slip={legs:[{sport:'NFL',player:'Cache Player',market:'recYds',side:'over',line:20,inclusive:true,bookOffers:{}}]};
+  let calls=0;
+  const resolve=async()=>{
+    calls+=1;
+    await new Promise(resolveDelay=>setTimeout(resolveDelay,20));
+    return {exact:true,url:null,selections:[{price:-121,line:19.5}]};
+  };
+  const options={books:['FanDuel'],log:false,resolve,cache:true,cacheTtlMs:5000};
+  const [first,second]=await Promise.all([
+    enrichMissingExactSportsbooks(slip,options),
+    enrichMissingExactSportsbooks(slip,options),
+  ]);
+  assert.equal(calls,1);
+  assert.equal(first.legs[0].bookOffers.FanDuel.oddsAmerican,-121);
+  assert.equal(second.legs[0].bookOffers.FanDuel.oddsAmerican,-121);
+  const third=await enrichMissingExactSportsbooks(slip,options);
+  assert.equal(calls,1);
+  assert.equal(third.legs[0].bookOffers.FanDuel.oddsAmerican,-121);
+  clearExactResolutionCache();
 });
