@@ -1,5 +1,5 @@
 const { resolveSportsbookBetslip } = require('./lib/odds-api-deeplink');
-const { validateResolvedSelections, hasFullExactCoverage } = require('./lib/exact-selection-validation');
+const { validateResolvedSelections, hasFullExactCoverage, buildResolutionDiagnostics } = require('./lib/exact-selection-validation');
 
 function cleanLeg(input={}){
   const text=(value,max=180)=>value==null?null:String(value).replace(/\s+/g,' ').trim().slice(0,max)||null;
@@ -25,11 +25,38 @@ function safeHttps(value){
   }catch{return null;}
 }
 
-function finalizeResolution(legs,result={}){
-  const selections=validateResolvedSelections(legs,result?.selections);
+function compactDiagnostics(diagnostics){
+  if(!diagnostics)return null;
+  return {
+    book:diagnostics.book,
+    code:diagnostics.code,
+    exactCoverage:diagnostics.exactCoverage,
+    pricedCoverage:diagnostics.pricedCoverage,
+    providerReferenceCoverage:diagnostics.providerReferenceCoverage,
+    prefilled:diagnostics.prefilled,
+    legs:(diagnostics.legs||[]).map(row=>({
+      index:row.index,
+      player:row.player,
+      market:row.market,
+      code:row.code,
+      requestedLine:row.requestedLine,
+      resolvedLine:row.resolvedLine,
+      price:row.price,
+      hasSelectionLink:row.hasSelectionLink,
+      hasSelectionId:row.hasSelectionId,
+      hasMarketId:row.hasMarketId,
+    }))
+  };
+}
+
+function finalizeResolution(legs,result={},book=null){
+  const rawSelections=Array.isArray(result?.selections)?result.selections:[];
+  const selections=validateResolvedSelections(legs,rawSelections);
   const exact=hasFullExactCoverage(legs,selections);
   const url=exact?safeHttps(result?.url):null;
-  return {...result,selections,exact,url,prefilled:Boolean(url)};
+  const prefilled=Boolean(url);
+  const diagnostics=buildResolutionDiagnostics(legs,rawSelections,{book:book||result?.book||null,prefilled});
+  return {...result,selections,exact,url,prefilled,diagnostics};
 }
 
 module.exports=async function handler(req,res){
@@ -51,7 +78,10 @@ module.exports=async function handler(req,res){
     const legs=source.map(cleanLeg);
     if(legs.some(leg=>!leg.sport||!leg.player||!leg.market))return res.status(400).json({ok:false,error:'Each leg requires sport, player, and market.'});
     const raw=await resolveSportsbookBetslip({book,legs});
-    const result=finalizeResolution(legs,raw);
+    const result=finalizeResolution(legs,raw,book);
+    if(result.diagnostics?.code!=='EXACT_PREFILLED'){
+      console.info('ParlayPing sportsbook resolver diagnostic',JSON.stringify(compactDiagnostics(result.diagnostics)));
+    }
     return res.status(200).json({ok:true,...result});
   }catch(error){
     console.error('ParlayPing sportsbook deeplink resolver failed',error);
@@ -64,4 +94,6 @@ module.exports=async function handler(req,res){
 };
 
 module.exports.cleanLeg=cleanLeg;
+module.exports.safeHttps=safeHttps;
+module.exports.compactDiagnostics=compactDiagnostics;
 module.exports.finalizeResolution=finalizeResolution;
