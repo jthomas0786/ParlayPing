@@ -1,0 +1,203 @@
+name: One-time provider concurrency and theScore Bet migration
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/one-time-provider-concurrency-thescore.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Patch provider concurrency and sportsbook naming
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace(path, old, new, count=1):
+              p=Path(path)
+              text=p.read_text()
+              if old not in text:
+                  raise SystemExit(f'Expected text not found in {path}: {old[:120]!r}')
+              p.write_text(text.replace(old,new,count))
+
+          # Deduplicate cold provider fetches across concurrent sportsbook resolvers.
+          replace('server/api/lib/odds-api-deeplink.js',
+              "const eventCache=new Map();\nconst oddsCache=new Map();",
+              "const eventCache=new Map();\nconst oddsCache=new Map();\nconst eventInflight=new Map();\nconst oddsInflight=new Map();")
+          replace('server/api/lib/odds-api-deeplink.js',
+              "const BOOK_KEYS={FanDuel:'fanduel',DraftKings:'draftkings',BetMGM:'betmgm',BetRivers:'betrivers',Bovada:'bovada'};",
+              "const BOOK_KEYS={FanDuel:'fanduel',DraftKings:'draftkings',BetMGM:'betmgm',BetRivers:'betrivers',Bovada:'bovada','theScore Bet':'espnbet'};")
+
+          old_events="""async function getEvents(sport,apiKey,fetchImpl){
+  const key=sportKey(sport);if(!key)return[];
+  const cacheKey=key,hit=eventCache.get(cacheKey);if(hit&&Date.now()-hit.ts<EVENT_CACHE_MS)return hit.data;
+  const url=new URL(`${API_BASE}/sports/${encodeURIComponent(key)}/events`);url.searchParams.set('apiKey',apiKey);
+  const {data}=await fetchJson(url,{fetchImpl});
+  const rows=Array.isArray(data)?data:[];eventCache.set(cacheKey,{ts:Date.now(),data:rows});return rows;
+}"""
+          new_events="""async function getEvents(sport,apiKey,fetchImpl){
+  const key=sportKey(sport);if(!key)return[];
+  const cacheKey=key,hit=eventCache.get(cacheKey);if(hit&&Date.now()-hit.ts<EVENT_CACHE_MS)return hit.data;
+  if(eventInflight.has(cacheKey))return eventInflight.get(cacheKey);
+  const pending=(async()=>{
+    const url=new URL(`${API_BASE}/sports/${encodeURIComponent(key)}/events`);url.searchParams.set('apiKey',apiKey);
+    const {data}=await fetchJson(url,{fetchImpl});
+    const rows=Array.isArray(data)?data:[];eventCache.set(cacheKey,{ts:Date.now(),data:rows});return rows;
+  })().finally(()=>eventInflight.delete(cacheKey));
+  eventInflight.set(cacheKey,pending);return pending;
+}"""
+          replace('server/api/lib/odds-api-deeplink.js',old_events,new_events)
+
+          old_odds="""async function getEventOdds({sport,eventId,book,markets,apiKey,fetchImpl}){
+  const sKey=sportKey(sport),bKey=bookKey(book);if(!sKey||!bKey)throw new Error('Unsupported sportsbook or sport for exact deeplink resolution.');
+  const marketList=[...new Set(markets)].sort(),cacheKey=`${sKey}|${eventId}|${bKey}|${marketList.join(',')}`;
+  const hit=oddsCache.get(cacheKey);if(hit&&Date.now()-hit.ts<ODDS_CACHE_MS)return hit.value;
+  const url=new URL(`${API_BASE}/sports/${encodeURIComponent(sKey)}/events/${encodeURIComponent(eventId)}/odds`);
+  url.searchParams.set('apiKey',apiKey);url.searchParams.set('bookmakers',bKey);url.searchParams.set('markets',marketList.join(','));url.searchParams.set('oddsFormat','american');url.searchParams.set('includeLinks','true');url.searchParams.set('includeSids','true');
+  const {data,response}=await fetchJson(url,{fetchImpl});
+  const value={data,usage:readUsage(response)};oddsCache.set(cacheKey,{ts:Date.now(),value});return value;
+}"""
+          new_odds="""async function getEventOdds({sport,eventId,book,markets,apiKey,fetchImpl}){
+  const sKey=sportKey(sport),bKey=bookKey(book);if(!sKey||!bKey)throw new Error('Unsupported sportsbook or sport for exact deeplink resolution.');
+  const marketList=[...new Set(markets)].sort(),cacheKey=`${sKey}|${eventId}|${bKey}|${marketList.join(',')}`;
+  const hit=oddsCache.get(cacheKey);if(hit&&Date.now()-hit.ts<ODDS_CACHE_MS)return hit.value;
+  if(oddsInflight.has(cacheKey))return oddsInflight.get(cacheKey);
+  const pending=(async()=>{
+    const url=new URL(`${API_BASE}/sports/${encodeURIComponent(sKey)}/events/${encodeURIComponent(eventId)}/odds`);
+    url.searchParams.set('apiKey',apiKey);url.searchParams.set('bookmakers',bKey);url.searchParams.set('markets',marketList.join(','));url.searchParams.set('oddsFormat','american');url.searchParams.set('includeLinks','true');url.searchParams.set('includeSids','true');
+    const {data,response}=await fetchJson(url,{fetchImpl});
+    const value={data,usage:readUsage(response)};oddsCache.set(cacheKey,{ts:Date.now(),value});return value;
+  })().finally(()=>oddsInflight.delete(cacheKey));
+  oddsInflight.set(cacheKey,pending);return pending;
+}"""
+          replace('server/api/lib/odds-api-deeplink.js',old_odds,new_odds)
+
+          old_groups="""  const selections=new Array(rows.length).fill(null),usage=[];
+  for(const group of groups.values()){
+    const result=await getEventOdds({sport:group.sport,eventId:group.eventId,book:normalizedBook,markets:[...group.markets],apiKey,fetchImpl});
+    if(result.usage)usage.push(result.usage);
+    for(const row of group.rows){const selected=findOutcome(result.data,normalizedBook,row.leg);if(selected)selections[row.index]={index:row.index,eventId:group.eventId,...selected};}
+  }
+  const exact=selections.every(Boolean),url=exact?composeBetslip(normalizedBook,selections):null;"""
+          new_groups="""  const selections=new Array(rows.length).fill(null),usage=[];
+  await Promise.all([...groups.values()].map(async group=>{
+    const result=await getEventOdds({sport:group.sport,eventId:group.eventId,book:normalizedBook,markets:[...group.markets],apiKey,fetchImpl});
+    if(result.usage)usage.push(result.usage);
+    for(const row of group.rows){const selected=findOutcome(result.data,normalizedBook,row.leg);if(selected)selections[row.index]={index:row.index,eventId:group.eventId,...selected};}
+  }));
+  const exact=selections.every(Boolean),url=exact?composeBetslip(normalizedBook,selections):null;"""
+          replace('server/api/lib/odds-api-deeplink.js',old_groups,new_groups)
+          replace('server/api/lib/odds-api-deeplink.js',
+              "\nmodule.exports={sportKey,bookKey,internalMarket,marketCandidates,desiredOutcomeName,pointCandidates,snapshotEventContext,teamKey,teamMatchScore,eventScore,matchEvent,findOutcome,extractSelectionIds,composeFanDuel,composeDraftKings,composeBetslip,resolveSportsbookBetslip};",
+              "\nfunction clearOddsApiCaches(){eventCache.clear();oddsCache.clear();eventInflight.clear();oddsInflight.clear();}\n\nmodule.exports={sportKey,bookKey,internalMarket,marketCandidates,desiredOutcomeName,pointCandidates,snapshotEventContext,teamKey,teamMatchScore,eventScore,matchEvent,findOutcome,extractSelectionIds,composeFanDuel,composeDraftKings,composeBetslip,getEvents,getEventOdds,clearOddsApiCaches,resolveSportsbookBetslip};")
+
+          # Coalesce The Sports Outpost snapshot reads as Builder fans out across books.
+          replace('server/api/lib/sportsbook-enrich.js',
+              "const cache=new Map();",
+              "const cache=new Map();\nconst cacheInflight=new Map();")
+          replace('server/api/lib/sportsbook-enrich.js',
+              "thescorebet:'theScore Bet',thescore:'theScore Bet',betmgm:'BetMGM',mgm:'BetMGM',fanatics:'Fanatics',fanaticssportsbook:'Fanatics',espnbet:'ESPN BET',espn:'ESPN BET'",
+              "thescorebet:'theScore Bet',thescore:'theScore Bet',betmgm:'BetMGM',mgm:'BetMGM',fanatics:'Fanatics',fanaticssportsbook:'Fanatics',espnbet:'theScore Bet',espn:'theScore Bet'")
+          old_snapshot="""async function loadSnapshot(sport){
+  const upper=String(sport||'').toUpperCase(),path=SOURCES[upper];if(!path)return null;
+  const hit=cache.get(upper);if(hit&&Date.now()-hit.ts<CACHE_MS)return hit.value;
+  try{
+    const response=await fetch(`${SNAPSHOT_BASE}/${path}`,{headers:{accept:'application/json','user-agent':'ParlayPing/1.2'},cache:'no-store',signal:AbortSignal.timeout(5000)});
+    if(!response.ok)return null;
+    const value=await response.json();cache.set(upper,{ts:Date.now(),value});return value;
+  }catch{return null;}
+}"""
+          new_snapshot="""async function loadSnapshot(sport){
+  const upper=String(sport||'').toUpperCase(),path=SOURCES[upper];if(!path)return null;
+  const hit=cache.get(upper);if(hit&&Date.now()-hit.ts<CACHE_MS)return hit.value;
+  if(cacheInflight.has(upper))return cacheInflight.get(upper);
+  const pending=(async()=>{
+    try{
+      const response=await fetch(`${SNAPSHOT_BASE}/${path}`,{headers:{accept:'application/json','user-agent':'ParlayPing/1.2'},cache:'no-store',signal:AbortSignal.timeout(5000)});
+      if(!response.ok)return null;
+      const value=await response.json();cache.set(upper,{ts:Date.now(),value});return value;
+    }catch{return null;}
+  })().finally(()=>cacheInflight.delete(upper));
+  cacheInflight.set(upper,pending);return pending;
+}"""
+          replace('server/api/lib/sportsbook-enrich.js',old_snapshot,new_snapshot)
+
+          # Enable exact theScore Bet pre-render coverage under its current provider key.
+          for path in ['server/api/lib/exact-sportsbook-enrich.js','server/api/builder-page.js']:
+              replace(path,
+                  "['FanDuel', 'DraftKings', 'BetMGM', 'BetRivers', 'Bovada']" if 'exact-' in path else "['FanDuel','DraftKings','BetMGM','BetRivers','Bovada']",
+                  "['FanDuel', 'DraftKings', 'BetMGM', 'BetRivers', 'Bovada', 'theScore Bet']" if 'exact-' in path else "['FanDuel','DraftKings','BetMGM','BetRivers','Bovada','theScore Bet']")
+
+          replace('builder-sportsbook-open-final.js',
+              "'BetMGM','Fanatics','ESPN BET','Hard Rock Bet'",
+              "'BetMGM','Fanatics','Hard Rock Bet'")
+          replace('builder-sportsbook-open-final.js',
+              "espnbet:'ESPN BET',espn:'ESPN BET'",
+              "espnbet:'theScore Bet',espn:'theScore Bet'")
+
+          # Unit coverage for new provider key and cold-request coalescing.
+          replace('tests/odds-api-deeplink.test.js',
+              "  composeDraftKings\n}=require('../server/api/lib/odds-api-deeplink');",
+              "  composeDraftKings,\n  getEvents,\n  getEventOdds,\n  clearOddsApiCaches\n}=require('../server/api/lib/odds-api-deeplink');")
+          replace('tests/odds-api-deeplink.test.js',
+              "  assert.equal(bookKey('Bovada'),'bovada');",
+              "  assert.equal(bookKey('Bovada'),'bovada');\n  assert.equal(bookKey('theScore Bet'),'espnbet');\n  assert.equal(bookKey('ESPN BET'),'espnbet');")
+          with Path('tests/odds-api-deeplink.test.js').open('a') as f:
+              f.write(r'''
+
+test('coalesces concurrent cold event and event-odds provider requests',async()=>{
+  clearOddsApiCaches();
+  let calls=0;
+  const fetchImpl=async url=>{
+    calls+=1;
+    await new Promise(resolve=>setTimeout(resolve,20));
+    const href=String(url);
+    const data=href.includes('/odds')?{bookmakers:[]}:[];
+    return {ok:true,status:200,json:async()=>data,headers:{get:()=>null}};
+  };
+  await Promise.all([
+    getEvents('NFL','test-key',fetchImpl),
+    getEvents('NFL','test-key',fetchImpl),
+    getEvents('NFL','test-key',fetchImpl)
+  ]);
+  assert.equal(calls,1);
+  await Promise.all([
+    getEventOdds({sport:'NFL',eventId:'event-1',book:'theScore Bet',markets:['player_pass_yds'],apiKey:'test-key',fetchImpl}),
+    getEventOdds({sport:'NFL',eventId:'event-1',book:'theScore Bet',markets:['player_pass_yds'],apiKey:'test-key',fetchImpl})
+  ]);
+  assert.equal(calls,2);
+  clearOddsApiCaches();
+});
+''')
+
+          replace('tests/exact-sportsbook-enrich.test.js',
+              "missing coverage is proactively checked for FanDuel DraftKings BetMGM BetRivers and Bovada",
+              "missing coverage is proactively checked for FanDuel DraftKings BetMGM BetRivers Bovada and theScore Bet")
+          replace('tests/exact-sportsbook-enrich.test.js',
+              "assert.deepEqual(calls,['FanDuel','DraftKings','BetMGM','BetRivers','Bovada']);",
+              "assert.deepEqual(calls,['FanDuel','DraftKings','BetMGM','BetRivers','Bovada','theScore Bet']);")
+          replace('tests/exact-sportsbook-enrich.test.js',
+              "  assert.equal(hasFullBookPricing(out,'Bovada'),true);",
+              "  assert.equal(hasFullBookPricing(out,'Bovada'),true);\n  assert.equal(hasFullBookPricing(out,'theScore Bet'),true);")
+          PY
+      - name: Run tests
+        run: npm test
+      - name: Commit migration and remove one-time workflow
+        shell: bash
+        run: |
+          rm .github/workflows/one-time-provider-concurrency-thescore.yml
+          git config user.name "jthomas0786"
+          git config user.email "jthomas0786@gmail.com"
+          git add -A
+          git commit -m "Parallelize provider fetches and add theScore Bet exact matching"
+          git push origin main
