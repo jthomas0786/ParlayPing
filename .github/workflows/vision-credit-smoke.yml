@@ -1,0 +1,52 @@
+name: Production AI vision credit smoke
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/vision-credit-smoke.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify production vision parser uses OpenAI
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64, json, urllib.request
+
+          # Valid 1x1 PNG. The explicit bet text gives the vision model a deterministic
+          # selection while method='vision' proves the production OpenAI call succeeded.
+          png = base64.b64encode(base64.b64decode(
+              'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl2nGQAAAAASUVORK5CYII='
+          )).decode()
+          payload = {
+              'text': 'NFL\nJalen Hurts 175+ passing yards\nFanDuel',
+              'imageData': 'data:image/png;base64,' + png,
+          }
+          req = urllib.request.Request(
+              'https://www.parlayping.net/api/landing-create',
+              data=json.dumps(payload).encode(),
+              headers={'content-type':'application/json','accept':'application/json'},
+              method='POST',
+          )
+          with urllib.request.urlopen(req, timeout=60) as response:
+              data = json.load(response)
+          print('VISION_SMOKE', json.dumps({
+              'ok': data.get('ok'),
+              'method': data.get('method'),
+              'legCount': data.get('legCount'),
+              'sport': data.get('sport'),
+              'sportsbook': data.get('sportsbook'),
+              'hasBuilderUrl': bool(data.get('builderUrl')),
+          }, separators=(',',':')))
+          assert data.get('ok') is True, data
+          assert data.get('method') == 'vision', data
+          assert int(data.get('legCount') or 0) >= 1, data
+          PY
