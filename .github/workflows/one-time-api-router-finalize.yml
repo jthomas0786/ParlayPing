@@ -21,33 +21,59 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Remove legacy API bootstrap and wrappers
+      - name: Stage production API cleanup while keeping test aliases ephemeral
         shell: bash
         run: |
           set -euo pipefail
-          cat > scripts/prepare-test-api.cjs <<'EOF'
-          const fs=require('node:fs');
-          const path=require('node:path');
-
-          const root=path.join(__dirname,'..');
-          const entry=path.join(root,'api','index.js');
-          if(!fs.existsSync(entry)) throw new Error('ParlayPing API router entrypoint is missing.');
+          cat > .gitignore <<'EOF'
+          /node_modules/
+          /api/lib
+          /api/v1
+          /api/account-router.js
+          /api/analyze.js
+          /api/parse.js
+          /api/share-card.js
+          /api/share-page.js
+          /api/status.js
+          /api/x-dry-run.js
+          /api/x-scheduler.js
+          /api/x-worker.js
           EOF
-          rm -f api/account-router.js api/analyze.js api/parse.js api/share-card.js api/share-page.js api/status.js api/x-dry-run.js api/x-scheduler.js api/x-worker.js
-          rm -f api/lib api/v1
+          git rm -r -- api/lib api/v1
+          git rm -- api/account-router.js api/analyze.js api/parse.js api/share-card.js api/share-page.js api/status.js api/x-dry-run.js api/x-scheduler.js api/x-worker.js
           test -f api/index.js
-          test "$(find api -maxdepth 1 -type f -name '*.js' | wc -l)" -eq 1
       - name: Install dependencies
         run: npm install --no-audit --no-fund
-      - name: Run regression tests against single-router layout
+      - name: Run full suite with generated compatibility aliases
         run: npm test
-      - name: Commit only router cleanup
+      - name: Verify generated aliases stay ignored and only index is deployable
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -L api/lib
+          test -L api/v1
+          test -f api/account-router.js
+          test -f api/x-worker.js
+          git check-ignore -q api/lib
+          git check-ignore -q api/v1
+          git check-ignore -q api/account-router.js
+          git check-ignore -q api/x-worker.js
+          test "$(git ls-files 'api/*.js' | wc -l)" -eq 1
+          test "$(git ls-files 'api/index.js' | wc -l)" -eq 1
+      - name: Commit deploy-tree cleanup only
         shell: bash
         run: |
           set -euo pipefail
           rm .github/workflows/one-time-api-router-finalize.yml
           git config user.name "jthomas0786"
           git config user.email "jthomas0786@gmail.com"
-          git add -A api scripts/prepare-test-api.cjs .github/workflows/one-time-api-router-finalize.yml
-          git commit -m "Keep Vercel API on single serverless router"
+          git add .gitignore
+          git add -u api .github/workflows/one-time-api-router-finalize.yml
+          echo 'Staged changes:'
+          git diff --cached --name-status
+          if git diff --cached --name-only | grep -q '^node_modules/'; then
+            echo 'Refusing to commit node_modules changes'
+            exit 1
+          fi
+          git commit -m "Keep test API aliases out of Vercel deploy tree"
           git push origin main
