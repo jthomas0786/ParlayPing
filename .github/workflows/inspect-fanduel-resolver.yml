@@ -15,6 +15,98 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      - name: Verify ParlayAPI is the primary production price source
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, math, re, time, urllib.request
+
+          OUTPOST='https://thesportsoutpost.com/slates/nfl-odds.json'
+          PARLAYPING='https://www.parlayping.net'
+          FALLBACK_BOOKS={'FanDuel','DraftKings','BetMGM','BetRivers','Bovada','theScore Bet'}
+          PREFERRED_PRIMARY_BOOKS=['Caesars','Fanatics','bet365']
+
+          with urllib.request.urlopen(
+              urllib.request.Request(OUTPOST+'?smoke='+str(int(time.time())),headers={'accept':'application/json','user-agent':'ParlayPing-Primary-Smoke/1.0'}),
+              timeout=45,
+          ) as response:
+              snapshot=json.load(response)
+
+          meta=snapshot.get('meta') or {}
+          assert str(meta.get('source') or '').lower() == 'parlayapi', meta
+          assert meta.get('sample') is False, meta
+
+          game=next((g for g in snapshot.get('games',[]) if g.get('away')=='PHI' and g.get('home')=='CHI'),None)
+          assert game, 'PHI @ CHI missing from ParlayAPI-backed TSO snapshot'
+
+          picked=None
+          for player in game.get('players',[]):
+              slot=(player.get('odds') or {}).get('receptions') or {}
+              rows=slot.get('alternates') or ([{'line':slot.get('line'),'over':slot.get('over')}] if slot.get('line') is not None else [])
+              for row in rows:
+                  try: line=float(row.get('line'))
+                  except (TypeError,ValueError): continue
+                  threshold=line+0.5
+                  if abs(threshold-round(threshold))>1e-9: continue
+                  over=row.get('over') or {}
+                  offers=[]
+                  if isinstance(over.get('best'),dict): offers.append(over['best'])
+                  if isinstance(over.get('all'),list): offers.extend(x for x in over['all'] if isinstance(x,dict))
+                  by_book={}
+                  for offer in offers:
+                      book=str(offer.get('book') or offer.get('sportsbook') or '').strip()
+                      try: price=float(offer.get('price',offer.get('oddsAmerican')))
+                      except (TypeError,ValueError): continue
+                      if not book or price == 0: continue
+                      by_book[book]=max(price,by_book.get(book,-math.inf))
+                  for book in PREFERRED_PRIMARY_BOOKS:
+                      if book in by_book and book not in FALLBACK_BOOKS:
+                          picked={
+                              'player':player.get('name'),'book':book,'line':line,
+                              'threshold':int(round(threshold)),'price':by_book[book]
+                          }
+                          break
+                  if picked: break
+              if picked: break
+
+          assert picked, 'No non-fallback ParlayAPI receptions line found for PHI @ CHI'
+          text=f"NFL\nPHI @ CHI\n{picked['player']} {picked['threshold']}+ receptions\n{picked['book']}"
+          create=urllib.request.Request(
+              PARLAYPING+'/api/landing-create',
+              data=json.dumps({'text':text}).encode(),
+              headers={'content-type':'application/json','accept':'application/json'},
+              method='POST',
+          )
+          with urllib.request.urlopen(create,timeout=60) as response:
+              created=json.load(response)
+          assert created.get('ok') is True, created
+          assert int(created.get('legCount') or 0) == 1, created
+          builder_url=created.get('builderUrl')
+          assert builder_url, created
+
+          with urllib.request.urlopen(builder_url,timeout=90) as response:
+              html=response.read().decode('utf-8')
+          match=re.search(r'window\.__PARLAYPING_BUILDER__=(\{.*?\});</script>',html,re.S)
+          assert match, 'Builder state payload not found'
+          state=json.loads(match.group(1))
+          legs=((state.get('slip') or {}).get('legs') or [])
+          assert len(legs)==1, state
+          offer=((legs[0].get('bookOffers') or {}).get(picked['book']) or {})
+          builder_price=offer.get('oddsAmerican')
+          assert isinstance(builder_price,(int,float)) and builder_price != 0, {'picked':picked,'offer':offer}
+          assert abs(float(builder_price)-float(picked['price']))<1e-9, {'picked':picked,'offer':offer}
+          assert offer.get('priceKind') != 'verified-exact-resolver', {'picked':picked,'offer':offer}
+
+          print('PARLAYAPI_PRIMARY_SMOKE',json.dumps({
+              'source':meta.get('source'),'snapshotFetchedAt':meta.get('fetchedAt'),
+              'player':picked['player'],'market':'receptions','sportsbook':picked['book'],
+              'sportsbookLine':picked['line'],'requestedThreshold':picked['threshold'],
+              'parlayApiPrice':picked['price'],'builderPrice':builder_price,
+              'fallbackResolverUsedForPrice':offer.get('priceKind')=='verified-exact-resolver'
+          },separators=(',',':')))
+          PY
+
       - name: Verify batched sportsbook Builder path without quota-hungry discovery
         shell: bash
         run: |
@@ -76,8 +168,8 @@ jobs:
               'exactResolverBooks':exact_books,
           },separators=(',',':')))
 
-          # If the batch could not enrich any book, make only one low-cost probe to
-          # distinguish external Odds API quota exhaustion from an application failure.
+          # If the secondary provider could not enrich any book, make only one
+          # low-cost probe to distinguish quota exhaustion from an app failure.
           if not exact_books:
               leg={
                   'sport':'NFL','matchup':'PHI @ CHI','player':'Jalen Hurts',
