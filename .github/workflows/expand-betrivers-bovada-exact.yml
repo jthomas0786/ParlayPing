@@ -74,12 +74,16 @@ jobs:
               "  assert.deepEqual(calls,['FanDuel','DraftKings','BetMGM']);\n  assert.equal(hasFullBookPricing(out,'FanDuel'),true);\n  assert.equal(hasFullBookPricing(out,'DraftKings'),true);\n  assert.equal(hasFullBookPricing(out,'BetMGM'),true);",
               "  assert.deepEqual(calls,['FanDuel','DraftKings','BetMGM','BetRivers','Bovada']);\n  assert.equal(hasFullBookPricing(out,'FanDuel'),true);\n  assert.equal(hasFullBookPricing(out,'DraftKings'),true);\n  assert.equal(hasFullBookPricing(out,'BetMGM'),true);\n  assert.equal(hasFullBookPricing(out,'BetRivers'),true);\n  assert.equal(hasFullBookPricing(out,'Bovada'),true);"
           )
+          replace(
+              'tests/sportsbook-resolver-regression.test.js',
+              "builder-sportsbook-open-final\\.js\\?v=20260927f",
+              "builder-sportsbook-open-final\\.js\\?v=20260927g"
+          )
 
-          # Add client fallback URL coverage regression next to existing sportsbook regression suite.
           p=Path('tests/sportsbook-resolver-regression.test.js')
           text=p.read_text()
           marker="test('Builder HTML no longer loads the partial-coverage override runtime'"
-          addition="""test('BetRivers and Bovada remain openable when exact combined betslips are unavailable',()=>{\n  const source=fs.readFileSync(path.join(ROOT,'builder-sportsbook-open-final.js'),'utf8');\n  assert.match(source,/BetRivers:'https:\\/\\/www\\.betrivers\\.com\\/'/);\n  assert.match(source,/Bovada:'https:\\/\\/www\\.bovada\\.lv\\/sports'/);\n});\n\n"""
+          addition="""test('BetRivers and Bovada remain openable when exact combined betslips are unavailable',()=>{\n  const source=fs.readFileSync(path.join(process.cwd(),'builder-sportsbook-open-final.js'),'utf8');\n  assert.match(source,/BetRivers:'https:\\/\\/www\\.betrivers\\.com\\/'/);\n  assert.match(source,/Bovada:'https:\\/\\/www\\.bovada\\.lv\\/sports'/);\n});\n\n"""
           if marker not in text:
               raise SystemExit('sportsbook regression insertion marker missing')
           p.write_text(text.replace(marker,addition+marker,1))
