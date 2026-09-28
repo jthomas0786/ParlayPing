@@ -1,0 +1,93 @@
+name: Expand exact sportsbook resolution to BetRivers and Bovada
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/expand-betrivers-bovada-exact.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Patch exact sportsbook coverage
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace(path, old, new):
+              p=Path(path)
+              text=p.read_text()
+              if old not in text:
+                  raise SystemExit(f'Expected text not found in {path}: {old[:140]}')
+              p.write_text(text.replace(old,new,1))
+
+          replace(
+              'server/api/lib/odds-api-deeplink.js',
+              "const BOOK_KEYS={FanDuel:'fanduel',DraftKings:'draftkings',BetMGM:'betmgm'};",
+              "const BOOK_KEYS={FanDuel:'fanduel',DraftKings:'draftkings',BetMGM:'betmgm',BetRivers:'betrivers',Bovada:'bovada'};"
+          )
+          replace(
+              'server/api/lib/exact-sportsbook-enrich.js',
+              "const books = Array.isArray(options.books) && options.books.length ? options.books : ['FanDuel', 'DraftKings', 'BetMGM'];",
+              "const books = Array.isArray(options.books) && options.books.length ? options.books : ['FanDuel', 'DraftKings', 'BetMGM', 'BetRivers', 'Bovada'];"
+          )
+          replace(
+              'server/api/builder-page.js',
+              "const sportsbookSlip = await enrichMissingExactSportsbooks(pricedSlip, { books:['FanDuel','DraftKings','BetMGM'] });",
+              "const sportsbookSlip = await enrichMissingExactSportsbooks(pricedSlip, { books:['FanDuel','DraftKings','BetMGM','BetRivers','Bovada'] });"
+          )
+          replace(
+              'server/api/builder-page.js',
+              'builder-sportsbook-open-final.js?v=20260927f',
+              'builder-sportsbook-open-final.js?v=20260927g'
+          )
+          replace(
+              'builder-sportsbook-open-final.js',
+              "    BetMGM:'https://sports.betmgm.com/',\n    Fanatics:'https://sportsbook.fanatics.com/'",
+              "    BetMGM:'https://sports.betmgm.com/',\n    BetRivers:'https://www.betrivers.com/',\n    Bovada:'https://www.bovada.lv/sports',\n    Fanatics:'https://sportsbook.fanatics.com/'"
+          )
+          replace(
+              'tests/odds-api-deeplink.test.js',
+              "  assert.equal(bookKey('BetMGM'),'betmgm');",
+              "  assert.equal(bookKey('BetMGM'),'betmgm');\n  assert.equal(bookKey('BetRivers'),'betrivers');\n  assert.equal(bookKey('Bovada'),'bovada');"
+          )
+          replace(
+              'tests/exact-sportsbook-enrich.test.js',
+              "test('missing coverage is proactively checked for FanDuel DraftKings and BetMGM',async()=>{",
+              "test('missing coverage is proactively checked for FanDuel DraftKings BetMGM BetRivers and Bovada',async()=>{"
+          )
+          replace(
+              'tests/exact-sportsbook-enrich.test.js',
+              "  assert.deepEqual(calls,['FanDuel','DraftKings','BetMGM']);\n  assert.equal(hasFullBookPricing(out,'FanDuel'),true);\n  assert.equal(hasFullBookPricing(out,'DraftKings'),true);\n  assert.equal(hasFullBookPricing(out,'BetMGM'),true);",
+              "  assert.deepEqual(calls,['FanDuel','DraftKings','BetMGM','BetRivers','Bovada']);\n  assert.equal(hasFullBookPricing(out,'FanDuel'),true);\n  assert.equal(hasFullBookPricing(out,'DraftKings'),true);\n  assert.equal(hasFullBookPricing(out,'BetMGM'),true);\n  assert.equal(hasFullBookPricing(out,'BetRivers'),true);\n  assert.equal(hasFullBookPricing(out,'Bovada'),true);"
+          )
+
+          # Add client fallback URL coverage regression next to existing sportsbook regression suite.
+          p=Path('tests/sportsbook-resolver-regression.test.js')
+          text=p.read_text()
+          marker="test('Builder HTML no longer loads the partial-coverage override runtime'"
+          addition="""test('BetRivers and Bovada remain openable when exact combined betslips are unavailable',()=>{\n  const source=fs.readFileSync(path.join(ROOT,'builder-sportsbook-open-final.js'),'utf8');\n  assert.match(source,/BetRivers:'https:\\/\\/www\\.betrivers\\.com\\/'/);\n  assert.match(source,/Bovada:'https:\\/\\/www\\.bovada\\.lv\\/sports'/);\n});\n\n"""
+          if marker not in text:
+              raise SystemExit('sportsbook regression insertion marker missing')
+          p.write_text(text.replace(marker,addition+marker,1))
+          PY
+          npm install --no-audit --no-fund
+          npm test
+          git config user.name "jthomas0786"
+          git config user.email "jthomas0786@gmail.com"
+          git add server/api/lib/odds-api-deeplink.js server/api/lib/exact-sportsbook-enrich.js server/api/builder-page.js builder-sportsbook-open-final.js tests/odds-api-deeplink.test.js tests/exact-sportsbook-enrich.test.js tests/sportsbook-resolver-regression.test.js
+          git commit -m "Resolve exact BetRivers and Bovada selections in Builder"
+          git push origin HEAD:main
