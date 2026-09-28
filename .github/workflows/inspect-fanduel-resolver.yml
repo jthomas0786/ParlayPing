@@ -80,6 +80,7 @@ jobs:
           probe('BetMGM',1)
           probe('BetRivers',1)
           probe('Bovada',1)
+          probe('theScore Bet',1)
           PY
 
       - name: Verify production OpenAI vision parsing
