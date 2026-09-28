@@ -114,3 +114,49 @@ jobs:
           assert data.get('method') == 'vision', data
           assert int(data.get('legCount') or 0) >= 1, data
           PY
+
+      - name: Verify BetMGM reaches rendered Builder state
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, re, urllib.request
+
+          text='''NFL
+          Jalen Hurts 200+ passing yards
+          Saquon Barkley 50+ rushing yards
+          DeVonta Smith 25+ receiving yards
+          Rome Odunze 25+ receiving yards
+          BetMGM'''
+          req=urllib.request.Request(
+              'https://www.parlayping.net/api/landing-create',
+              data=json.dumps({'text':text}).encode(),
+              headers={'content-type':'application/json','accept':'application/json'},
+              method='POST',
+          )
+          with urllib.request.urlopen(req,timeout=60) as response:
+              created=json.load(response)
+          assert created.get('ok') is True, created
+          assert created.get('legCount') == 4, created
+          url=created.get('builderUrl')
+          assert url, created
+          with urllib.request.urlopen(url,timeout=90) as response:
+              html=response.read().decode('utf-8')
+          match=re.search(r'window\.__PARLAYPING_BUILDER__=(\{.*?\});</script>',html,re.S)
+          assert match, 'Builder state payload not found'
+          state=json.loads(match.group(1))
+          legs=(state.get('slip') or {}).get('legs') or []
+          assert len(legs)==4, state
+          prices=[]
+          links=[]
+          for leg in legs:
+              offer=((leg.get('bookOffers') or {}).get('BetMGM') or {})
+              price=offer.get('oddsAmerican')
+              assert isinstance(price,(int,float)) and price!=0, {'leg':leg.get('player'),'offer':offer}
+              prices.append(price)
+              links.append(bool(offer.get('selectionLink')))
+          print('BETMGM_BUILDER',json.dumps({
+              'legs':len(legs),'prices':prices,'selectionLinks':sum(1 for value in links if value),
+              'combinedLink':bool(((state.get('slip') or {}).get('sportsbookLinks') or {}).get('BetMGM'))
+          },separators=(',',':')))
+          PY
