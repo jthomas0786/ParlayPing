@@ -1,0 +1,45 @@
+name: One-time API wrapper cleanup
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/one-time-api-wrapper-cleanup.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Remove legacy Vercel function wrappers
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f api/analyze.js api/parse.js api/share-card.js api/share-page.js api/status.js api/x-dry-run.js api/x-scheduler.js api/x-worker.js
+          rm -f api/lib api/v1
+          test -f api/index.js
+          test "$(find api -maxdepth 1 -type f -name '*.js' | wc -l)" -eq 1
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Run regression tests
+        run: npm test
+      - name: Commit cleanup and remove one-time workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm .github/workflows/one-time-api-wrapper-cleanup.yml
+          git config user.name "jthomas0786"
+          git config user.email "jthomas0786@gmail.com"
+          git add -A
+          git commit -m "Consolidate Vercel API routes under single router"
+          git push origin main
