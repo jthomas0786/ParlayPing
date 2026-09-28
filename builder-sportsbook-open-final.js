@@ -6,7 +6,7 @@
   const qa=(selector,root=document)=>[...root.querySelectorAll(selector)];
   const esc=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 
-  const BOOK_ORDER=['DraftKings','FanDuel','bet365','Caesars','theScore Bet','BetMGM','Fanatics','ESPN BET','Hard Rock Bet','BetRivers','Pinnacle','Parx Casino','Bovada','Fliff'];
+  const BOOK_ORDER=['DraftKings','FanDuel','bet365','Caesars','theScore Bet','BetMGM','Fanatics','Hard Rock Bet','BetRivers','Pinnacle','Parx Casino','Bovada','Fliff'];
   const ACTUAL_SPORTSBOOKS=new Set(BOOK_ORDER);
   const BOOK_CLASS={'DraftKings':'dk','FanDuel':'fd','bet365':'b365','Caesars':'cz','theScore Bet':'score','BetMGM':'mgm','Fanatics':'fanatics'};
   const BOOK_MARK={'DraftKings':'DK','FanDuel':'F','bet365':'bet','Caesars':'C','theScore Bet':'S','BetMGM':'M','Fanatics':'F'};
@@ -26,7 +26,7 @@
   function normalizeBook(value){
     const raw=String(value||'').trim();
     const key=raw.toLowerCase().replace(/[^a-z0-9]/g,'');
-    const aliases={draftkings:'DraftKings',draftkingssportsbook:'DraftKings',dk:'DraftKings',fanduel:'FanDuel',fanduelsportsbook:'FanDuel',fd:'FanDuel',bet365:'bet365','365':'bet365',caesars:'Caesars',williamhill:'Caesars',caesarssportsbook:'Caesars',thescorebet:'theScore Bet',thescore:'theScore Bet',betmgm:'BetMGM',mgm:'BetMGM',fanatics:'Fanatics',fanaticssportsbook:'Fanatics',espnbet:'ESPN BET',espn:'ESPN BET',hardrock:'Hard Rock Bet',hardrockbet:'Hard Rock Bet',betrivers:'BetRivers',pinnacle:'Pinnacle',parx:'Parx Casino',parxcasino:'Parx Casino',bovada:'Bovada',fliff:'Fliff'};
+    const aliases={draftkings:'DraftKings',draftkingssportsbook:'DraftKings',dk:'DraftKings',fanduel:'FanDuel',fanduelsportsbook:'FanDuel',fd:'FanDuel',bet365:'bet365','365':'bet365',caesars:'Caesars',williamhill:'Caesars',caesarssportsbook:'Caesars',thescorebet:'theScore Bet',thescore:'theScore Bet',betmgm:'BetMGM',mgm:'BetMGM',fanatics:'Fanatics',fanaticssportsbook:'Fanatics',espnbet:'theScore Bet',espn:'theScore Bet',hardrock:'Hard Rock Bet',hardrockbet:'Hard Rock Bet',betrivers:'BetRivers',pinnacle:'Pinnacle',parx:'Parx Casino',parxcasino:'Parx Casino',bovada:'Bovada',fliff:'Fliff'};
     return aliases[key]||raw||null;
   }
   function sportsbookName(value){const book=normalizeBook(value);return book&&ACTUAL_SPORTSBOOKS.has(book)?book:null;}

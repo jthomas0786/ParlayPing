@@ -40,19 +40,20 @@ test('full exact FanDuel resolution keeps real prefilled link and provider IDs',
   assert.equal(out.legs[1].bookOffers.FanDuel.marketId,'2');
 });
 
-test('missing coverage is proactively checked for FanDuel DraftKings BetMGM BetRivers and Bovada',async()=>{
+test('missing coverage is proactively checked for FanDuel DraftKings BetMGM BetRivers Bovada and theScore Bet',async()=>{
   const slip={legs:[{sport:'NFL',player:'Test Player',market:'recYds',side:'over',line:20,inclusive:true,bookOffers:{}}]};
   const calls=[];
   const out=await enrichMissingExactSportsbooks(slip,{log:false,resolve:async({book})=>{
     calls.push(book);
     return {exact:true,url:null,selections:[{price:book==='FanDuel'?-120:-115,line:19.5}]};
   }});
-  assert.deepEqual(calls,['FanDuel','DraftKings','BetMGM','BetRivers','Bovada']);
+  assert.deepEqual(calls,['FanDuel','DraftKings','BetMGM','BetRivers','Bovada','theScore Bet']);
   assert.equal(hasFullBookPricing(out,'FanDuel'),true);
   assert.equal(hasFullBookPricing(out,'DraftKings'),true);
   assert.equal(hasFullBookPricing(out,'BetMGM'),true);
   assert.equal(hasFullBookPricing(out,'BetRivers'),true);
   assert.equal(hasFullBookPricing(out,'Bovada'),true);
+  assert.equal(hasFullBookPricing(out,'theScore Bet'),true);
 });
 
 test('BetMGM full exact coverage preserves verified per-leg links without inventing a combined betslip',async()=>{

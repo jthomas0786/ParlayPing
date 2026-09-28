@@ -7,7 +7,10 @@ const {
   matchEvent,
   findOutcome,
   composeFanDuel,
-  composeDraftKings
+  composeDraftKings,
+  getEvents,
+  getEventOdds,
+  clearOddsApiCaches
 }=require('../server/api/lib/odds-api-deeplink');
 
 test('maps ParlayPing sports and player markets to The Odds API keys',()=>{
@@ -17,6 +20,8 @@ test('maps ParlayPing sports and player markets to The Odds API keys',()=>{
   assert.equal(bookKey('BetMGM'),'betmgm');
   assert.equal(bookKey('BetRivers'),'betrivers');
   assert.equal(bookKey('Bovada'),'bovada');
+  assert.equal(bookKey('theScore Bet'),'espnbet');
+  assert.equal(bookKey('ESPN BET'),'espnbet');
   assert.deepEqual(marketCandidates({sport:'WNBA',market:'pra'}),['player_points_rebounds_assists','player_points_rebounds_assists_alternate']);
   assert.deepEqual(marketCandidates({sport:'NFL',market:'Anytime Touchdown'}),['player_anytime_td']);
   assert.deepEqual(marketCandidates({sport:'MLB',market:'Home Run'}),['batter_home_runs','batter_home_runs_alternate']);
@@ -75,4 +80,29 @@ test('composes DraftKings parlay only from one exact outcome per leg',()=>{
     {selectionLink:'https://sportsbook.draftkings.com/?outcomes=222'}
   ]);
   assert.ok(url.includes('outcomes=111+222'));
+});
+
+
+test('coalesces concurrent cold event and event-odds provider requests',async()=>{
+  clearOddsApiCaches();
+  let calls=0;
+  const fetchImpl=async url=>{
+    calls+=1;
+    await new Promise(resolve=>setTimeout(resolve,20));
+    const href=String(url);
+    const data=href.includes('/odds')?{bookmakers:[]}:[];
+    return {ok:true,status:200,json:async()=>data,headers:{get:()=>null}};
+  };
+  await Promise.all([
+    getEvents('NFL','test-key',fetchImpl),
+    getEvents('NFL','test-key',fetchImpl),
+    getEvents('NFL','test-key',fetchImpl)
+  ]);
+  assert.equal(calls,1);
+  await Promise.all([
+    getEventOdds({sport:'NFL',eventId:'event-1',book:'theScore Bet',markets:['player_pass_yds'],apiKey:'test-key',fetchImpl}),
+    getEventOdds({sport:'NFL',eventId:'event-1',book:'theScore Bet',markets:['player_pass_yds'],apiKey:'test-key',fetchImpl})
+  ]);
+  assert.equal(calls,2);
+  clearOddsApiCaches();
 });

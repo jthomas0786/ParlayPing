@@ -84,5 +84,5 @@ test('BetRivers and Bovada remain openable when exact combined betslips are unav
 test('Builder HTML no longer loads the partial-coverage override runtime',()=>{
   const html=renderBuilderHtml({slip:{legs:[]},token:'test-token',liveDataAvailable:false});
   assert.doesNotMatch(html,/builder-sportsbook-partial-coverage\.js/);
-  assert.match(html,/builder-sportsbook-open-final\.js\?v=20260927g/);
+  assert.match(html,/builder-sportsbook-open-final\.js\?v=20260927h/);
 });

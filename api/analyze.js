@@ -1,0 +1,1 @@
+../server/api/analyze.js
