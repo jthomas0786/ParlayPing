@@ -131,22 +131,32 @@ function applyExactResolution(slip, book, result) {
 
   const nextLegs = legs.map((leg, index) => {
     const selection = selections[index];
-    const price = finiteOdds(selection?.price);
+    const fallbackPrice = finiteOdds(selection?.price);
     const existingOffers = leg?.bookOffers && typeof leg.bookOffers === 'object' ? leg.bookOffers : {};
     const existing = bookOffer(leg, book) || {};
+    const primaryPrice = finiteOdds(existing?.oddsAmerican);
+    const preservePrimaryPrice = primaryPrice != null;
+    const hasProviderReference = Boolean(selection.selectionLink || selection.selectionId || selection.marketId);
     return {
       ...leg,
       bookOffers: {
         ...existingOffers,
         [book]: {
           ...existing,
-          oddsAmerican: price,
+          // Sports Outpost / ParlayAPI and uploaded-slip exact prices are primary.
+          // The Odds API fallback may only fill a missing price; it must never
+          // replace an exact price we already have for this same book + leg.
+          oddsAmerican: preservePrimaryPrice ? primaryPrice : fallbackPrice,
           ...(selection.selectionLink ? { selectionLink: selection.selectionLink } : {}),
           ...(selection.selectionId ? { selectionId: String(selection.selectionId) } : {}),
           ...(selection.marketId ? { marketId: String(selection.marketId) } : {}),
           ...(selection.marketKey ? { marketKey: String(selection.marketKey) } : {}),
           ...(selection.line != null ? { matchedLine: Number(selection.line) } : {}),
-          priceKind: 'verified-exact-resolver',
+          priceKind: preservePrimaryPrice ? (existing.priceKind || 'primary-exact-price') : 'verified-exact-resolver',
+          ...(preservePrimaryPrice
+            ? (existing.priceSource ? { priceSource: existing.priceSource } : {})
+            : { priceSource: 'TheOddsAPI' }),
+          ...(hasProviderReference ? { referenceSource: 'TheOddsAPI' } : {}),
         },
       },
     };
@@ -185,8 +195,8 @@ async function enrichMissingExactSportsbooks(slip, options = {}) {
 
   if (useDefaultBatch) {
     try {
-      // The Odds API treats up to ten explicitly requested bookmakers as one region.
-      // Resolve every missing sportsbook from one provider response per event/market set.
+      // The Odds API is secondary. Resolve only books that are still missing
+      // full exact pricing after the primary Sports Outpost / ParlayAPI snapshot.
       const results = await resolveBatchWithInflight({ books: missingBooks, legs });
       for (const book of missingBooks) {
         const result = results?.[book] || null;
