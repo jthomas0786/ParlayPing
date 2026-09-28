@@ -1,4 +1,4 @@
-name: Inspect FanDuel exact-line resolver
+name: Production FanDuel Builder smoke
 
 on:
   push:
@@ -6,44 +6,93 @@ on:
     paths:
       - '.github/workflows/inspect-fanduel-resolver.yml'
 
+permissions:
+  contents: read
+
 jobs:
-  inspect:
+  smoke:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      - name: Query production FanDuel resolver
+      - name: Build and inspect production six-leg FanDuel slip
         shell: bash
         run: |
           set -euo pipefail
-          cat >/tmp/body.json <<'JSON'
+          cat >/tmp/create.json <<'JSON'
           {
-            "book":"FanDuel",
-            "legs":[
-              {"sport":"NFL","player":"Patrick Mahomes","team":"KC","matchup":"KC @ MIA","market":"passYds","side":"over","line":225,"inclusive":true,"startTimeUTC":"2026-09-27T17:00:00Z"},
-              {"sport":"NFL","player":"Rashee Rice","team":"KC","matchup":"KC @ MIA","market":"recYds","side":"over","line":30,"inclusive":true,"startTimeUTC":"2026-09-27T17:00:00Z"},
-              {"sport":"NFL","player":"Kenneth Walker III","team":"KC","matchup":"KC @ MIA","market":"rushYds","side":"over","line":70,"inclusive":true,"startTimeUTC":"2026-09-27T17:00:00Z"},
-              {"sport":"NFL","player":"Jaxon Smith-Njigba","team":"SEA","matchup":"SEA @ WSH","market":"recYds","side":"over","line":80,"inclusive":true,"startTimeUTC":"2026-09-27T17:00:00Z"},
-              {"sport":"NFL","player":"Sam Darnold","team":"SEA","matchup":"SEA @ WSH","market":"passYds","side":"over","line":175,"inclusive":true,"startTimeUTC":"2026-09-27T17:00:00Z"},
-              {"sport":"NFL","player":"Stefon Diggs","team":"WSH","matchup":"SEA @ WSH","market":"recYds","side":"over","line":20,"inclusive":true,"startTimeUTC":"2026-09-27T17:00:00Z"}
-            ]
+            "text":"Patrick Mahomes 225+ PASS YDS\nRashee Rice 30+ REC YDS\nKenneth Walker III 70+ RUSH YDS\nJaxon Smith-Njigba 80+ REC YDS\nSam Darnold 175+ PASS YDS\nStefon Diggs 20+ REC YDS"
           }
           JSON
+
           curl -fsS -X POST \
             -H 'content-type: application/json' \
-            --data-binary @/tmp/body.json \
-            https://www.parlayping.net/api/sportsbook-link \
-            -o /tmp/result.json
-          python3 - <<'PY'
+            --data-binary @/tmp/create.json \
+            https://www.parlayping.net/api/landing-create \
+            -o /tmp/create-result.json
+
+          BUILDER_URL="$(python3 - <<'PY'
           import json
-          d=json.load(open('/tmp/result.json'))
-          print('ok',d.get('ok'),'book',d.get('book'),'exact',d.get('exact'),'has_url',bool(d.get('url')))
-          for row in d.get('selections') or []:
-              if not row:
-                  print('selection MISSING')
-                  continue
-              print(json.dumps({
-                'index':row.get('index'),'player':row.get('player'),'marketKey':row.get('marketKey'),
-                'line':row.get('line'),'price':row.get('price'),'side':row.get('side'),
-                'has_selection_link':bool(row.get('selectionLink')),
-                'has_selection_id':bool(row.get('selectionId')),'has_market_id':bool(row.get('marketId'))
-              },separators=(',',':')))
+          d=json.load(open('/tmp/create-result.json'))
+          assert d.get('ok') is True, d
+          assert d.get('legCount') == 6, d
+          url=d.get('builderUrl')
+          assert isinstance(url,str) and url.startswith('https://'), d
+          print(url)
+          PY
+          )"
+
+          curl -fsS "$BUILDER_URL" -o /tmp/builder.html
+
+          python3 - <<'PY'
+          import json,re
+          html=open('/tmp/builder.html',encoding='utf-8').read()
+          m=re.search(r'window\.__PARLAYPING_BUILDER__=(.*?);</script>',html,re.S)
+          assert m, 'Builder payload not found'
+          payload=json.loads(m.group(1))
+          slip=payload.get('slip') or {}
+          legs=slip.get('legs') or []
+          assert len(legs)==6, f'Expected 6 Builder legs, got {len(legs)}'
+
+          def offer_for(leg,wanted):
+              for book,offer in (leg.get('bookOffers') or {}).items():
+                  if ''.join(c for c in str(book).lower() if c.isalnum()) == wanted:
+                      return offer or {}
+              return None
+
+          rows=[]
+          all_priced=True
+          for i,leg in enumerate(legs):
+              offer=offer_for(leg,'fanduel')
+              odds=None if offer is None else offer.get('oddsAmerican')
+              priced=isinstance(odds,(int,float)) and odds != 0
+              all_priced=all_priced and priced
+              rows.append({
+                  'index':i,
+                  'player':leg.get('player'),
+                  'market':leg.get('market'),
+                  'line':leg.get('line'),
+                  'inclusive':leg.get('inclusive'),
+                  'fanduel_price':odds,
+                  'matched_line':None if offer is None else offer.get('matchedLine'),
+                  'has_selection_link':bool(offer and offer.get('selectionLink')),
+                  'has_selection_id':bool(offer and offer.get('selectionId')),
+                  'has_market_id':bool(offer and offer.get('marketId')),
+                  'price_kind':None if offer is None else offer.get('priceKind'),
+              })
+
+          links=slip.get('sportsbookLinks') or {}
+          fd_link=next((v for k,v in links.items() if ''.join(c for c in str(k).lower() if c.isalnum())=='fanduel'),None)
+          print(json.dumps({
+              'leg_count':len(legs),
+              'all_fanduel_priced':all_priced,
+              'has_fanduel_prefilled_url':bool(fd_link),
+              'rows':rows,
+          },indent=2))
+
+          # This is the production contract: FanDuel only appears as full-slip coverage
+          # when every exact leg carries a real, non-zero FanDuel price.
+          assert all_priced, 'FanDuel does not currently have verified full-slip exact pricing in the rendered Builder'
+          if fd_link:
+              assert str(fd_link).startswith('https://'), 'FanDuel combined URL must be HTTPS'
+              assert 'fanduel.com' in str(fd_link).lower(), 'FanDuel combined URL must target FanDuel'
           PY
