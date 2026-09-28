@@ -1,0 +1,53 @@
+name: One-time finalize single-router API layout
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/one-time-api-router-finalize.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Remove legacy API bootstrap and wrappers
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > scripts/prepare-test-api.cjs <<'EOF'
+          const fs=require('node:fs');
+          const path=require('node:path');
+
+          const root=path.join(__dirname,'..');
+          const entry=path.join(root,'api','index.js');
+          if(!fs.existsSync(entry)) throw new Error('ParlayPing API router entrypoint is missing.');
+          EOF
+          rm -f api/account-router.js api/analyze.js api/parse.js api/share-card.js api/share-page.js api/status.js api/x-dry-run.js api/x-scheduler.js api/x-worker.js
+          rm -f api/lib api/v1
+          test -f api/index.js
+          test "$(find api -maxdepth 1 -type f -name '*.js' | wc -l)" -eq 1
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Run regression tests against single-router layout
+        run: npm test
+      - name: Commit only router cleanup
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm .github/workflows/one-time-api-router-finalize.yml
+          git config user.name "jthomas0786"
+          git config user.email "jthomas0786@gmail.com"
+          git add -A api scripts/prepare-test-api.cjs .github/workflows/one-time-api-router-finalize.yml
+          git commit -m "Keep Vercel API on single serverless router"
+          git push origin main
