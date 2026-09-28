@@ -30,13 +30,39 @@ jobs:
 
           p=Path('server/api/lib/odds-api-deeplink.js')
           text=p.read_text()
-          old="""const oddsInflight=new Map();\n\nconst SPORT_KEYS={"""
-          new="""const oddsInflight=new Map();\nconst ODDS_CREDIT_COOLDOWN_MS=5*60_000;\nlet oddsProviderCooldownUntil=0;\n\nconst SPORT_KEYS={"""
+          old="""const oddsInflight=new Map();
+
+          const SPORT_KEYS={"""
+          new="""const oddsInflight=new Map();
+          const ODDS_CREDIT_COOLDOWN_MS=5*60_000;
+          let oddsProviderCooldownUntil=0;
+
+          const SPORT_KEYS={"""
           if old not in text: raise SystemExit('provider cache anchor not found')
           text=text.replace(old,new,1)
 
-          old="""async function fetchJson(url,{fetchImpl=fetch,timeoutMs=6500}={}){\n  const response=await fetchImpl(url,{headers:{accept:'application/json','user-agent':'ParlayPing/1.4'},cache:'no-store',signal:AbortSignal.timeout(timeoutMs)});\n  let data=null;try{data=await response.json();}catch{}\n  if(!response.ok){const error=new Error(data?.message||data?.error||`The Odds API returned ${response.status}.`);error.status=response.status;error.data=data;throw error;}\n  return{data,response};\n}"""
-          new="""function oddsCreditCooldownError(){\n  const error=new Error('Odds provider usage credits are temporarily exhausted.');\n  error.status=401;\n  error.data={error_code:'OUT_OF_USAGE_CREDITS',message:error.message,cached:true,retryAfterMs:Math.max(0,oddsProviderCooldownUntil-Date.now())};\n  return error;\n}\nasync function fetchJson(url,{fetchImpl=fetch,timeoutMs=6500}={}){\n  if(Date.now()<oddsProviderCooldownUntil)throw oddsCreditCooldownError();\n  const response=await fetchImpl(url,{headers:{accept:'application/json','user-agent':'ParlayPing/1.4'},cache:'no-store',signal:AbortSignal.timeout(timeoutMs)});\n  let data=null;try{data=await response.json();}catch{}\n  if(!response.ok){\n    if(data?.error_code==='OUT_OF_USAGE_CREDITS')oddsProviderCooldownUntil=Date.now()+ODDS_CREDIT_COOLDOWN_MS;\n    const error=new Error(data?.message||data?.error||`The Odds API returned ${response.status}.`);error.status=response.status;error.data=data;throw error;\n  }\n  return{data,response};\n}"""
+          old="""async function fetchJson(url,{fetchImpl=fetch,timeoutMs=6500}={}){
+            const response=await fetchImpl(url,{headers:{accept:'application/json','user-agent':'ParlayPing/1.4'},cache:'no-store',signal:AbortSignal.timeout(timeoutMs)});
+            let data=null;try{data=await response.json();}catch{}
+            if(!response.ok){const error=new Error(data?.message||data?.error||`The Odds API returned ${response.status}.`);error.status=response.status;error.data=data;throw error;}
+            return{data,response};
+          }"""
+          new="""function oddsCreditCooldownError(){
+            const error=new Error('Odds provider usage credits are temporarily exhausted.');
+            error.status=401;
+            error.data={error_code:'OUT_OF_USAGE_CREDITS',message:error.message,cached:true,retryAfterMs:Math.max(0,oddsProviderCooldownUntil-Date.now())};
+            return error;
+          }
+          async function fetchJson(url,{fetchImpl=fetch,timeoutMs=6500}={}){
+            if(Date.now()<oddsProviderCooldownUntil)throw oddsCreditCooldownError();
+            const response=await fetchImpl(url,{headers:{accept:'application/json','user-agent':'ParlayPing/1.4'},cache:'no-store',signal:AbortSignal.timeout(timeoutMs)});
+            let data=null;try{data=await response.json();}catch{}
+            if(!response.ok){
+              if(data?.error_code==='OUT_OF_USAGE_CREDITS')oddsProviderCooldownUntil=Date.now()+ODDS_CREDIT_COOLDOWN_MS;
+              const error=new Error(data?.message||data?.error||`The Odds API returned ${response.status}.`);error.status=response.status;error.data=data;throw error;
+            }
+            return{data,response};
+          }"""
           if old not in text: raise SystemExit('fetchJson anchor not found')
           text=text.replace(old,new,1)
 
@@ -50,7 +76,32 @@ jobs:
           text=p.read_text()
           marker="suppresses repeated provider calls while usage credits are exhausted"
           if marker not in text:
-              text += r'''\n\ntest('suppresses repeated provider calls while usage credits are exhausted',async()=>{\n  clearOddsApiCaches();\n  let calls=0;\n  const fetchImpl=async()=>{\n    calls+=1;\n    return {\n      ok:false,\n      status:401,\n      json:async()=>({error_code:'OUT_OF_USAGE_CREDITS',message:'Usage credits have been exhausted'}),\n      headers:{get:()=>null}\n    };\n  };\n  await assert.rejects(\n    getEventOddsForBooks({sport:'NFL',eventId:'quota-1',books:['FanDuel','BetMGM'],markets:['player_pass_yds'],apiKey:'test-key',fetchImpl}),\n    error=>error?.data?.error_code==='OUT_OF_USAGE_CREDITS'\n  );\n  await assert.rejects(\n    getEventOddsForBooks({sport:'NFL',eventId:'quota-2',books:['FanDuel','BetMGM'],markets:['player_pass_yds'],apiKey:'test-key',fetchImpl}),\n    error=>error?.data?.error_code==='OUT_OF_USAGE_CREDITS'&&error?.data?.cached===true\n  );\n  assert.equal(calls,1);\n  clearOddsApiCaches();\n});\n'''
+              text += """
+
+          test('suppresses repeated provider calls while usage credits are exhausted',async()=>{
+            clearOddsApiCaches();
+            let calls=0;
+            const fetchImpl=async()=>{
+              calls+=1;
+              return {
+                ok:false,
+                status:401,
+                json:async()=>({error_code:'OUT_OF_USAGE_CREDITS',message:'Usage credits have been exhausted'}),
+                headers:{get:()=>null}
+              };
+            };
+            await assert.rejects(
+              getEventOddsForBooks({sport:'NFL',eventId:'quota-1',books:['FanDuel','BetMGM'],markets:['player_pass_yds'],apiKey:'test-key',fetchImpl}),
+              error=>error?.data?.error_code==='OUT_OF_USAGE_CREDITS'
+            );
+            await assert.rejects(
+              getEventOddsForBooks({sport:'NFL',eventId:'quota-2',books:['FanDuel','BetMGM'],markets:['player_pass_yds'],apiKey:'test-key',fetchImpl}),
+              error=>error?.data?.error_code==='OUT_OF_USAGE_CREDITS'&&error?.data?.cached===true
+            );
+            assert.equal(calls,1);
+            clearOddsApiCaches();
+          });
+          """
           p.write_text(text)
           PY
       - name: Install dependencies
