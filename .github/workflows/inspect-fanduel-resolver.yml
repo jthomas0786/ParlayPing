@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
-      - name: Verify active exact FanDuel and BetMGM markets
+      - name: Verify active exact sportsbook markets
         shell: bash
         run: |
           set -euo pipefail
@@ -42,7 +42,7 @@ jobs:
               ('Cole Kmet','recYds',[15,20,25]),
           ]
 
-          def probe(book, minimum):
+          def probe(book, minimum=0):
               exact=[]
               attempts=[]
               for player,market,lines in candidates:
@@ -64,6 +64,9 @@ jobs:
                       exact.append(matched)
               print(book.upper()+'_ATTEMPTS',json.dumps(attempts,separators=(',',':')))
               assert len(exact)>=minimum, f'Expected at least {minimum} active exact {book} selections; found {len(exact)}'
+              if not exact:
+                  print(book.upper()+'_COMBINED',json.dumps({'legs':0,'exact':False,'prefilled':False,'diagnostic':'NO_ACTIVE_EXACT_SELECTIONS'},separators=(',',':')))
+                  return
               combined=post(book,exact)
               selections=combined.get('selections') or []
               assert combined.get('exact') is True, combined
@@ -78,6 +81,8 @@ jobs:
 
           probe('FanDuel',2)
           probe('BetMGM',1)
+          probe('BetRivers')
+          probe('Bovada')
           PY
 
       - name: Verify production OpenAI vision parsing
