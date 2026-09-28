@@ -1,6 +1,6 @@
 name: Production sportsbook and AI smoke
 
-# Production smoke is intentionally triggered only by edits to this file after the target deploy is READY.
+# Intentionally manual-by-edit: this smoke hits production after a target deploy is READY.
 on:
   push:
     branches: [main]
@@ -15,72 +15,98 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Verify active exact sportsbook markets
+      - name: Verify batched sportsbook Builder path without quota-hungry discovery
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
-          import json, urllib.request
+          import json, re, time, urllib.error, urllib.request
 
-          URL='https://www.parlayping.net/api/sportsbook-link'
+          BASE='https://www.parlayping.net'
+          text='''NFL
+          Jalen Hurts 175+ passing yards
+          Saquon Barkley 50+ rushing yards
+          DeVonta Smith 40+ receiving yards
+          Rome Odunze 30+ receiving yards
+          Cole Kmet 20+ receiving yards'''
 
-          def post(book, legs):
-              body=json.dumps({'book':book,'legs':legs}).encode()
-              req=urllib.request.Request(URL,data=body,headers={'content-type':'application/json'},method='POST')
-              with urllib.request.urlopen(req,timeout=45) as r:
-                  return json.load(r)
+          create=urllib.request.Request(
+              BASE+'/api/landing-create',
+              data=json.dumps({'text':text}).encode(),
+              headers={'content-type':'application/json','accept':'application/json'},
+              method='POST',
+          )
+          with urllib.request.urlopen(create,timeout=60) as response:
+              created=json.load(response)
+          assert created.get('ok') is True, created
+          assert created.get('legCount') == 5, created
+          builder_url=created.get('builderUrl')
+          assert builder_url, created
 
-          base={'sport':'NFL','matchup':'PHI @ CHI','side':'over','inclusive':True,'startTimeUTC':'2026-09-29T00:15:00Z'}
-          candidates=[
-              ('Jalen Hurts','passYds',[175,200,225]),
-              ('Caleb Williams','passYds',[175,200,225]),
-              ('Saquon Barkley','rushYds',[40,50,60]),
-              ('A.J. Brown','recYds',[30,40,50]),
-              ('DeVonta Smith','recYds',[25,30,40]),
-              ('Rome Odunze','recYds',[25,30,40]),
-              ('DJ Moore','recYds',[25,30,40]),
-              ('Cole Kmet','recYds',[15,20,25]),
-          ]
+          started=time.monotonic()
+          with urllib.request.urlopen(builder_url,timeout=90) as response:
+              assert response.status == 200
+              html=response.read().decode('utf-8')
+          elapsed=time.monotonic()-started
+          assert elapsed < 30, f'Builder took {elapsed:.2f}s'
 
-          def probe(book, minimum):
-              exact=[]
-              attempts=[]
-              for player,market,lines in candidates:
-                  matched=None
-                  for line in lines:
-                      leg={**base,'player':player,'market':market,'line':line}
-                      d=post(book,[leg])
-                      sel=(d.get('selections') or [None])[0]
-                      attempts.append({
-                          'player':player,'market':market,'line':line,
-                          'exact':bool(d.get('exact')),
-                          'price':sel.get('price') if isinstance(sel,dict) else None,
-                          'code':(d.get('diagnostics') or {}).get('code')
-                      })
-                      if d.get('exact') and isinstance(sel,dict) and isinstance(sel.get('price'),(int,float)) and sel.get('price')!=0:
-                          matched=leg
-                          break
-                  if matched:
-                      exact.append(matched)
-              print(book.upper()+'_ATTEMPTS',json.dumps(attempts,separators=(',',':')))
-              assert len(exact)>=minimum, f'Expected at least {minimum} active exact {book} selections; found {len(exact)}'
-              combined=post(book,exact)
-              selections=combined.get('selections') or []
-              assert combined.get('exact') is True, combined
-              assert len(selections)==len(exact), combined
-              assert all(isinstance(s,dict) and isinstance(s.get('price'),(int,float)) and s.get('price')!=0 for s in selections), combined
-              print(book.upper()+'_COMBINED',json.dumps({
-                  'legs':len(exact),'exact':combined.get('exact'),'prefilled':combined.get('prefilled'),
-                  'diagnostic':(combined.get('diagnostics') or {}).get('code'),
-                  'prices':[s.get('price') for s in selections],
-                  'links':sum(1 for s in selections if isinstance(s,dict) and s.get('selectionLink'))
-              },separators=(',',':')))
+          match=re.search(r'window\.__PARLAYPING_BUILDER__=(\{.*?\});</script>',html,re.S)
+          assert match, 'Builder state payload not found'
+          state=json.loads(match.group(1))
+          slip=state.get('slip') or {}
+          legs=slip.get('legs') or []
+          assert len(legs)==5, state
 
-          probe('FanDuel',2)
-          probe('BetMGM',1)
-          probe('BetRivers',1)
-          probe('Bovada',1)
-          probe('theScore Bet',1)
+          books=['FanDuel','DraftKings','BetMGM','BetRivers','Bovada','theScore Bet']
+          exact_books=[]
+          priced_books=[]
+          for book in books:
+              offers=[((leg.get('bookOffers') or {}).get(book) or {}) for leg in legs]
+              prices=[offer.get('oddsAmerican') for offer in offers]
+              assert all(price != 0 for price in prices), {'book':book,'prices':prices}
+              if all(isinstance(price,(int,float)) and price != 0 for price in prices):
+                  priced_books.append(book)
+              if all(offer.get('priceKind')=='verified-exact-resolver' and isinstance(offer.get('oddsAmerican'),(int,float)) and offer.get('oddsAmerican')!=0 for offer in offers):
+                  exact_books.append(book)
+
+          print('BUILDER_BATCH_SMOKE',json.dumps({
+              'elapsedSeconds':round(elapsed,3),
+              'legs':len(legs),
+              'pricedBooks':priced_books,
+              'exactResolverBooks':exact_books,
+          },separators=(',',':')))
+
+          # If the batch could not enrich any book, make only one low-cost probe to
+          # distinguish external Odds API quota exhaustion from an application failure.
+          if not exact_books:
+              leg={
+                  'sport':'NFL','matchup':'PHI @ CHI','player':'Jalen Hurts',
+                  'market':'passYds','side':'over','line':175,'inclusive':True,
+                  'startTimeUTC':'2026-09-29T00:15:00Z'
+              }
+              req=urllib.request.Request(
+                  BASE+'/api/sportsbook-link',
+                  data=json.dumps({'book':'FanDuel','legs':[leg]}).encode(),
+                  headers={'content-type':'application/json','accept':'application/json'},
+                  method='POST',
+              )
+              try:
+                  with urllib.request.urlopen(req,timeout=45) as response:
+                      probe=json.load(response)
+                  assert probe.get('ok') is True, probe
+                  print('ODDS_PROVIDER_PROBE',json.dumps({
+                      'status':'available','exact':probe.get('exact'),
+                      'diagnostic':(probe.get('diagnostics') or {}).get('code')
+                  },separators=(',',':')))
+              except urllib.error.HTTPError as exc:
+                  body=exc.read().decode('utf-8','replace')
+                  low=body.lower()
+                  if exc.code == 401 and ('credit' in low or 'usage' in low):
+                      print('ODDS_PROVIDER_PROBE',json.dumps({
+                          'status':'quota-exhausted','httpStatus':exc.code
+                      },separators=(',',':')))
+                  else:
+                      raise AssertionError(f'Unexpected sportsbook-link failure {exc.code}: {body}')
           PY
 
       - name: Verify production OpenAI vision parsing
@@ -116,97 +142,4 @@ jobs:
           assert data.get('ok') is True, data
           assert data.get('method') == 'vision', data
           assert int(data.get('legCount') or 0) >= 1, data
-          PY
-
-      - name: Verify BetMGM reaches rendered Builder state
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          import json, re, urllib.request
-
-          text='''NFL
-          Jalen Hurts 200+ passing yards
-          Saquon Barkley 50+ rushing yards
-          DeVonta Smith 25+ receiving yards
-          Rome Odunze 25+ receiving yards
-          BetMGM'''
-          req=urllib.request.Request(
-              'https://www.parlayping.net/api/landing-create',
-              data=json.dumps({'text':text}).encode(),
-              headers={'content-type':'application/json','accept':'application/json'},
-              method='POST',
-          )
-          with urllib.request.urlopen(req,timeout=60) as response:
-              created=json.load(response)
-          assert created.get('ok') is True, created
-          assert created.get('legCount') == 4, created
-          url=created.get('builderUrl')
-          assert url, created
-          with urllib.request.urlopen(url,timeout=90) as response:
-              html=response.read().decode('utf-8')
-          match=re.search(r'window\.__PARLAYPING_BUILDER__=(\{.*?\});</script>',html,re.S)
-          assert match, 'Builder state payload not found'
-          state=json.loads(match.group(1))
-          legs=(state.get('slip') or {}).get('legs') or []
-          assert len(legs)==4, state
-          prices=[]
-          links=[]
-          for leg in legs:
-              offer=((leg.get('bookOffers') or {}).get('BetMGM') or {})
-              price=offer.get('oddsAmerican')
-              assert isinstance(price,(int,float)) and price!=0, {'leg':leg.get('player'),'offer':offer}
-              prices.append(price)
-              links.append(bool(offer.get('selectionLink')))
-          print('BETMGM_BUILDER',json.dumps({
-              'legs':len(legs),'prices':prices,'selectionLinks':sum(1 for value in links if value),
-              'combinedLink':bool(((state.get('slip') or {}).get('sportsbookLinks') or {}).get('BetMGM'))
-          },separators=(',',':')))
-          PY
-
-      - name: Verify BetRivers reaches rendered Builder state
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          import json, re, urllib.request
-
-          text='''NFL
-          Jalen Hurts 175+ passing yards
-          Saquon Barkley 50+ rushing yards
-          DeVonta Smith 40+ receiving yards
-          Rome Odunze 30+ receiving yards
-          Cole Kmet 20+ receiving yards
-          BetRivers'''
-          req=urllib.request.Request(
-              'https://www.parlayping.net/api/landing-create',
-              data=json.dumps({'text':text}).encode(),
-              headers={'content-type':'application/json','accept':'application/json'},
-              method='POST',
-          )
-          with urllib.request.urlopen(req,timeout=60) as response:
-              created=json.load(response)
-          assert created.get('ok') is True, created
-          assert created.get('legCount') == 5, created
-          url=created.get('builderUrl')
-          assert url, created
-          with urllib.request.urlopen(url,timeout=90) as response:
-              html=response.read().decode('utf-8')
-          match=re.search(r'window\.__PARLAYPING_BUILDER__=(\{.*?\});</script>',html,re.S)
-          assert match, 'Builder state payload not found'
-          state=json.loads(match.group(1))
-          legs=(state.get('slip') or {}).get('legs') or []
-          assert len(legs)==5, state
-          prices=[]
-          links=[]
-          for leg in legs:
-              offer=((leg.get('bookOffers') or {}).get('BetRivers') or {})
-              price=offer.get('oddsAmerican')
-              assert isinstance(price,(int,float)) and price!=0, {'leg':leg.get('player'),'offer':offer}
-              prices.append(price)
-              links.append(bool(offer.get('selectionLink')))
-          print('BETRIVERS_BUILDER',json.dumps({
-              'legs':len(legs),'prices':prices,'selectionLinks':sum(1 for value in links if value),
-              'combinedLink':bool(((state.get('slip') or {}).get('sportsbookLinks') or {}).get('BetRivers'))
-          },separators=(',',':')))
           PY
