@@ -75,7 +75,7 @@ module.exports = async function handler(req, res) {
     const pricedSlip = await enrichSportsbookMarkets(hydrated.slip);
     // Cached snapshots can miss a book even when every exact selection exists there.
     // Proactively verify missing full-slip coverage for the books with exact resolvers.
-    const sportsbookSlip = await enrichMissingExactSportsbooks(pricedSlip, { books:['FanDuel','DraftKings'] });
+    const sportsbookSlip = await enrichMissingExactSportsbooks(pricedSlip, { books:['FanDuel','DraftKings','BetMGM'] });
     const html = renderBuilderHtml({ slip: sportsbookSlip, token, liveDataAvailable: hydrated.liveDataAvailable });
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('Content-Type', 'text/html; charset=utf-8');

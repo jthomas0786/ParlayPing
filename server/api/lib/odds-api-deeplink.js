@@ -14,7 +14,7 @@ const SPORT_KEYS={
   NHL:'icehockey_nhl',
   MLB:'baseball_mlb'
 };
-const BOOK_KEYS={FanDuel:'fanduel',DraftKings:'draftkings'};
+const BOOK_KEYS={FanDuel:'fanduel',DraftKings:'draftkings',BetMGM:'betmgm'};
 const MARKET_KEYS={
   passYds:'player_pass_yds',rushYds:'player_rush_yds',recYds:'player_reception_yds',receptions:'player_receptions',passTds:'player_pass_tds',completions:'player_pass_completions',atd:'player_anytime_td',firstTd:'player_1st_td',
   points:'player_points',rebounds:'player_rebounds',assists:'player_assists',threes:'player_threes',ptsAsts:'player_points_assists',ptsRebs:'player_points_rebounds',rebsAsts:'player_rebounds_assists',pra:'player_points_rebounds_assists',blocks:'player_blocks',steals:'player_steals',turnovers:'player_turnovers',doubleDouble:'player_double_double',tripleDouble:'player_triple_double',
@@ -220,7 +220,7 @@ async function getEventOdds({sport,eventId,book,markets,apiKey,fetchImpl}){
   const value={data,usage:readUsage(response)};oddsCache.set(cacheKey,{ts:Date.now(),value});return value;
 }
 async function resolveSportsbookBetslip({book,legs,apiKey=process.env.ODDS_API_KEY,fetchImpl=fetch}={}){
-  const normalizedBook=normBook(book);if(!BOOK_KEYS[normalizedBook])throw new Error('Exact deeplink enrichment currently supports FanDuel and DraftKings.');
+  const normalizedBook=normBook(book);if(!BOOK_KEYS[normalizedBook])throw new Error('Exact sportsbook enrichment is not available for this book.');
   if(!apiKey)throw new Error('ODDS_API_KEY is not configured.');
   const rows=Array.isArray(legs)?legs.slice(0,25):[];if(!rows.length)throw new Error('At least one betslip leg is required.');
   const working=[];

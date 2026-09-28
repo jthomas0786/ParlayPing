@@ -40,16 +40,35 @@ test('full exact FanDuel resolution keeps real prefilled link and provider IDs',
   assert.equal(out.legs[1].bookOffers.FanDuel.marketId,'2');
 });
 
-test('missing coverage is proactively checked for both FanDuel and DraftKings',async()=>{
+test('missing coverage is proactively checked for FanDuel DraftKings and BetMGM',async()=>{
   const slip={legs:[{sport:'NFL',player:'Test Player',market:'recYds',side:'over',line:20,inclusive:true,bookOffers:{}}]};
   const calls=[];
   const out=await enrichMissingExactSportsbooks(slip,{log:false,resolve:async({book})=>{
     calls.push(book);
     return {exact:true,url:null,selections:[{price:book==='FanDuel'?-120:-115,line:19.5}]};
   }});
-  assert.deepEqual(calls,['FanDuel','DraftKings']);
+  assert.deepEqual(calls,['FanDuel','DraftKings','BetMGM']);
   assert.equal(hasFullBookPricing(out,'FanDuel'),true);
   assert.equal(hasFullBookPricing(out,'DraftKings'),true);
+  assert.equal(hasFullBookPricing(out,'BetMGM'),true);
+});
+
+test('BetMGM full exact coverage preserves verified per-leg links without inventing a combined betslip',async()=>{
+  const slip={legs:[
+    {sport:'NFL',player:'Jalen Hurts',market:'passYds',side:'over',line:175,inclusive:true,bookOffers:{}},
+    {sport:'NFL',player:'Saquon Barkley',market:'rushYds',side:'over',line:40,inclusive:true,bookOffers:{}}
+  ]};
+  const out=await enrichMissingExactSportsbooks(slip,{books:['BetMGM'],log:false,resolve:async()=>({
+    exact:false,url:null,selections:[
+      {price:-330,line:174.5,marketKey:'player_pass_yds_alternate',selectionId:'mgm-1',selectionLink:'https://sports.betmgm.com/en/sports/add-to-betslip/one'},
+      {price:-750,line:39.5,marketKey:'player_rush_yds_alternate',selectionId:'mgm-2',selectionLink:'https://sports.betmgm.com/en/sports/add-to-betslip/two'}
+    ]
+  })});
+  assert.equal(hasFullBookPricing(out,'BetMGM'),true);
+  assert.equal(out.legs[0].bookOffers.BetMGM.oddsAmerican,-330);
+  assert.equal(out.legs[0].bookOffers.BetMGM.selectionId,'mgm-1');
+  assert.equal(out.legs[1].bookOffers.BetMGM.selectionLink,'https://sports.betmgm.com/en/sports/add-to-betslip/two');
+  assert.equal(out.sportsbookLinks?.BetMGM,undefined);
 });
 
 test('incomplete or wrong-line resolution never fabricates sportsbook coverage',async()=>{
