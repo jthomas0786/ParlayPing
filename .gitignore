@@ -1,0 +1,12 @@
+/node_modules/
+/api/lib
+/api/v1
+/api/account-router.js
+/api/analyze.js
+/api/parse.js
+/api/share-card.js
+/api/share-page.js
+/api/status.js
+/api/x-dry-run.js
+/api/x-scheduler.js
+/api/x-worker.js
