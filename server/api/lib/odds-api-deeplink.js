@@ -5,6 +5,8 @@ const EVENT_CACHE_MS=5*60_000;
 const ODDS_CACHE_MS=90_000;
 const eventCache=new Map();
 const oddsCache=new Map();
+const eventInflight=new Map();
+const oddsInflight=new Map();
 
 const SPORT_KEYS={
   NFL:'americanfootball_nfl',
@@ -14,7 +16,7 @@ const SPORT_KEYS={
   NHL:'icehockey_nhl',
   MLB:'baseball_mlb'
 };
-const BOOK_KEYS={FanDuel:'fanduel',DraftKings:'draftkings',BetMGM:'betmgm',BetRivers:'betrivers',Bovada:'bovada'};
+const BOOK_KEYS={FanDuel:'fanduel',DraftKings:'draftkings',BetMGM:'betmgm',BetRivers:'betrivers',Bovada:'bovada','theScore Bet':'espnbet'};
 const MARKET_KEYS={
   passYds:'player_pass_yds',rushYds:'player_rush_yds',recYds:'player_reception_yds',receptions:'player_receptions',passTds:'player_pass_tds',completions:'player_pass_completions',atd:'player_anytime_td',firstTd:'player_1st_td',
   points:'player_points',rebounds:'player_rebounds',assists:'player_assists',threes:'player_threes',ptsAsts:'player_points_assists',ptsRebs:'player_points_rebounds',rebsAsts:'player_rebounds_assists',pra:'player_points_rebounds_assists',blocks:'player_blocks',steals:'player_steals',turnovers:'player_turnovers',doubleDouble:'player_double_double',tripleDouble:'player_triple_double',
@@ -206,18 +208,26 @@ async function fetchJson(url,{fetchImpl=fetch,timeoutMs=6500}={}){
 async function getEvents(sport,apiKey,fetchImpl){
   const key=sportKey(sport);if(!key)return[];
   const cacheKey=key,hit=eventCache.get(cacheKey);if(hit&&Date.now()-hit.ts<EVENT_CACHE_MS)return hit.data;
-  const url=new URL(`${API_BASE}/sports/${encodeURIComponent(key)}/events`);url.searchParams.set('apiKey',apiKey);
-  const {data}=await fetchJson(url,{fetchImpl});
-  const rows=Array.isArray(data)?data:[];eventCache.set(cacheKey,{ts:Date.now(),data:rows});return rows;
+  if(eventInflight.has(cacheKey))return eventInflight.get(cacheKey);
+  const pending=(async()=>{
+    const url=new URL(`${API_BASE}/sports/${encodeURIComponent(key)}/events`);url.searchParams.set('apiKey',apiKey);
+    const {data}=await fetchJson(url,{fetchImpl});
+    const rows=Array.isArray(data)?data:[];eventCache.set(cacheKey,{ts:Date.now(),data:rows});return rows;
+  })().finally(()=>eventInflight.delete(cacheKey));
+  eventInflight.set(cacheKey,pending);return pending;
 }
 async function getEventOdds({sport,eventId,book,markets,apiKey,fetchImpl}){
   const sKey=sportKey(sport),bKey=bookKey(book);if(!sKey||!bKey)throw new Error('Unsupported sportsbook or sport for exact deeplink resolution.');
   const marketList=[...new Set(markets)].sort(),cacheKey=`${sKey}|${eventId}|${bKey}|${marketList.join(',')}`;
   const hit=oddsCache.get(cacheKey);if(hit&&Date.now()-hit.ts<ODDS_CACHE_MS)return hit.value;
-  const url=new URL(`${API_BASE}/sports/${encodeURIComponent(sKey)}/events/${encodeURIComponent(eventId)}/odds`);
-  url.searchParams.set('apiKey',apiKey);url.searchParams.set('bookmakers',bKey);url.searchParams.set('markets',marketList.join(','));url.searchParams.set('oddsFormat','american');url.searchParams.set('includeLinks','true');url.searchParams.set('includeSids','true');
-  const {data,response}=await fetchJson(url,{fetchImpl});
-  const value={data,usage:readUsage(response)};oddsCache.set(cacheKey,{ts:Date.now(),value});return value;
+  if(oddsInflight.has(cacheKey))return oddsInflight.get(cacheKey);
+  const pending=(async()=>{
+    const url=new URL(`${API_BASE}/sports/${encodeURIComponent(sKey)}/events/${encodeURIComponent(eventId)}/odds`);
+    url.searchParams.set('apiKey',apiKey);url.searchParams.set('bookmakers',bKey);url.searchParams.set('markets',marketList.join(','));url.searchParams.set('oddsFormat','american');url.searchParams.set('includeLinks','true');url.searchParams.set('includeSids','true');
+    const {data,response}=await fetchJson(url,{fetchImpl});
+    const value={data,usage:readUsage(response)};oddsCache.set(cacheKey,{ts:Date.now(),value});return value;
+  })().finally(()=>oddsInflight.delete(cacheKey));
+  oddsInflight.set(cacheKey,pending);return pending;
 }
 async function resolveSportsbookBetslip({book,legs,apiKey=process.env.ODDS_API_KEY,fetchImpl=fetch}={}){
   const normalizedBook=normBook(book);if(!BOOK_KEYS[normalizedBook])throw new Error('Exact sportsbook enrichment is not available for this book.');
@@ -240,13 +250,14 @@ async function resolveSportsbookBetslip({book,legs,apiKey=process.env.ODDS_API_K
     const group=groups.get(key);group.rows.push(row);row.markets.forEach(m=>group.markets.add(m));
   }
   const selections=new Array(rows.length).fill(null),usage=[];
-  for(const group of groups.values()){
+  await Promise.all([...groups.values()].map(async group=>{
     const result=await getEventOdds({sport:group.sport,eventId:group.eventId,book:normalizedBook,markets:[...group.markets],apiKey,fetchImpl});
     if(result.usage)usage.push(result.usage);
     for(const row of group.rows){const selected=findOutcome(result.data,normalizedBook,row.leg);if(selected)selections[row.index]={index:row.index,eventId:group.eventId,...selected};}
-  }
+  }));
   const exact=selections.every(Boolean),url=exact?composeBetslip(normalizedBook,selections):null;
   return{book:normalizedBook,exact:Boolean(exact&&url),url:url||null,selections,usage};
 }
+function clearOddsApiCaches(){eventCache.clear();oddsCache.clear();eventInflight.clear();oddsInflight.clear();}
 
-module.exports={sportKey,bookKey,internalMarket,marketCandidates,desiredOutcomeName,pointCandidates,snapshotEventContext,teamKey,teamMatchScore,eventScore,matchEvent,findOutcome,extractSelectionIds,composeFanDuel,composeDraftKings,composeBetslip,resolveSportsbookBetslip};
+module.exports={sportKey,bookKey,internalMarket,marketCandidates,desiredOutcomeName,pointCandidates,snapshotEventContext,teamKey,teamMatchScore,eventScore,matchEvent,findOutcome,extractSelectionIds,composeFanDuel,composeDraftKings,composeBetslip,getEvents,getEventOdds,clearOddsApiCaches,resolveSportsbookBetslip};
