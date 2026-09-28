@@ -128,3 +128,41 @@ test('cached concurrent identical exact requests share one in-flight resolver ca
   assert.equal(third.legs[0].bookOffers.FanDuel.oddsAmerican,-121);
   clearExactResolutionCache();
 });
+
+test('primary exact price remains authoritative when fallback adds selection metadata',()=>{
+  const slip={legs:[{
+    sport:'NFL',player:'Jalen Hurts',market:'passYds',side:'over',line:175,inclusive:true,
+    bookOffers:{FanDuel:{oddsAmerican:-410,priceKind:'verified-snapshot',priceSource:'ParlayAPI'}}
+  }]};
+  const result={
+    exact:true,
+    url:'https://account.sportsbook.fanduel.com/sportsbook/addToBetslip?marketId%5B0%5D=42.1&selectionId%5B0%5D=99',
+    selections:[{
+      price:-390,line:174.5,marketKey:'player_pass_yds_alternate',marketId:'42.1',selectionId:'99',
+      selectionLink:'https://sportsbook.fanduel.com/addToBetslip?marketId=42.1&selectionId=99'
+    }]
+  };
+  const out=applyExactResolution(slip,'FanDuel',result);
+  const offer=out.legs[0].bookOffers.FanDuel;
+  assert.equal(offer.oddsAmerican,-410);
+  assert.equal(offer.priceSource,'ParlayAPI');
+  assert.equal(offer.priceKind,'verified-snapshot');
+  assert.equal(offer.selectionId,'99');
+  assert.equal(offer.marketId,'42.1');
+  assert.equal(offer.referenceSource,'TheOddsAPI');
+  assert.ok(out.sportsbookLinks.FanDuel.includes('selectionId'));
+});
+
+test('fallback pricing is used only when the primary sources have no exact price',()=>{
+  const slip={legs:[{
+    sport:'NFL',player:'Jalen Hurts',market:'passYds',side:'over',line:175,inclusive:true,
+    bookOffers:{FanDuel:{}}
+  }]};
+  const out=applyExactResolution(slip,'FanDuel',{
+    exact:false,url:null,selections:[{price:-390,line:174.5,marketKey:'player_pass_yds_alternate'}]
+  });
+  const offer=out.legs[0].bookOffers.FanDuel;
+  assert.equal(offer.oddsAmerican,-390);
+  assert.equal(offer.priceSource,'TheOddsAPI');
+  assert.equal(offer.priceKind,'verified-exact-resolver');
+});
