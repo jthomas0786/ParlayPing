@@ -60,6 +60,9 @@ function teamMatchScore(a,b){
 
 function sportKey(value){return SPORT_KEYS[String(value||'').toUpperCase()]||null;}
 function bookKey(value){return BOOK_KEYS[normBook(value)]||null;}
+function normalizedBooks(values){
+  return [...new Set((Array.isArray(values)?values:[values]).map(normBook).filter(book=>BOOK_KEYS[book]))];
+}
 function internalMarket(leg){
   const raw=compact(leg?.market||leg?.displayMarket||'');
   if(/^(pra|ptsrebsasts|pointsreboundsassists)$/.test(raw))return 'pra';
@@ -200,7 +203,7 @@ function readUsage(response){
   return{remaining:num('x-requests-remaining'),used:num('x-requests-used'),last:num('x-requests-last')};
 }
 async function fetchJson(url,{fetchImpl=fetch,timeoutMs=6500}={}){
-  const response=await fetchImpl(url,{headers:{accept:'application/json','user-agent':'ParlayPing/1.3'},cache:'no-store',signal:AbortSignal.timeout(timeoutMs)});
+  const response=await fetchImpl(url,{headers:{accept:'application/json','user-agent':'ParlayPing/1.4'},cache:'no-store',signal:AbortSignal.timeout(timeoutMs)});
   let data=null;try{data=await response.json();}catch{}
   if(!response.ok){const error=new Error(data?.message||data?.error||`The Odds API returned ${response.status}.`);error.status=response.status;error.data=data;throw error;}
   return{data,response};
@@ -216,48 +219,71 @@ async function getEvents(sport,apiKey,fetchImpl){
   })().finally(()=>eventInflight.delete(cacheKey));
   eventInflight.set(cacheKey,pending);return pending;
 }
-async function getEventOdds({sport,eventId,book,markets,apiKey,fetchImpl}){
-  const sKey=sportKey(sport),bKey=bookKey(book);if(!sKey||!bKey)throw new Error('Unsupported sportsbook or sport for exact deeplink resolution.');
-  const marketList=[...new Set(markets)].sort(),cacheKey=`${sKey}|${eventId}|${bKey}|${marketList.join(',')}`;
+async function getEventOddsForBooks({sport,eventId,books,markets,apiKey,fetchImpl}){
+  const sKey=sportKey(sport),normalized=normalizedBooks(books);
+  if(!sKey||!normalized.length)throw new Error('Unsupported sportsbook or sport for exact deeplink resolution.');
+  const bKeys=normalized.map(book=>BOOK_KEYS[book]).sort();
+  const marketList=[...new Set(markets)].sort(),cacheKey=`${sKey}|${eventId}|${bKeys.join(',')}|${marketList.join(',')}`;
   const hit=oddsCache.get(cacheKey);if(hit&&Date.now()-hit.ts<ODDS_CACHE_MS)return hit.value;
   if(oddsInflight.has(cacheKey))return oddsInflight.get(cacheKey);
   const pending=(async()=>{
     const url=new URL(`${API_BASE}/sports/${encodeURIComponent(sKey)}/events/${encodeURIComponent(eventId)}/odds`);
-    url.searchParams.set('apiKey',apiKey);url.searchParams.set('bookmakers',bKey);url.searchParams.set('markets',marketList.join(','));url.searchParams.set('oddsFormat','american');url.searchParams.set('includeLinks','true');url.searchParams.set('includeSids','true');
+    url.searchParams.set('apiKey',apiKey);url.searchParams.set('bookmakers',bKeys.join(','));url.searchParams.set('markets',marketList.join(','));url.searchParams.set('oddsFormat','american');url.searchParams.set('includeLinks','true');url.searchParams.set('includeSids','true');
     const {data,response}=await fetchJson(url,{fetchImpl});
-    const value={data,usage:readUsage(response)};oddsCache.set(cacheKey,{ts:Date.now(),value});return value;
+    const value={data,usage:readUsage(response),books:normalized};oddsCache.set(cacheKey,{ts:Date.now(),value});return value;
   })().finally(()=>oddsInflight.delete(cacheKey));
   oddsInflight.set(cacheKey,pending);return pending;
 }
-async function resolveSportsbookBetslip({book,legs,apiKey=process.env.ODDS_API_KEY,fetchImpl=fetch}={}){
-  const normalizedBook=normBook(book);if(!BOOK_KEYS[normalizedBook])throw new Error('Exact sportsbook enrichment is not available for this book.');
-  if(!apiKey)throw new Error('ODDS_API_KEY is not configured.');
-  const rows=Array.isArray(legs)?legs.slice(0,25):[];if(!rows.length)throw new Error('At least one betslip leg is required.');
+async function getEventOdds({sport,eventId,book,markets,apiKey,fetchImpl}){
+  return getEventOddsForBooks({sport,eventId,books:[book],markets,apiKey,fetchImpl});
+}
+async function prepareResolutionRows(rows,apiKey,fetchImpl){
   const working=[];
   const sports=[...new Set(rows.map(row=>String(row?.sport||'').toUpperCase()).filter(Boolean))];
-  for(const sport of sports){
+  await Promise.all(sports.map(async sport=>{
     const events=await getEvents(sport,apiKey,fetchImpl);
-    for(const [index,leg] of rows.entries()){
-      if(String(leg?.sport||'').toUpperCase()!==sport)continue;
+    await Promise.all(rows.map(async(leg,index)=>{
+      if(String(leg?.sport||'').toUpperCase()!==sport)return;
       const ctx=await eventContext(leg),event=matchEvent(events,ctx);
       working[index]={index,leg,sport,ctx,event,markets:marketCandidates(leg)};
-    }
-  }
+    }));
+  }));
+  return working;
+}
+async function resolveSportsbooksBetslip({books,legs,apiKey=process.env.ODDS_API_KEY,fetchImpl=fetch}={}){
+  const requestedBooks=normalizedBooks(books);
+  if(!requestedBooks.length)throw new Error('Exact sportsbook enrichment is not available for these books.');
+  if(!apiKey)throw new Error('ODDS_API_KEY is not configured.');
+  const rows=Array.isArray(legs)?legs.slice(0,25):[];if(!rows.length)throw new Error('At least one betslip leg is required.');
+  const working=await prepareResolutionRows(rows,apiKey,fetchImpl);
   const groups=new Map();
   for(const row of working){
     if(!row?.event||!row.markets.length)continue;
     const key=`${row.sport}|${row.event.id}`;if(!groups.has(key))groups.set(key,{sport:row.sport,eventId:row.event.id,rows:[],markets:new Set()});
     const group=groups.get(key);group.rows.push(row);row.markets.forEach(m=>group.markets.add(m));
   }
-  const selections=new Array(rows.length).fill(null),usage=[];
+  const selectionsByBook=new Map(requestedBooks.map(book=>[book,new Array(rows.length).fill(null)]));
+  const usage=[];
   await Promise.all([...groups.values()].map(async group=>{
-    const result=await getEventOdds({sport:group.sport,eventId:group.eventId,book:normalizedBook,markets:[...group.markets],apiKey,fetchImpl});
+    const result=await getEventOddsForBooks({sport:group.sport,eventId:group.eventId,books:requestedBooks,markets:[...group.markets],apiKey,fetchImpl});
     if(result.usage)usage.push(result.usage);
-    for(const row of group.rows){const selected=findOutcome(result.data,normalizedBook,row.leg);if(selected)selections[row.index]={index:row.index,eventId:group.eventId,...selected};}
+    for(const book of requestedBooks){
+      const selections=selectionsByBook.get(book);
+      for(const row of group.rows){const selected=findOutcome(result.data,book,row.leg);if(selected)selections[row.index]={index:row.index,eventId:group.eventId,...selected};}
+    }
   }));
-  const exact=selections.every(Boolean),url=exact?composeBetslip(normalizedBook,selections):null;
-  return{book:normalizedBook,exact:Boolean(exact&&url),url:url||null,selections,usage};
+  const results={};
+  for(const book of requestedBooks){
+    const selections=selectionsByBook.get(book),allSelected=selections.every(Boolean),url=allSelected?composeBetslip(book,selections):null;
+    results[book]={book,exact:Boolean(allSelected&&url),url:url||null,selections,usage};
+  }
+  return results;
+}
+async function resolveSportsbookBetslip({book,legs,apiKey=process.env.ODDS_API_KEY,fetchImpl=fetch}={}){
+  const normalizedBook=normBook(book);
+  const results=await resolveSportsbooksBetslip({books:[normalizedBook],legs,apiKey,fetchImpl});
+  return results[normalizedBook];
 }
 function clearOddsApiCaches(){eventCache.clear();oddsCache.clear();eventInflight.clear();oddsInflight.clear();}
 
-module.exports={sportKey,bookKey,internalMarket,marketCandidates,desiredOutcomeName,pointCandidates,snapshotEventContext,teamKey,teamMatchScore,eventScore,matchEvent,findOutcome,extractSelectionIds,composeFanDuel,composeDraftKings,composeBetslip,getEvents,getEventOdds,clearOddsApiCaches,resolveSportsbookBetslip};
+module.exports={sportKey,bookKey,normalizedBooks,internalMarket,marketCandidates,desiredOutcomeName,pointCandidates,snapshotEventContext,teamKey,teamMatchScore,eventScore,matchEvent,findOutcome,extractSelectionIds,composeFanDuel,composeDraftKings,composeBetslip,getEvents,getEventOdds,getEventOddsForBooks,clearOddsApiCaches,resolveSportsbooksBetslip,resolveSportsbookBetslip};
