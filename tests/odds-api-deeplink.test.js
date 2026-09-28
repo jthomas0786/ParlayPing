@@ -10,6 +10,7 @@ const {
   composeDraftKings,
   getEvents,
   getEventOdds,
+  getEventOddsForBooks,
   clearOddsApiCaches
 }=require('../server/api/lib/odds-api-deeplink');
 
@@ -82,7 +83,6 @@ test('composes DraftKings parlay only from one exact outcome per leg',()=>{
   assert.ok(url.includes('outcomes=111+222'));
 });
 
-
 test('coalesces concurrent cold event and event-odds provider requests',async()=>{
   clearOddsApiCaches();
   let calls=0;
@@ -104,5 +104,29 @@ test('coalesces concurrent cold event and event-odds provider requests',async()=
     getEventOdds({sport:'NFL',eventId:'event-1',book:'theScore Bet',markets:['player_pass_yds'],apiKey:'test-key',fetchImpl})
   ]);
   assert.equal(calls,2);
+  clearOddsApiCaches();
+});
+
+test('batches up to six exact sportsbooks into one event odds provider request',async()=>{
+  clearOddsApiCaches();
+  const urls=[];
+  const fetchImpl=async url=>{
+    urls.push(String(url));
+    return {ok:true,status:200,json:async()=>({bookmakers:[]}),headers:{get:name=>name==='x-requests-last'?'1':null}};
+  };
+  const result=await getEventOddsForBooks({
+    sport:'NFL',
+    eventId:'event-batch',
+    books:['FanDuel','DraftKings','BetMGM','BetRivers','Bovada','theScore Bet'],
+    markets:['player_pass_yds','player_reception_yds'],
+    apiKey:'test-key',
+    fetchImpl
+  });
+  assert.equal(urls.length,1);
+  const url=new URL(urls[0]);
+  const books=url.searchParams.get('bookmakers').split(',').sort();
+  assert.deepEqual(books,['betmgm','betrivers','bovada','draftkings','espnbet','fanduel']);
+  assert.equal(url.searchParams.has('regions'),false);
+  assert.equal(result.usage.last,1);
   clearOddsApiCaches();
 });
