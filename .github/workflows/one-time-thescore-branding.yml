@@ -1,0 +1,42 @@
+name: One-time theScore Bet branding migration
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/one-time-thescore-branding.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Update sportsbook aliases
+        shell: bash
+        run: |
+          set -euo pipefail
+          sed -i "s/espnbet:'ESPN BET',espn:'ESPN BET'/espnbet:'theScore Bet',espn:'theScore Bet'/g" server/api/lib/sportsbook-enrich.js
+          sed -i "s/'BetMGM','Fanatics','ESPN BET','Hard Rock Bet'/'BetMGM','Fanatics','Hard Rock Bet'/g" builder-sportsbook-open-final.js
+          sed -i "s/espnbet:'ESPN BET',espn:'ESPN BET'/espnbet:'theScore Bet',espn:'theScore Bet'/g" builder-sportsbook-open-final.js
+          grep -q "espnbet:'theScore Bet'" server/api/lib/sportsbook-enrich.js
+          grep -q "espnbet:'theScore Bet'" builder-sportsbook-open-final.js
+          ! grep -q "espnbet:'ESPN BET'" server/api/lib/sportsbook-enrich.js
+          ! grep -q "espnbet:'ESPN BET'" builder-sportsbook-open-final.js
+      - name: Run tests
+        run: npm test
+      - name: Commit and remove one-time workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm .github/workflows/one-time-thescore-branding.yml
+          git config user.name "jthomas0786"
+          git config user.email "jthomas0786@gmail.com"
+          git add -A
+          git commit -m "Normalize theScore Bet branding across Builder"
+          git push origin main
