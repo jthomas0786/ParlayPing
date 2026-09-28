@@ -7,6 +7,8 @@ const eventCache=new Map();
 const oddsCache=new Map();
 const eventInflight=new Map();
 const oddsInflight=new Map();
+const ODDS_CREDIT_COOLDOWN_MS=5*60_000;
+let oddsProviderCooldownUntil=0;
 
 const SPORT_KEYS={
   NFL:'americanfootball_nfl',
@@ -202,10 +204,20 @@ function readUsage(response){
   const num=name=>{const value=Number(response?.headers?.get?.(name));return Number.isFinite(value)?value:null;};
   return{remaining:num('x-requests-remaining'),used:num('x-requests-used'),last:num('x-requests-last')};
 }
+function oddsCreditCooldownError(){
+  const error=new Error('Odds provider usage credits are temporarily exhausted.');
+  error.status=401;
+  error.data={error_code:'OUT_OF_USAGE_CREDITS',message:error.message,cached:true,retryAfterMs:Math.max(0,oddsProviderCooldownUntil-Date.now())};
+  return error;
+}
 async function fetchJson(url,{fetchImpl=fetch,timeoutMs=6500}={}){
+  if(Date.now()<oddsProviderCooldownUntil)throw oddsCreditCooldownError();
   const response=await fetchImpl(url,{headers:{accept:'application/json','user-agent':'ParlayPing/1.4'},cache:'no-store',signal:AbortSignal.timeout(timeoutMs)});
   let data=null;try{data=await response.json();}catch{}
-  if(!response.ok){const error=new Error(data?.message||data?.error||`The Odds API returned ${response.status}.`);error.status=response.status;error.data=data;throw error;}
+  if(!response.ok){
+    if(data?.error_code==='OUT_OF_USAGE_CREDITS')oddsProviderCooldownUntil=Date.now()+ODDS_CREDIT_COOLDOWN_MS;
+    const error=new Error(data?.message||data?.error||`The Odds API returned ${response.status}.`);error.status=response.status;error.data=data;throw error;
+  }
   return{data,response};
 }
 async function getEvents(sport,apiKey,fetchImpl){
@@ -284,6 +296,6 @@ async function resolveSportsbookBetslip({book,legs,apiKey=process.env.ODDS_API_K
   const results=await resolveSportsbooksBetslip({books:[normalizedBook],legs,apiKey,fetchImpl});
   return results[normalizedBook];
 }
-function clearOddsApiCaches(){eventCache.clear();oddsCache.clear();eventInflight.clear();oddsInflight.clear();}
+function clearOddsApiCaches(){eventCache.clear();oddsCache.clear();eventInflight.clear();oddsInflight.clear();oddsProviderCooldownUntil=0;}
 
 module.exports={sportKey,bookKey,normalizedBooks,internalMarket,marketCandidates,desiredOutcomeName,pointCandidates,snapshotEventContext,teamKey,teamMatchScore,eventScore,matchEvent,findOutcome,extractSelectionIds,composeFanDuel,composeDraftKings,composeBetslip,getEvents,getEventOdds,getEventOddsForBooks,clearOddsApiCaches,resolveSportsbooksBetslip,resolveSportsbookBetslip};

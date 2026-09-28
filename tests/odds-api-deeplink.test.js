@@ -130,3 +130,28 @@ test('batches up to six exact sportsbooks into one event odds provider request',
   assert.equal(result.usage.last,1);
   clearOddsApiCaches();
 });
+
+
+test('suppresses repeated provider calls while usage credits are exhausted',async()=>{
+  clearOddsApiCaches();
+  let calls=0;
+  const fetchImpl=async()=>{
+    calls+=1;
+    return {
+      ok:false,
+      status:401,
+      json:async()=>({error_code:'OUT_OF_USAGE_CREDITS',message:'Usage credits have been exhausted'}),
+      headers:{get:()=>null}
+    };
+  };
+  await assert.rejects(
+    getEventOddsForBooks({sport:'NFL',eventId:'quota-1',books:['FanDuel','BetMGM'],markets:['player_pass_yds'],apiKey:'test-key',fetchImpl}),
+    error=>error?.data?.error_code==='OUT_OF_USAGE_CREDITS'
+  );
+  await assert.rejects(
+    getEventOddsForBooks({sport:'NFL',eventId:'quota-2',books:['FanDuel','BetMGM'],markets:['player_pass_yds'],apiKey:'test-key',fetchImpl}),
+    error=>error?.data?.error_code==='OUT_OF_USAGE_CREDITS'&&error?.data?.cached===true
+  );
+  assert.equal(calls,1);
+  clearOddsApiCaches();
+});
