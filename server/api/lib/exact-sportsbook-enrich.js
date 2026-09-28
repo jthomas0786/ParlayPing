@@ -1,6 +1,10 @@
 const { resolveSportsbookBetslip } = require('./odds-api-deeplink');
 const { validateResolvedSelections, hasFullExactCoverage, buildResolutionDiagnostics } = require('./exact-selection-validation');
 
+const EXACT_RESOLUTION_CACHE_MS = 60_000;
+const exactResolutionCache = new Map();
+const exactResolutionInflight = new Map();
+
 function finiteOdds(value) {
   if (value === null || value === undefined || value === '') return null;
   const n = Number(value);
@@ -55,6 +59,55 @@ function diagnosticLogPayload(diagnostics) {
   };
 }
 
+function resolutionLegKey(leg) {
+  return [
+    String(leg?.sport || '').toUpperCase(),
+    String(leg?.gameId || ''),
+    String(leg?.matchup || ''),
+    String(leg?.startTimeUTC || ''),
+    String(leg?.player || '').toLowerCase(),
+    String(leg?.market || leg?.displayMarket || '').toLowerCase(),
+    String(leg?.side || leg?.selection || '').toLowerCase(),
+    leg?.line == null ? '' : String(Number(leg.line)),
+    leg?.inclusive ? '1' : '0',
+  ].join('|');
+}
+
+function exactResolutionCacheKey(book, legs) {
+  return `${String(book || '').toLowerCase()}::${(Array.isArray(legs) ? legs : []).map(resolutionLegKey).join(';;')}`;
+}
+
+function pruneExactResolutionCache(now = Date.now()) {
+  for (const [key, entry] of exactResolutionCache.entries()) {
+    if (!entry || entry.expiresAt <= now) exactResolutionCache.delete(key);
+  }
+}
+
+function clearExactResolutionCache() {
+  exactResolutionCache.clear();
+  exactResolutionInflight.clear();
+}
+
+async function resolveWithCache({ book, legs, resolve, enabled = true, ttlMs = EXACT_RESOLUTION_CACHE_MS }) {
+  if (!enabled) return resolve({ book, legs });
+  const key = exactResolutionCacheKey(book, legs);
+  const now = Date.now();
+  const hit = exactResolutionCache.get(key);
+  if (hit && hit.expiresAt > now) return hit.value;
+  if (exactResolutionInflight.has(key)) return exactResolutionInflight.get(key);
+
+  pruneExactResolutionCache(now);
+  const pending = Promise.resolve()
+    .then(() => resolve({ book, legs }))
+    .then(value => {
+      exactResolutionCache.set(key, { value, expiresAt: Date.now() + Math.max(1_000, Number(ttlMs) || EXACT_RESOLUTION_CACHE_MS) });
+      return value;
+    })
+    .finally(() => exactResolutionInflight.delete(key));
+  exactResolutionInflight.set(key, pending);
+  return pending;
+}
+
 function applyExactResolution(slip, book, result) {
   const legs = Array.isArray(slip?.legs) ? slip.legs : [];
   const selections = validateResolvedSelections(legs, result?.selections);
@@ -98,12 +151,21 @@ async function enrichMissingExactSportsbooks(slip, options = {}) {
   let enriched = slip;
   const books = Array.isArray(options.books) && options.books.length ? options.books : ['FanDuel', 'DraftKings', 'BetMGM', 'BetRivers', 'Bovada'];
   const resolve = typeof options.resolve === 'function' ? options.resolve : resolveSportsbookBetslip;
+  const useCache = options.cache === true || (options.cache !== false && resolve === resolveSportsbookBetslip);
+  const legs = Array.isArray(enriched?.legs) ? enriched.legs : [];
+  const missingBooks = books.filter(book => !hasFullBookPricing(enriched, book));
 
-  for (const book of books) {
-    if (hasFullBookPricing(enriched, book)) continue;
+  // Each sportsbook is independent. Resolve missing books concurrently, then merge only
+  // full exact coverage back into the slip in stable book order.
+  const attempts = await Promise.all(missingBooks.map(async book => {
     try {
-      const legs = Array.isArray(enriched?.legs) ? enriched.legs : [];
-      const result = await resolve({ book, legs });
+      const result = await resolveWithCache({
+        book,
+        legs,
+        resolve,
+        enabled: useCache,
+        ttlMs: options.cacheTtlMs,
+      });
       const diagnostics = buildResolutionDiagnostics(legs, result?.selections, {
         book,
         prefilled: Boolean(safeHttps(result?.url)),
@@ -111,19 +173,28 @@ async function enrichMissingExactSportsbooks(slip, options = {}) {
       if (options.log !== false) {
         console.info('ParlayPing exact sportsbook fallback', JSON.stringify(diagnosticLogPayload(diagnostics)));
       }
-      enriched = applyExactResolution(enriched, book, result);
+      return { book, result };
     } catch (error) {
       if (options.log !== false) console.warn(`ParlayPing ${book} exact fallback unavailable:`, error?.message || error);
+      return { book, result: null };
     }
+  }));
+
+  for (const { book, result } of attempts) {
+    if (result) enriched = applyExactResolution(enriched, book, result);
   }
   return enriched;
 }
 
 module.exports = {
+  EXACT_RESOLUTION_CACHE_MS,
   finiteOdds,
   bookOffer,
   hasFullBookPricing,
   diagnosticLogPayload,
+  exactResolutionCacheKey,
+  clearExactResolutionCache,
+  resolveWithCache,
   applyExactResolution,
   enrichMissingExactSportsbooks,
 };
