@@ -44,8 +44,11 @@
     const normalized=normalizeBook(book);if(!normalized)return 0;
     return legs.reduce((count,leg)=>count+(bestOffersForLeg(leg).some(row=>row.book===normalized)?1:0),0);
   }
+  function rankedFullCoverageBooks(){
+    return fullCoverageBooks().sort((a,b)=>bestLegCount(b)-bestLegCount(a)||a.localeCompare(b));
+  }
   function summaryForSlip(){
-    const full=fullCoverageBooks();
+    const full=rankedFullCoverageBooks();
     return {
       legCount:legs.length,
       fullCoverageBooks:full.map(book=>({book,bestLegs:bestLegCount(book)})),
@@ -90,11 +93,13 @@
     const panel=document.createElement?.('section');if(!panel)return;
     panel.className='pp-best-exact-panel';
     panel.setAttribute?.('aria-label','Best Exact Odds');
+    const maxWins=full.length?Math.max(...full.map(book=>bestLegCount(book))):0;
     const rows=full.map(book=>{
       const wins=bestLegCount(book);
-      return `<button class="pp-best-exact-book" type="button" data-pp-full-book="${esc(book)}"><span><strong>${esc(book)}</strong><small>${legs.length}/${legs.length} exact selections</small></span><b>${wins?`Best on ${wins}/${legs.length}`:'Full slip'}</b></button>`;
+      const leader=maxWins>0&&wins===maxWins;
+      return `<button class="pp-best-exact-book${leader?' is-leg-best-leader':''}" type="button" data-pp-full-book="${esc(book)}"><span><strong>${esc(book)}</strong><small>${legs.length}/${legs.length} exact selections${leader?' · most leg-best prices':''}</small></span><b>${wins?`Best on ${wins}/${legs.length}`:'Full slip'}</b></button>`;
     }).join('');
-    panel.innerHTML=`<div class="pp-best-exact-head"><div><span class="pp-best-exact-kicker">PRICE CHECK</span><h4>Best Exact Odds</h4></div><span class="pp-best-exact-count">${full.length} full-slip ${full.length===1?'book':'books'}</span></div><p>Verified exact prices only. Per-leg bests can span books; ParlayPing does not infer a combined parlay price.</p>${full.length?`<div class="pp-best-exact-books">${rows}</div>`:'<div class="pp-best-exact-empty">No single sportsbook currently has a verified exact price for every leg. Per-leg best prices are still highlighted above.</div>'}`;
+    panel.innerHTML=`<div class="pp-best-exact-head"><div><span class="pp-best-exact-kicker">PRICE CHECK</span><h4>Best Exact Odds</h4></div><span class="pp-best-exact-count">${full.length} full-slip ${full.length===1?'book':'books'}</span></div><p>Verified exact prices only. Full-slip books are ordered by how many legs they tie for the best verified price. Per-leg bests can span books; ParlayPing does not infer a combined parlay price.</p>${full.length?`<div class="pp-best-exact-books">${rows}</div>`:'<div class="pp-best-exact-empty">No single sportsbook currently has a verified exact price for every leg. Per-leg best prices are still highlighted above.</div>'}`;
     grid.parentNode?.insertBefore?.(panel,grid);
     qa('[data-pp-full-book]',panel).forEach(button=>button.addEventListener?.('click',()=>selectBook(button.dataset.ppFullBook)));
   }
@@ -112,7 +117,7 @@
   }
   function render(){
     if(!q('.sportsbook-section')||typeof bookApi.legOddsForBook!=='function')return false;
-    const full=fullCoverageBooks();
+    const full=rankedFullCoverageBooks();
     const fullSet=new Set(full);
     renderFullCoverage(full);
     annotateBookCards(fullSet);
@@ -137,7 +142,7 @@
     });
   }
 
-  window.__PP_BEST_EXACT_TEST__={finiteOdds,candidateBooksForLeg,offersForLeg,bestOffersForLeg,fullCoverageBooks,bestLegCount,summaryForSlip,selectBook,render};
+  window.__PP_BEST_EXACT_TEST__={finiteOdds,candidateBooksForLeg,offersForLeg,bestOffersForLeg,fullCoverageBooks,bestLegCount,rankedFullCoverageBooks,summaryForSlip,selectBook,render};
   render();
   observe();
 })();
