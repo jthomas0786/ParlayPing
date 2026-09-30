@@ -1,5 +1,6 @@
 const base = require('./parlay-engine');
 const { getNflLiveSnapshot, gameById, gameState, livePlayer, liveValue, finalAtdValue } = require('./nfl-live-feed');
+const { rescueNflPregameAnalysis } = require('./nfl-sportsbook-pregame-fallback');
 
 function normalizeLiveMarket(value) {
   const raw = String(value || '').trim();
@@ -102,7 +103,8 @@ function summarize(results) {
 }
 
 async function analyzeSlip(rawLegs, options = {}) {
-  const analysis = await base.analyzeSlip(rawLegs, options);
+  let analysis = await base.analyzeSlip(rawLegs, options);
+  analysis = await rescueNflPregameAnalysis(analysis, rawLegs, { now: options.now });
   let snapshot = null;
   try {
     snapshot = await getNflLiveSnapshot({ snapshot: options.liveSnapshot });
