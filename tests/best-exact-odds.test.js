@@ -69,6 +69,27 @@ test('full-slip comparison counts best exact legs without fabricating combined p
   assert.doesNotMatch(source,/combinedOdds|impliedProbability/);
 });
 
+test('Exact Slip Coverage Matrix shows every discovered book, preserves missing cells, and ranks full coverage first',()=>{
+  const slip={legs:[
+    {player:'Player One',market:'receivingYards',side:'over',threshold:50,inclusive:true,bookOffers:{FanDuel:{oddsAmerican:-105},DraftKings:{oddsAmerican:-110},Caesars:{oddsAmerican:115},BetMGM:{oddsAmerican:120}}},
+    {player:'Player Two',market:'receptions',side:'over',threshold:4,inclusive:true,bookOffers:{FanDuel:{oddsAmerican:110},DraftKings:{oddsAmerican:125},Caesars:{oddsAmerican:115}}},
+    {player:'Player Three',market:'atd',bookOffers:{FanDuel:{oddsAmerican:160},DraftKings:{oddsAmerican:155}}}
+  ]};
+  const api=runBestExact(slip);
+  const matrix=plain(api.coverageMatrixForSlip());
+  assert.deepEqual(matrix.rows.map(row=>row.book),['DraftKings','FanDuel','Caesars','BetMGM']);
+  assert.deepEqual(matrix.rows.map(row=>({book:row.book,covered:row.covered,total:row.total,full:row.full})),[
+    {book:'DraftKings',covered:3,total:3,full:true},
+    {book:'FanDuel',covered:3,total:3,full:true},
+    {book:'Caesars',covered:2,total:3,full:false},
+    {book:'BetMGM',covered:1,total:3,full:false}
+  ]);
+  assert.equal(matrix.rows.find(row=>row.book==='Caesars').cells[2].price,null);
+  assert.equal(matrix.rows.find(row=>row.book==='BetMGM').cells[0].best,true);
+  assert.equal(matrix.rows.find(row=>row.book==='DraftKings').cells[1].best,true);
+  assert.match(matrix.legs[0].detail,/Player One/);
+});
+
 test('Builder loads Best Exact Odds after the verified sportsbook runtime',()=>{
   const html=renderBuilderHtml({slip:{legs:[]},token:'test-token',liveDataAvailable:false});
   const sportsbookIndex=html.indexOf('/builder-sportsbook-open-final.js?v=20260929a');
