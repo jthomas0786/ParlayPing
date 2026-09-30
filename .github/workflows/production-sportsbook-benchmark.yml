@@ -1,0 +1,29 @@
+name: Production sportsbook benchmark
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/production-sportsbook-benchmark.py'
+      - '.github/workflows/production-sportsbook-benchmark.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Benchmark ParlayAPI exact-price coverage in production
+        run: python3 scripts/production-sportsbook-benchmark.py
+      - name: Upload benchmark detail
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-sportsbook-benchmark
+          path: production-sportsbook-benchmark.json
+          if-no-files-found: ignore
+          retention-days: 14
