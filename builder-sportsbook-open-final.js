@@ -4,7 +4,7 @@
   const legs=Array.isArray(slip.legs)?slip.legs:[];
   const q=(selector,root=document)=>root.querySelector(selector);
   const qa=(selector,root=document)=>[...root.querySelectorAll(selector)];
-  const esc=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[char]));
+  const esc=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 
   const BOOK_ORDER=['DraftKings','FanDuel','bet365','Caesars','theScore Bet','BetMGM','Fanatics','Hard Rock Bet','BetRivers','Pinnacle','Parx Casino','Bovada','Fliff'];
   const ACTUAL_SPORTSBOOKS=new Set(BOOK_ORDER);
