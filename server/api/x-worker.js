@@ -65,7 +65,6 @@ function isActionableMention(mention,replied,botUserId,options={}){
   if(botUserId){
     if(String(mention?.author_id||'')===String(botUserId))return false;
     if(!hasCurrentMention(mention))return false;
-    if(!(mention?.referenced_tweets||[]).some(ref=>ref.type==='replied_to'))return false;
     const conversationId=String(mention?.conversation_id||'');
     const botConversations=options?.botConversations;
     if(conversationId&&botConversations?.has(conversationId)){
