@@ -8,9 +8,6 @@
     "X_PULSE_MIN_INTERVAL_MINUTES": "90",
     "X_PULSE_REFRESH_HOURS": "4"
   },
-  "crons": [
-    { "path": "/api/x-scheduler", "schedule": "* * * * *" }
-  ],
   "redirects": [
     { "source": "/parlayping-approved-wordmark.webp", "destination": "/brand/parlayping-wordmark.png", "permanent": false },
     { "source": "/parlayping-approved-lockup.svg", "destination": "/brand/parlayping-wordmark.png", "permanent": false },

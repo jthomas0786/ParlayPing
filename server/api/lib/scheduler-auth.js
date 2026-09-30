@@ -14,13 +14,7 @@ function safeHashEqual(left,right){
 
 function schedulerAuthorized(req,expectedHash=SCHEDULER_SECRET_SHA256){
   const supplied=req?.headers?.['x-parlayping-scheduler-secret'];
-  if(supplied&&safeHashEqual(hashSecret(supplied),expectedHash))return true;
-
-  const cronSecret=String(process.env.CRON_SECRET||'');
-  const authorization=String(req?.headers?.authorization||'');
-  if(!cronSecret||!authorization.startsWith('Bearer '))return false;
-  const bearer=authorization.slice(7);
-  return Boolean(bearer)&&safeHashEqual(hashSecret(bearer),hashSecret(cronSecret));
+  return Boolean(supplied)&&safeHashEqual(hashSecret(supplied),expectedHash);
 }
 
 module.exports={SCHEDULER_SECRET_SHA256,hashSecret,safeHashEqual,schedulerAuthorized};
