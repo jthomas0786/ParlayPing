@@ -14,6 +14,7 @@ function runBestExact(slip){
   vm.runInContext(fs.readFileSync(path.join(process.cwd(),'builder-best-exact-odds.js'),'utf8'),context,{filename:'builder-best-exact-odds.js'});
   return window.__PP_BEST_EXACT_TEST__;
 }
+const plain=value=>JSON.parse(JSON.stringify(value));
 
 test('Best Exact Odds picks the highest verified American price for each exact leg',()=>{
   const slip={legs:[{
@@ -21,7 +22,7 @@ test('Best Exact Odds picks the highest verified American price for each exact l
     bookOffers:{FanDuel:{oddsAmerican:-110},DraftKings:{oddsAmerican:-105},Caesars:{oddsAmerican:105},BetMGM:{oddsAmerican:120}}
   }]};
   const api=runBestExact(slip);
-  assert.deepEqual(JSON.parse(JSON.stringify(api.bestOffersForLeg(slip.legs[0]))),[{book:'BetMGM',price:120}]);
+  assert.deepEqual(plain(api.bestOffersForLeg(slip.legs[0])),[{book:'BetMGM',price:120}]);
 });
 
 test('full-slip coverage requires a verified exact price on every leg',()=>{
@@ -44,8 +45,8 @@ test('full-slip books are ordered by transparent per-leg best-price count',()=>{
     {bookOffers:{FanDuel:{oddsAmerican:-108},DraftKings:{oddsAmerican:-110},Caesars:{oddsAmerican:-112}}}
   ]};
   const api=runBestExact(slip);
-  assert.deepEqual(api.rankedFullCoverageBooks(),['FanDuel','Caesars','DraftKings']);
-  assert.deepEqual(JSON.parse(JSON.stringify(api.summaryForSlip().fullCoverageBooks)),[
+  assert.deepEqual(plain(api.rankedFullCoverageBooks()),['FanDuel','Caesars','DraftKings']);
+  assert.deepEqual(plain(api.summaryForSlip().fullCoverageBooks),[
     {book:'FanDuel',bestLegs:2},
     {book:'Caesars',bestLegs:1},
     {book:'DraftKings',bestLegs:1}
@@ -61,7 +62,7 @@ test('full-slip comparison counts best exact legs without fabricating combined p
   const api=runBestExact(slip);
   assert.equal(api.bestLegCount('FanDuel'),2);
   assert.equal(api.bestLegCount('DraftKings'),2);
-  assert.deepEqual(api.rankedFullCoverageBooks(),['DraftKings','FanDuel']);
+  assert.deepEqual(plain(api.rankedFullCoverageBooks()),['DraftKings','FanDuel']);
   const source=fs.readFileSync(path.join(process.cwd(),'builder-best-exact-odds.js'),'utf8');
   assert.match(source,/does not infer a combined parlay price/);
   assert.match(source,/ordered by how many legs they tie for the best verified price/);
