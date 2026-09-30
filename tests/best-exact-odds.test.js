@@ -93,8 +93,8 @@ test('Exact Slip Coverage Matrix shows every discovered book, preserves missing 
 test('Builder loads Best Exact Odds after the verified sportsbook runtime',()=>{
   const html=renderBuilderHtml({slip:{legs:[]},token:'test-token',liveDataAvailable:false});
   const sportsbookIndex=html.indexOf('/builder-sportsbook-open-final.js?v=20260929a');
-  const bestIndex=html.indexOf('/builder-best-exact-odds.js?v=20260930b');
+  const bestIndex=html.indexOf('/builder-best-exact-odds.js?v=20260930c');
   assert.ok(sportsbookIndex>=0);
   assert.ok(bestIndex>sportsbookIndex);
-  assert.match(html,/builder-best-exact-odds\.css\?v=20260930a/);
+  assert.match(html,/builder-best-exact-odds\.css\?v=20260930b/);
 });
