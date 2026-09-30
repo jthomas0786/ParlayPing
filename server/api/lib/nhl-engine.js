@@ -117,7 +117,13 @@ function findPlayerInGames(games,leg,referenceTime){
   return candidates[0]||null;
 }
 async function findEspnPlayer(leg,referenceTime){
-  const boards=await Promise.all(nearbyDateKeys(referenceTime).map(async dateKey=>({dateKey,doc:await loadScoreboard(dateKey)})));
+  const boards=await Promise.all(nearbyDateKeys(referenceTime).map(async dateKey=>{
+    try{
+      return {dateKey,doc:await loadScoreboard(dateKey)};
+    }catch(_){
+      return {dateKey,doc:null};
+    }
+  }));
   const games=boards.flatMap(x=>scoreboardGames(x.doc)).sort((a,b)=>gameDistance(a,referenceTime)-gameDistance(b,referenceTime));
   for(const game of games){
     try{
