@@ -36,6 +36,22 @@ test('full-slip coverage requires a verified exact price on every leg',()=>{
   assert.equal(api.bestOffersForLeg(slip.legs[1])[0].book,'DraftKings');
 });
 
+test('full-slip books are ordered by transparent per-leg best-price count',()=>{
+  const slip={legs:[
+    {bookOffers:{FanDuel:{oddsAmerican:-105},DraftKings:{oddsAmerican:-110},Caesars:{oddsAmerican:-115}}},
+    {bookOffers:{FanDuel:{oddsAmerican:115},DraftKings:{oddsAmerican:125},Caesars:{oddsAmerican:110}}},
+    {bookOffers:{FanDuel:{oddsAmerican:100},DraftKings:{oddsAmerican:100},Caesars:{oddsAmerican:105}}},
+    {bookOffers:{FanDuel:{oddsAmerican:-108},DraftKings:{oddsAmerican:-110},Caesars:{oddsAmerican:-112}}}
+  ]};
+  const api=runBestExact(slip);
+  assert.deepEqual(api.rankedFullCoverageBooks(),['FanDuel','Caesars','DraftKings']);
+  assert.deepEqual(JSON.parse(JSON.stringify(api.summaryForSlip().fullCoverageBooks)),[
+    {book:'FanDuel',bestLegs:2},
+    {book:'Caesars',bestLegs:1},
+    {book:'DraftKings',bestLegs:1}
+  ]);
+});
+
 test('full-slip comparison counts best exact legs without fabricating combined parlay odds',()=>{
   const slip={legs:[
     {bookOffers:{FanDuel:{oddsAmerican:-105},DraftKings:{oddsAmerican:-110}}},
@@ -45,15 +61,17 @@ test('full-slip comparison counts best exact legs without fabricating combined p
   const api=runBestExact(slip);
   assert.equal(api.bestLegCount('FanDuel'),2);
   assert.equal(api.bestLegCount('DraftKings'),2);
+  assert.deepEqual(api.rankedFullCoverageBooks(),['DraftKings','FanDuel']);
   const source=fs.readFileSync(path.join(process.cwd(),'builder-best-exact-odds.js'),'utf8');
   assert.match(source,/does not infer a combined parlay price/);
+  assert.match(source,/ordered by how many legs they tie for the best verified price/);
   assert.doesNotMatch(source,/combinedOdds|impliedProbability/);
 });
 
 test('Builder loads Best Exact Odds after the verified sportsbook runtime',()=>{
   const html=renderBuilderHtml({slip:{legs:[]},token:'test-token',liveDataAvailable:false});
   const sportsbookIndex=html.indexOf('/builder-sportsbook-open-final.js?v=20260929a');
-  const bestIndex=html.indexOf('/builder-best-exact-odds.js?v=20260930a');
+  const bestIndex=html.indexOf('/builder-best-exact-odds.js?v=20260930b');
   assert.ok(sportsbookIndex>=0);
   assert.ok(bestIndex>sportsbookIndex);
   assert.match(html,/builder-best-exact-odds\.css\?v=20260930a/);
