@@ -14,13 +14,13 @@ function mention(overrides={}){
   };
 }
 
-test('production X gate only accepts explicit current @ParlayPing reply mentions from another user',()=>{
+test('production X gate accepts explicit current @ParlayPing direct, reply, and quote mentions from another user',()=>{
   assert.equal(handler.isActionableMention(mention(),new Set(),BOT_ID),true);
+  assert.equal(handler.isActionableMention(mention({referenced_tweets:[]}),new Set(),BOT_ID),true);
+  assert.equal(handler.isActionableMention(mention({referenced_tweets:[{id:'q1',type:'quoted'}]}),new Set(),BOT_ID),true);
   assert.equal(handler.isActionableMention(mention({text:'@Sports_Outpost check this'}),new Set(),BOT_ID),false);
   assert.equal(handler.isActionableMention(mention({text:'@DingerWatch check this'}),new Set(),BOT_ID),false);
   assert.equal(handler.isActionableMention(mention({author_id:BOT_ID}),new Set(),BOT_ID),false);
-  assert.equal(handler.isActionableMention(mention({referenced_tweets:[]}),new Set(),BOT_ID),false);
-  assert.equal(handler.isActionableMention(mention({referenced_tweets:[{id:'q1',type:'quoted'}]}),new Set(),BOT_ID),false);
 });
 
 test('current-handle gate keeps existing sensitivity, opt-out, and duplicate protections',()=>{
