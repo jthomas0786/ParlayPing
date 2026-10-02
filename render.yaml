@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: parlayping
+    runtime: node
+    plan: free
+    buildCommand: npm install --no-audit --no-fund
+    startCommand: npm start
+    healthCheckPath: /healthz
+    autoDeployTrigger: commit
+    envVars:
+      - key: PUBLIC_BASE_URL
+        value: https://parlayping.net
+      - key: SUPABASE_URL
+        value: https://avwqjgiitxqphvmitolw.supabase.co
+      - key: X_USERNAME
+        value: ParlayPing
+      - key: X_AI_REPLY_APPROVED
+        value: "true"
+      - key: X_AUTOREPLY_ENABLED
+        value: "false"
+      - key: X_PULSE_AUTOPUBLISH_ENABLED
+        value: "false"
+      - key: X_PULSE_MIN_INTERVAL_MINUTES
+        value: "90"
+      - key: X_PULSE_REFRESH_HOURS
+        value: "4"
