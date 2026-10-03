@@ -13,6 +13,14 @@ module.exports = async function handler(req, res) {
   const xApprovalRecorded = String(process.env.X_AI_REPLY_APPROVED || '').toLowerCase() === 'true';
   const autoReplyEnabled = String(process.env.X_AUTOREPLY_ENABLED || '').toLowerCase() === 'true';
   const workerProtected = Boolean(process.env.X_WORKER_SECRET);
+  const supabaseConfigured = Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_PUBLISHABLE_KEY);
+  const shareSecretConfigured = Boolean(process.env.PARLAYPING_SHARE_SECRET);
+  const oddsConfigured = Boolean(process.env.ODDS_API_KEY);
+  const stripeConfigured = Boolean(
+    process.env.STRIPE_SECRET_KEY &&
+    process.env.STRIPE_PRO_PRICE_ID &&
+    process.env.STRIPE_BUSINESS_PRICE_ID
+  );
 
   return res.status(200).json({
     ok: true,
@@ -45,7 +53,14 @@ module.exports = async function handler(req, res) {
       apiKeyPrefix: 'pp_live_',
       durableUsageAndQuotaTracking: true,
       serviceRoleStoredInVercel: false,
-      supabaseProjectRef: 'avwqjgiitxqphvmitolw'
+      supabaseProjectRef: 'avwqjgiitxqphvmitolw',
+      supabaseConfigured,
+      shareSecretConfigured
+    },
+    integrations: {
+      oddsConfigured,
+      stripeConfigured,
+      screenshotVisionConfigured: parserVisionConfigured
     },
     x: {
       username: process.env.X_USERNAME || 'ParlayPing',
