@@ -109,3 +109,29 @@ html[data-tso2pp] .ticker-strip{background:rgba(5,9,15,.95)}
  html[data-tso2pp] .tso2pp-profile{font-size:9px}
  html[data-tso2pp] .hero{padding-top:35px}
 }
+
+/* Inside The Sports Outpost's Parlay Ping tab, use one (parent) TSO 2.0 shell.
+ * All original rendered Parlay Ping features are still functional. */
+html[data-tso2pp-embed] body{padding:0!important;margin:0!important;background:#05070a!important;min-height:100vh!important}
+html[data-tso2pp-embed] .tso2pp-sidebar,
+html[data-tso2pp-embed] .tso2pp-topbar,
+html[data-tso2pp-embed] .tso2pp-mobile-shade,
+html[data-tso2pp-embed] .tso2pp-product-bar,
+html[data-tso2pp-embed] body>header.site-header,
+html[data-tso2pp-embed] body>header.app-header,
+html[data-tso2pp-embed] body>header.pp-builder-header,
+html[data-tso2pp-embed] body>header.pp-home-header,
+html[data-tso2pp-embed] header[data-pp-app-nav],
+html[data-tso2pp-embed] .pp-builder-header,
+html[data-tso2pp-embed] .pp-home-header{display:none!important}
+html[data-tso2pp-embed] .section-shell{width:min(1340px,calc(100% - 24px))!important;max-width:1340px!important}
+html[data-tso2pp-embed] .profile-shell,
+html[data-tso2pp-embed] .submit-shell,
+html[data-tso2pp-embed] main.shell{margin-top:0!important;padding-top:22px!important;max-width:1340px}
+html[data-tso2pp-embed] .hero{padding-top:28px!important}
+html[data-tso2pp-embed] .ambient{opacity:.02}
+html[data-tso2pp-embed] .footer-brand{color:#9eb0ca}
+@media(max-width:700px){
+ html[data-tso2pp-embed] .section-shell{width:calc(100% - 18px)!important}
+ html[data-tso2pp-embed] .hero{padding-top:15px!important}
+}
