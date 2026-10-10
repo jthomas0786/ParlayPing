@@ -18,8 +18,10 @@ test('billing secrets and price IDs are configuration-only',()=>{
 
 test('checkout is authenticated and cannot directly grant a paid plan',()=>{
   assert.match(router,/requireUser\(req\)/);
-  assert.match(router,/\['pro','business'\]/);
+  assert.match(router,/\['starter','pro','business'\]/);
   assert.match(router,/mode:'subscription'/);
+  assert.match(router,/PARLAYPING_ENABLE_PAID_API_CHECKOUT/);
+  assert.match(router,/publicPlans\(\)/);
   assert.match(router,/subscription_data\[metadata\]\[user_id\]/);
   assert.doesNotMatch(router,/parlayping_stripe_apply_subscription/);
   assert.doesNotMatch(router,/service[_-]?role/i);
