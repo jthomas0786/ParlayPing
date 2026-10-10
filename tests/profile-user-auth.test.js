@@ -32,7 +32,7 @@ test('developer access is bound to the canonical ParlayPing owner account',()=>{
 
 test('developer API routes enforce the server-side owner guard',()=>{
   const router=read('server/api/account-router.js');
-  assert.match(router,/requireDeveloper\(user\)/);
-  assert.match(router,/Developer access is restricted to the ParlayPing account/);
+  assert.match(router,/resolveDeveloperAccess/);
+  assert.match(router,/owner-approved partner license/);
   assert.match(router,/isDeveloper/);
 });
