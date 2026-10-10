@@ -209,6 +209,22 @@ function resolveStaticPath(pathname) {
 
 async function handleApi(req, res, url, mapping) {
   attachResponseHelpers(res);
+  // Dynamic /build/:slip, /slip/:slip, and /share/:slip HTML must run the
+  // same embedded-route controller as static /submit and /profile pages.
+  // JSON APIs and image responses are never transformed.
+  const originalEnd = res.end.bind(res);
+  res.end = function (chunk, ...args) {
+    const contentType = String(res.getHeader('Content-Type') || '');
+    if (/text\/html/i.test(contentType) && (typeof chunk === 'string' || Buffer.isBuffer(chunk))) {
+      let page = String(chunk);
+      if (!page.includes('src="/tso2-shell.js')) {
+        page = page.replace(/<\/head>/i, '<script defer src="/tso2-shell.js?v=20261010-inline"></script></head>');
+      }
+      chunk = page;
+      if (!res.headersSent) res.removeHeader('Content-Length');
+    }
+    return originalEnd(chunk, ...args);
+  };
   req.query = { ...queryObject(url), ...mapping.params, __pp_route: mapping.route };
   req.cookies = parseCookies(req.headers.cookie);
   req.body = await readBody(req);
