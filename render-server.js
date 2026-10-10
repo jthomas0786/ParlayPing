@@ -258,6 +258,21 @@ const server = http.createServer(async (req, res) => {
 
   res.statusCode = 200;
   res.setHeader('Content-Type', mimeTypes[file.ext]);
+  if (file.ext === '.html') {
+    // The original pages and their JavaScript remain untouched. Inject only
+    // the same shell in every HTML page (including signup, tracked slips, etc.).
+    res.setHeader('Cache-Control', 'no-cache');
+    if (req.method === 'HEAD') return res.end();
+    try {
+      const original = await fs.promises.readFile(file.absolute, 'utf8');
+      const injected = original.replace(/<\\/head>/i, '<script defer src="/tso2-shell.js?v=20261010a"></script></head>');
+      return res.end(injected === original ? original + '<script defer src="/tso2-shell.js?v=20261010a"></script>' : injected);
+    } catch (error) {
+      console.error('ParlayPing HTML read failed', error);
+      res.statusCode = 500;
+      return res.end('Page temporarily unavailable');
+    }
+  }
   const stream = fs.createReadStream(file.absolute);
   stream.on('error', () => {
     if (!res.headersSent) res.statusCode = 500;
