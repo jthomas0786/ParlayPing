@@ -18,6 +18,51 @@
     }catch{inTsoWorkspace=new URLSearchParams(location.search).get('tso_embed')==='1';}
   }
   if(inTsoWorkspace){
+    // Contain Parlay Ping's own routes, dynamically created betslip links, and
+    // legacy absolute parlayping.net links in the TSO 2.0 workspace iframe.
+    // External sportsbooks, payment processors and social shares keep their
+    // intentional external destinations.
+    const legacyHosts=new Set(['parlayping.net','www.parlayping.net','parlayping.onrender.com',
+      'parlayping.thesportsoutpost.com']);
+    const localDestination=(raw)=>{
+      if(!raw||typeof raw!=='string'||/^(javascript|data|mailto|tel):/i.test(raw))return null;
+      try {
+        const u=new URL(raw,location.href);
+        if(u.protocol!=='http:'&&u.protocol!=='https:')return null;
+        if(u.origin!==location.origin&&!legacyHosts.has(u.hostname.toLowerCase()))return null;
+        u.protocol=location.protocol;u.host=location.host;
+        // Preserve the app embedding flag when navigating to a fresh page.
+        u.searchParams.set('tso_embed','1');
+        return u;
+      }catch{return null;}
+    };
+    const handleLink=(event)=>{
+      if(event.defaultPrevented||event.button!==0||event.ctrlKey||event.altKey||event.metaKey||event.shiftKey)return;
+      const anchor=event.target?.closest?.('a[href]');
+      if(!anchor||anchor.hasAttribute('download'))return;
+      const href=anchor.getAttribute('href');
+      if(href?.startsWith('#')||href?.startsWith('blob:'))return;
+      const target=localDestination(href);
+      if(!target)return;
+      event.preventDefault();
+      // replace _blank/_top/_parent site jumps with same-frame navigation
+      // so tracking, builder, slip, and sharing pages stay inside TSO.
+      location.assign(target.href);
+    };
+    document.addEventListener('click',handleLink,true);
+    document.addEventListener('submit',event=>{
+      const form=event.target;
+      if(!(form instanceof HTMLFormElement))return;
+      const url=localDestination(form.getAttribute('action')||location.pathname);
+      if(url){form.target='_self';}
+    },true);
+    const openOriginal=window.open.bind(window);
+    window.open=function(url,target,features){
+      const destination=localDestination(typeof url==='string'?url:'');
+      if(destination){location.assign(destination.href);return window;}
+      return openOriginal(url,target,features);
+    };
+
     document.documentElement.dataset.tso2ppEmbed='true';
     const embeddedStyles=document.createElement('link');
     embeddedStyles.rel='stylesheet';embeddedStyles.href='/tso2-shell.css?v=20261010-embed';
