@@ -1,0 +1,245 @@
+/* Parlay Ping My Parlays — actual TSO 2.0 broadcast theme.
+ * Only the embedded TSO workspace loads this stylesheet.
+ * TSO owns navigation, account, Explore, Community and Developer API access.
+ * Preserve independently branded standalone Parlay Ping profile and billing.
+ */
+html[data-tso2pp-embed]{
+  --bg:#05070a;--panel:#090d12;--panel2:#0d1117;--line:rgba(255,255,255,.10);
+  --text:#e9edf4;--muted:#858e9c;--teal:#ff4d1c;--teal2:#ff653c;
+  --amber:#ffd84d;--win:#3fda9a;--loss:#ff657a;
+  color-scheme:dark;background:#05070a!important;
+}
+html[data-tso2pp-embed] body{
+  min-height:0!important;background:#05070a!important;color:#e9edf4!important;
+  font-family:Inter,ui-sans-serif,system-ui,sans-serif!important;
+  overflow:visible!important;
+}
+html[data-tso2pp-embed] .profile-shell{
+  width:100%!important;max-width:none!important;
+  padding:0 0 26px!important;margin:0!important;
+}
+html[data-tso2pp-embed] .profile-hero{
+  border:1px solid rgba(255,255,255,.1)!important;
+  border-left:3px solid #ff4d1c!important;
+  border-radius:3px!important;background:#090d12!important;
+  box-shadow:none!important;overflow:hidden;
+}
+html[data-tso2pp-embed] .profile-cover{display:none!important}
+html[data-tso2pp-embed] .profile-info{
+  display:grid;grid-template-columns:46px minmax(0,1fr) auto;
+  grid-template-areas:'avatar name meta' 'avatar handle meta' 'avatar description meta';
+  align-items:center;column-gap:13px;padding:18px 21px!important;
+  min-height:88px;
+}
+html[data-tso2pp-embed] .profile-info .avatar{
+  grid-area:avatar;margin:0!important;width:46px;height:46px;
+  background:#191d23!important;border:1px solid rgba(255,255,255,.12)!important;
+  border-radius:3px!important;box-shadow:none!important;
+  color:#ffd84d!important;font:950 15px Inter,system-ui,sans-serif!important;
+}
+html[data-tso2pp-embed] .profile-info h1{
+  grid-area:name;margin:0 0 1px!important;
+  color:#f2f4f7;font:950 clamp(17px,2vw,21px)/1.2 Inter,system-ui,sans-serif!important;
+}
+html[data-tso2pp-embed] .profile-info .handle{
+  grid-area:handle;font-size:11px;color:#a6b0bf;
+}
+html[data-tso2pp-embed] .profile-info>p{
+  grid-area:description;color:#838e9c;font-size:11px;margin:3px 0 0!important;
+  max-width:none;line-height:1.45;
+}
+html[data-tso2pp-embed] .profile-info .profile-meta{
+  grid-area:meta;display:flex;justify-content:flex-end;flex-wrap:wrap;
+  gap:7px;font-size:10px;color:#c0c6ce;
+}
+html[data-tso2pp-embed] .profile-meta span{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-width:85px;padding:8px 10px;
+  background:#0b1017;border:1px solid rgba(255,255,255,.10);
+  border-radius:2px;font-size:10px;font-weight:900;
+}
+html[data-tso2pp-embed] .profile-meta span:first-child{
+  color:#ffd84d;border-color:rgba(255,216,77,.24);
+}
+html[data-tso2pp-embed] .edit-profile,
+html[data-tso2pp-embed] .profile-tabs,
+html[data-tso2pp-embed] #communitySection,
+html[data-tso2pp-embed] #devSection{display:none!important}
+html[data-tso2pp-embed] #trackingSection{
+  display:block!important;
+  border:0!important;background:transparent!important;
+  box-shadow:none!important;border-radius:0!important;
+  margin:15px 0 0!important;padding:0!important;
+}
+html[data-tso2pp-embed] .tracking-toolbar{
+  align-items:center!important;gap:16px;
+  border-bottom:1px solid rgba(255,255,255,.10);
+  padding:10px 0 15px;
+}
+html[data-tso2pp-embed] .tracking-toolbar .eyebrow{
+  color:#ff986f;font-size:10px;letter-spacing:.15em;font-weight:950;
+}
+html[data-tso2pp-embed] .tracking-toolbar h2{
+  margin:5px 0!important;
+  font:950 clamp(22px,2.3vw,28px)/1.15 Inter,system-ui,sans-serif!important;
+  letter-spacing:-.035em;color:#f2f4f7;
+}
+html[data-tso2pp-embed] .tracking-toolbar p{
+  color:#8c95a2;font-size:11px;line-height:1.55;
+}
+html[data-tso2pp-embed] .refresh-button{
+  border-radius:3px!important;min-height:37px!important;
+  color:#fff!important;background:#ff4d1c!important;
+  border:1px solid #ff653c!important;
+  font-size:10px!important;font-weight:950!important;
+  letter-spacing:.055em;white-space:nowrap;
+}
+html[data-tso2pp-embed] .refresh-button:hover{
+  filter:brightness(1.12)!important;
+}
+html[data-tso2pp-embed] .filter-row{
+  display:flex;align-items:stretch;gap:0;margin:13px 0 12px!important;padding:0!important;
+  background:#070a0e;border:1px solid rgba(255,255,255,.1);
+  border-radius:2px;scrollbar-width:thin;
+}
+html[data-tso2pp-embed] .filter-row button{
+  flex:0 0 auto;min-height:38px;margin:0;
+  color:#a1a8b3;background:transparent!important;
+  border:0!important;border-bottom:2px solid transparent!important;
+  border-right:1px solid rgba(255,255,255,.07)!important;
+  border-radius:0!important;
+  font-size:10px;font-weight:950;letter-spacing:.045em;
+  padding:9px clamp(10px,1.2vw,17px);
+}
+html[data-tso2pp-embed] .filter-row button:hover{
+  color:#fff;background:rgba(255,255,255,.045)!important;
+}
+html[data-tso2pp-embed] .filter-row button.active{
+  color:#ffd84d!important;
+  background:rgba(255,216,77,.055)!important;
+  border-bottom-color:#ff4d1c!important;
+}
+html[data-tso2pp-embed] .feed-status{
+  padding:8px 0 13px;color:#8c96a3;font-size:11px;
+}
+html[data-tso2pp-embed] .tracking-grid{
+  display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  gap:12px!important;
+}
+html[data-tso2pp-embed] .tracking-card{
+  min-width:0;border-radius:3px!important;
+  background:#090d12!important;
+  border:1px solid rgba(255,255,255,.11)!important;
+  box-shadow:none!important;
+}
+html[data-tso2pp-embed] .tracking-card:before{
+  inset:0 auto 0 0;width:3px;height:auto!important;
+  background:#ff4d1c!important;
+}
+html[data-tso2pp-embed] .tracking-card.status-LIVE:before{background:#ffd84d!important}
+html[data-tso2pp-embed] .tracking-card.status-WON:before{background:#3fda9a!important}
+html[data-tso2pp-embed] .tracking-card.status-LOST:before{background:#ff657a!important}
+html[data-tso2pp-embed] .tracking-card.status-WON{
+  border-color:rgba(63,218,154,.28)!important;
+}
+html[data-tso2pp-embed] .tracking-card.status-LOST{
+  border-color:rgba(255,101,122,.24)!important;
+}
+html[data-tso2pp-embed] .tracking-card.status-LIVE{
+  border-color:rgba(255,216,77,.24)!important;
+}
+html[data-tso2pp-embed] .card-head{padding:14px 15px 11px}
+html[data-tso2pp-embed] .book-mark{
+  border-radius:3px!important;width:39px;height:39px;flex:0 0 39px;
+  background:#fff;color:#111;border:1px solid rgba(255,255,255,.13);
+}
+html[data-tso2pp-embed] .card-title strong{font-size:12px;font-weight:950;color:#eff1f5}
+html[data-tso2pp-embed] .card-title span{font-size:10px;color:#9ca4af}
+html[data-tso2pp-embed] .status-badge{
+  border:1px solid rgba(255,255,255,.1);background:#131820!important;
+  color:#d6dbe2!important;border-radius:2px!important;
+  padding:6px 7px;font-size:9px;
+}
+html[data-tso2pp-embed] .status-LIVE .status-badge{color:#ffd84d!important;border-color:rgba(255,216,77,.26)}
+html[data-tso2pp-embed] .status-WON .status-badge{color:#7ae2ae!important;border-color:rgba(63,218,154,.26)}
+html[data-tso2pp-embed] .status-LOST .status-badge{color:#ff98a5!important;border-color:rgba(255,101,122,.23)}
+html[data-tso2pp-embed] .card-stats{
+  background:#10151c!important;border:1px solid rgba(255,255,255,.085)!important;
+  border-radius:2px!important;margin:0 15px 10px;
+}
+html[data-tso2pp-embed] .card-stat{background:#0b1017!important;border-right:1px solid rgba(255,255,255,.07)}
+html[data-tso2pp-embed] .card-stat:last-child{border-right:0}
+html[data-tso2pp-embed] .card-stat small{color:#8a919d;font-size:9px}
+html[data-tso2pp-embed] .card-stat strong{color:#e5e9f0;font-size:11px}
+html[data-tso2pp-embed] .legs{border-top:1px solid rgba(255,255,255,.08)!important}
+html[data-tso2pp-embed] .leg{border-bottom:1px solid rgba(255,255,255,.075)!important;padding:10px 15px}
+html[data-tso2pp-embed] .leg-copy strong{font-size:11px;color:#e7eaf0}
+html[data-tso2pp-embed] .leg-copy span,.leg-progress span{color:#8e97a5;font-size:10px}
+html[data-tso2pp-embed] .leg-progress strong{color:#9fa8b3}
+html[data-tso2pp-embed] .leg-HIT .leg-progress strong{color:#3fda9a}
+html[data-tso2pp-embed] .leg-MISS .leg-progress strong{color:#ff657a}
+html[data-tso2pp-embed] .leg-LIVE .leg-progress strong{color:#ffd84d}
+html[data-tso2pp-embed] .card-footer{padding:12px 15px 15px}
+html[data-tso2pp-embed] .card-footer a,
+html[data-tso2pp-embed] .card-footer button{
+  border:1px solid rgba(255,255,255,.11)!important;
+  border-radius:3px!important;background:#141820!important;
+  color:#d6dce5!important;font-size:10px;min-height:36px;
+}
+html[data-tso2pp-embed] .card-footer a:first-child{
+  border-color:#ff653c!important;background:#ff4d1c!important;color:#fff!important;
+}
+html[data-tso2pp-embed] .card-footer .share-progress{
+  border-color:rgba(255,216,77,.23)!important;
+  background:rgba(255,216,77,.04)!important;color:#ffd84d!important;
+}
+html[data-tso2pp-embed] .winner-ribbon{background:#3fda9a;color:#07120c}
+html[data-tso2pp-embed] .empty-card{
+  border-radius:3px!important;border:1px dashed rgba(255,255,255,.17)!important;
+  background:#090d12!important;color:#959eab;padding:44px 20px;
+}
+html[data-tso2pp-embed] .empty-card strong{color:#f0f1f5}
+html[data-tso2pp-embed] .auth-gate{
+  display:block;max-width:none!important;
+  margin:0!important;padding:45px 20px!important;
+  background:#090d12!important;border:1px solid rgba(255,255,255,.11)!important;
+  border-left:3px solid #ff4d1c!important;border-radius:3px!important;
+}
+html[data-tso2pp-embed] .auth-gate h1{
+  font:950 24px/1.15 Inter,system-ui,sans-serif!important;color:#f2f4f7;
+}
+html[data-tso2pp-embed] .auth-gate p{color:#969daa}
+html[data-tso2pp-embed] .auth-gate a{
+  border-radius:3px!important;background:#ff4d1c!important;color:#fff!important;
+}
+html[data-tso2pp-embed] .toast{
+  border:1px solid rgba(255,255,255,.17)!important;
+  background:#121922!important;border-radius:3px!important;
+}
+@media(max-width:920px){
+  html[data-tso2pp-embed] .tracking-grid{grid-template-columns:minmax(0,1fr)!important}
+  html[data-tso2pp-embed] .profile-info{
+    grid-template-columns:46px minmax(0,1fr);
+    grid-template-areas:'avatar name' 'avatar handle' 'description description' 'meta meta';
+    row-gap:4px;
+  }
+  html[data-tso2pp-embed] .profile-info .profile-meta{justify-content:flex-start;margin-top:8px}
+}
+@media(max-width:540px){
+  html[data-tso2pp-embed] .profile-info{padding:14px!important}
+  html[data-tso2pp-embed] .profile-info .profile-meta{gap:5px}
+  html[data-tso2pp-embed] .profile-meta span{min-width:0;padding:6px 8px}
+  html[data-tso2pp-embed] .tracking-toolbar{align-items:flex-start;flex-wrap:wrap}
+  html[data-tso2pp-embed] .filter-row button{padding:8px 10px}
+  html[data-tso2pp-embed] .card-stats{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+  html[data-tso2pp-embed] .card-stat:last-child{grid-column:auto!important}
+  html[data-tso2pp-embed] .card-footer{display:flex;flex-wrap:wrap}
+}
+
+
+/* Author styles must never override HTML hidden state for signed-out or
+   inactive member sections (including before SSO finishes loading). */
+html[data-tso2pp-embed] #signedOut[hidden],
+html[data-tso2pp-embed] #profileApp[hidden],
+html[data-tso2pp-embed] #trackingSection[hidden],
+html[data-tso2pp-embed] [hidden]{display:none!important}

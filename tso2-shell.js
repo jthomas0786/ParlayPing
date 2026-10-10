@@ -77,6 +77,12 @@
     const embeddedStyles=document.createElement('link');
     embeddedStyles.rel='stylesheet';embeddedStyles.href='/tso2-shell.css?v=20261010-embed';
     document.head.append(embeddedStyles);
+    if(location.pathname==='/profile'||location.pathname==='/profile.html'){
+      const profileStyles=document.createElement('link');
+      profileStyles.rel='stylesheet';
+      profileStyles.href='/tso2-profile-broadcast.css?v=20261010-native1';
+      document.head.append(profileStyles);
+    }
     if(location.pathname==='/submit'||location.pathname==='/submit.html'){
       const uploadStyles=document.createElement('link');
       uploadStyles.rel='stylesheet';

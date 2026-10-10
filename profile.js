@@ -38,7 +38,8 @@ async function loadData(){
   const [trackRows,profileRows,communityRows]=await Promise.all([
     supabase(`/rest/v1/tracked_parlays?user_id=eq.${encodeURIComponent(user.id)}&select=id,user_id,source_token,builder_url,title,tracking_type,sportsbook,stake_amount,potential_payout,combined_odds_american,leg_count,slip,status,hit_count,miss_count,live_count,pending_count,is_public,last_refreshed_at,created_at,updated_at&order=created_at.desc`,{token:session.access_token}),
     supabase(`/rest/v1/profiles?id=eq.${encodeURIComponent(user.id)}&select=display_name,x_username,avatar_url&limit=1`,{token:session.access_token}),
-    supabase(`/rest/v1/community_parlays?user_id=eq.${encodeURIComponent(user.id)}&is_active=eq.true&select=id,builder_url,title,sport,leg_count,sportsbook,created_at&order=created_at.desc&limit=30`,{token:session.access_token}).catch(()=>[])
+    tso?.enabled?Promise.resolve([]):
+      supabase(`/rest/v1/community_parlays?user_id=eq.${encodeURIComponent(user.id)}&is_active=eq.true&select=id,builder_url,title,sport,leg_count,sportsbook,created_at&order=created_at.desc&limit=30`,{token:session.access_token}).catch(()=>[])
   ]);
   tracks=Array.isArray(trackRows)?trackRows:[];profile=Array.isArray(profileRows)?profileRows[0]||{}:{};community=Array.isArray(communityRows)?communityRows:[];renderProfile();renderTracks();renderCommunity();
 }
@@ -61,6 +62,26 @@ async function refreshActive(manual=false){const active=tracks.filter(row=>['LIV
 function schedulePolling(){clearTimeout(pollTimer);if(!tracks.some(row=>['LIVE','UPCOMING'].includes(trackingStatus(row))))return;const hasLive=tracks.some(row=>trackingStatus(row)==='LIVE');pollTimer=setTimeout(()=>refreshActive(false),hasLive?45000:120000);}
 function wireFilters(){$('trackingFilters')?.querySelectorAll('[data-filter]').forEach(button=>button.addEventListener('click',()=>{$('trackingFilters').querySelectorAll('[data-filter]').forEach(node=>node.classList.remove('active'));button.classList.add('active');activeFilter=button.dataset.filter;renderTracks();}));}
 function wireTabs(){document.querySelectorAll('[data-profile-tab]').forEach(button=>button.addEventListener('click',()=>{document.querySelectorAll('[data-profile-tab]').forEach(node=>node.classList.toggle('active',node===button));const tracking=button.dataset.profileTab==='tracking';$('trackingSection').hidden=!tracking;$('communitySection').hidden=tracking;}));}
-async function init(){if(tso?.enabled){$('signInLink')?.addEventListener('click',event=>{event.preventDefault();tso.requestSignIn();});const title=document.querySelector('#communitySection .eyebrow');if(title)title.textContent='YOUR TSO BETSLIP SUBMISSIONS';}
+async function init(){if(tso?.enabled){
+  $('signInLink')?.addEventListener('click',event=>{event.preventDefault();tso.requestSignIn();});
+  const signedOutHeading=document.querySelector('#signedOut h1');
+  if(signedOutHeading)signedOutHeading.textContent='Your parlays. One Outpost account.';
+  const signedOutText=document.querySelector('#signedOut p');
+  if(signedOutText)signedOutText.textContent='Sign in to The Sports Outpost to see your tracked betslips, live progress and saved builds.';
+  const description=document.querySelector('.profile-info>p');
+  if(description)description.textContent='Betslips saved to your Sports Outpost account.';
+  const eyebrow=document.querySelector('#trackingSection .eyebrow');
+  if(eyebrow)eyebrow.textContent='THE SPORTS OUTPOST / PARLAY PING';
+  const title=document.querySelector('#trackingSection .tracking-toolbar h2');
+  if(title)title.textContent='My Parlays';
+  const hint=document.querySelector('#trackingSection .tracking-toolbar p');
+  if(hint)hint.textContent='Watch every leg, refresh game progress and share your verified builds.';
+  const accountEdit=document.querySelector('.edit-profile');
+  if(accountEdit)accountEdit.textContent='TSO Profile';
+  // Community and developer settings are not separate end-user destinations
+  // inside TSO. Dedicated TSO Community and Profile already handle them.
+  $('communitySection').hidden=true;
+  $('devSection').hidden=true;
+}
   wireFilters();wireTabs();$('refreshTracking')?.addEventListener('click',()=>refreshActive(true));session=await validSession();if(!session?.access_token){if(tso?.enabled)$('signInLink').textContent='Sign in to The Sports Outpost';$('signedOut').hidden=false;$('profileApp').hidden=true;return;}try{user=await supabase('/auth/v1/user',{token:session.access_token});if(!user?.id)throw new Error('Sign in required.');$('signedOut').hidden=true;$('profileApp').hidden=false;await loadData();await refreshActive(true);schedulePolling();}catch(error){if(!tso?.enabled)setSession(null);$('profileApp').hidden=true;$('signedOut').hidden=false;toast(error.message);}}
 init();
