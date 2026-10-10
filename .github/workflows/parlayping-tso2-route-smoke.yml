@@ -30,7 +30,7 @@ jobs:
             test "$http" = 200
             case "$type" in
               json) node -e 'const fs=require("fs"),o=JSON.parse(fs.readFileSync(process.argv[1]));if(!o.ok||o.runtime!=="render-node")throw Error("Wrong backend or missing Render health")' "$file";;
-              html) grep -Eiq "tso2-shell.js|PARLAYPING|ParlayPing" "$file";;
+              html) grep -Fq 'tso2-shell.js?v=20261010a' "$file";;
               js) grep -Fq "TSO2_PARLAYPING_SHELL" "$file";;
               css) grep -Fq "tso2pp-sidebar" "$file";;
             esac
@@ -43,4 +43,12 @@ jobs:
           check /submit html
           check /tso2-shell.js js
           check /tso2-shell.css css
-          echo 'TSO 2.0 branded Parlay Ping routes and Render backend: PASS'
+          # A public visitor cannot call metered partner APIs without a private key.
+          for endpoint in /api/v1/analyze /api/v1/build; do
+            code="$(curl --retry 2 --retry-delay 2 --connect-timeout 10 --max-time 25 -sS -o /tmp/tso-pp-unauth.json -w '%{http_code}' -X POST -H 'content-type: application/json' -d '{"legs":[]}' "$base$endpoint")"
+            echo "$endpoint without API key: HTTP $code"
+            case "$code" in 401|403) :;; *) echo "Unexpected API auth response"; exit 1;; esac
+          done
+          html="$(curl --retry 3 --retry-delay 3 --connect-timeout 10 --max-time 35 -fsSL https://thesportsoutpost.com/)"
+          echo "$html" | grep -Fq 'PARLAY PING'
+          echo 'TSO 2.0 branded Parlay Ping routes, developer authentication and live navigation: PASS'
