@@ -49,7 +49,7 @@ async function refreshRows(rows,{quiet=false}={}){
   if(refreshing||!rows.length)return;refreshing=true;const button=$('refreshTracking');if(button){button.disabled=true;button.textContent='↻ Updating…';}
   try{
     for(const batch of batches(rows,8)){
-      const response=await fetch('/api/tracking-refresh',{method:'POST',headers:{authorization:`Bearer ${session.access_token}`,'content-type':'application/json'},body:JSON.stringify({tracks:batch.map(row=>({id:row.id,slip:row.slip}))})});
+      const response=await fetch('/api/tracking-refresh',{method:'POST',headers:{authorization:`Bearer ${session.access_token}`,'content-type':'application/json',...(tso?.enabled?{'x-parlayping-identity':'tso2'}:{})},body:JSON.stringify({tracks:batch.map(row=>({id:row.id,slip:row.slip}))})});
       const payload=await response.json().catch(()=>({}));if(!response.ok)throw new Error(payload?.error||`Refresh failed (${response.status})`);
       for(const result of payload.results||[]){if(!result?.id||result.error)continue;const index=tracks.findIndex(row=>String(row.id)===String(result.id));if(index>=0)tracks[index]={...tracks[index],slip:result.slip,status:result.status,hit_count:result.hitCount,miss_count:result.missCount,live_count:result.liveCount,pending_count:result.pendingCount,last_refreshed_at:result.refreshedAt};await persistRefresh(result);}
     }
