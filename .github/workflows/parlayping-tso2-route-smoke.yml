@@ -43,6 +43,13 @@ jobs:
           check /submit html
           check /tso2-shell.js js
           check /tso2-shell.css css
+          # Approved original Parlay Ping assets must survive the domain migration.
+          for asset in /parlayping-approved-hero.webp /parlayping-approved-wordmark.webp; do
+            contentType="$(curl --retry 2 --retry-delay 2 --connect-timeout 10 --max-time 35 -fsSL -o /tmp/tso-pp-approved-logo -w '%{content_type}' "$base$asset")"
+            echo "$asset : $contentType"
+            case "$contentType" in image/*) :;; *) echo "Original approved logo is not an image"; exit 1;; esac
+            test "$(wc -c </tmp/tso-pp-approved-logo)" -gt 1000
+          done
           # A public visitor cannot call metered partner APIs without a private key.
           for endpoint in /api/v1/analyze /api/v1/build; do
             code="$(curl --retry 2 --retry-delay 2 --connect-timeout 10 --max-time 25 -sS -o /tmp/tso-pp-unauth.json -w '%{http_code}' -X POST -H 'content-type: application/json' -d '{"legs":[]}' "$base$endpoint")"
