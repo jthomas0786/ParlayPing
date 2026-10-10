@@ -30,8 +30,8 @@
     let displayName=user.user_metadata?.username||user.email?.split('@')[0]||'TSO Member';
     let avatarUrl=null;
     try{
-      const profile=await fetch(base+'/rest/v1/profiles?id=eq.'+encodeURIComponent(user.id)+'&select=username,avatar_url&limit=1',{headers:headers(token),cache:'no-store',signal:AbortSignal.timeout(5000)});
-      if(profile.ok){const row=(await profile.json())?.[0];displayName=row?.username||displayName;avatarUrl=row?.avatar_url||null;}
+      const profile=await fetch(base+'/rest/v1/profiles?id=eq.'+encodeURIComponent(user.id)+'&select=username,display_name,avatar_url&limit=1',{headers:headers(token),cache:'no-store',signal:AbortSignal.timeout(5000)});
+      if(profile.ok){const row=(await profile.json())?.[0];displayName=row?.display_name||row?.username||displayName;avatarUrl=row?.avatar_url||null;}
     }catch(_){ /* display-name fallback only; never a trust claim */ }
     return{access_token:token,__tso:true,user,profile:{display_name:String(displayName).slice(0,80),avatar_url:avatarUrl}};
   }
