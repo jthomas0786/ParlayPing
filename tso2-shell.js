@@ -77,6 +77,12 @@
     const embeddedStyles=document.createElement('link');
     embeddedStyles.rel='stylesheet';embeddedStyles.href='/tso2-shell.css?v=20261010-embed';
     document.head.append(embeddedStyles);
+    if(location.pathname==='/submit'||location.pathname==='/submit.html'){
+      const uploadStyles=document.createElement('link');
+      uploadStyles.rel='stylesheet';
+      uploadStyles.href='/tso2-submit-embed.css?v=20261010-theme2';
+      document.head.append(uploadStyles);
+    }
     try{
       window.parent.postMessage({type:'tso2-parlayping-route',pathname:location.pathname,search:location.search},
         'https://thesportsoutpost.com');
