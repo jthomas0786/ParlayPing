@@ -82,11 +82,39 @@
       uploadStyles.rel='stylesheet';
       uploadStyles.href='/tso2-submit-embed.css?v=20261010-theme2';
       document.head.append(uploadStyles);
+      const broadcastStyles=document.createElement('link');
+      broadcastStyles.rel='stylesheet';
+      broadcastStyles.href='/tso2-submit-broadcast.css?v=20261010-broadcast';
+      document.head.append(broadcastStyles);
     }
     try{
       window.parent.postMessage({type:'tso2-parlayping-route',pathname:location.pathname,search:location.search},
         'https://thesportsoutpost.com');
     }catch{}
+    // Parent TSO 2.0 owns the page scroll. Report rendered height so there is
+    // never a second browser scrollbar trapped inside the Parlay Ping iframe.
+    let heightTick=0,lastReported=0;
+    const reportHeight=()=>{
+      if(heightTick)return;
+      heightTick=requestAnimationFrame(()=>{
+        heightTick=0;
+        const body=document.body;
+        if(!body)return;
+        const height=Math.max(400,Math.ceil(body.scrollHeight||0));
+        if(Math.abs(height-lastReported)<2)return;
+        lastReported=height;
+        window.parent.postMessage({type:'tso2-parlayping-size',height},'https://thesportsoutpost.com');
+      });
+    };
+    window.addEventListener('load',reportHeight);
+    window.addEventListener('resize',reportHeight);
+    document.addEventListener('DOMContentLoaded',()=>{
+      reportHeight();
+      if(typeof ResizeObserver==='function')new ResizeObserver(reportHeight).observe(document.body);
+      if(typeof MutationObserver==='function')new MutationObserver(reportHeight)
+        .observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['hidden','class','style']});
+    },{once:true});
+    if(document.readyState!=='loading')reportHeight();
     return;
   }
 

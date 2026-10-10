@@ -1,0 +1,168 @@
+/* Native TSO 2.0 BROADCAST layout for the embedded Parlay Ping submit tool.
+   Exact broadcast accents from tso2/styles.css: orange #ff4d1c, gold #ffd84d,
+   charcoal #05070a/#090d12. Standalone Parlay Ping is never affected. */
+html[data-tso2pp-embed]{
+ --pp-broadcast-bg:#05070a;
+ --pp-broadcast-panel:#090d12;
+ --pp-broadcast-surface:#0b1017;
+ --pp-broadcast-edge:rgba(255,255,255,.11);
+ --pp-broadcast-orange:#ff4d1c;
+ --pp-broadcast-gold:#ffd84d;
+ background:#05070a!important;
+}
+html[data-tso2pp-embed],html[data-tso2pp-embed] body{
+ min-height:0!important;overflow:visible!important;
+ color:#e9edf4!important;
+ background:#05070a!important;
+}
+html[data-tso2pp-embed] .submit-page{
+ padding:0 0 24px!important;
+ max-width:none!important;
+ width:100%!important;
+ margin:0!important;
+}
+html[data-tso2pp-embed] .submit-hero{display:none!important}
+html[data-tso2pp-embed] .submit-shell{
+ display:grid!important;
+ grid-template-columns:minmax(0,1.7fr) minmax(245px,.74fr)!important;
+ align-items:stretch!important;
+ gap:12px!important;
+ margin:0!important;
+}
+html[data-tso2pp-embed] .submit-form-card,
+html[data-tso2pp-embed] .submit-explainer,
+html[data-tso2pp-embed] .submit-success{
+ border:1px solid var(--pp-broadcast-edge)!important;
+ border-radius:3px!important;
+ background:#090d12!important;
+ box-shadow:none!important;
+}
+html[data-tso2pp-embed] .submit-form-card{
+ position:relative;padding:22px 23px 23px!important;
+}
+html[data-tso2pp-embed] .submit-form-card::before{
+ content:"";position:absolute;inset:0 auto 0 0;width:3px;background:var(--pp-broadcast-orange);
+}
+html[data-tso2pp-embed] .pp-outpost-tool-head{
+ display:flex;align-items:center;justify-content:space-between;gap:14px;
+ padding-bottom:16px;margin-bottom:17px;
+ border-bottom:1px solid var(--pp-broadcast-edge);
+}
+html[data-tso2pp-embed] .pp-outpost-tool-kicker{
+ display:block;color:#ff986f;font-size:10px;font-weight:950;
+ letter-spacing:.15em;line-height:1.4;margin-bottom:5px;
+}
+html[data-tso2pp-embed] .pp-outpost-tool-head h2{
+ color:#f5f7fc;font-weight:950;letter-spacing:-.03em;
+ font-size:clamp(19px,2vw,25px);margin:0 0 5px;line-height:1.2;
+}
+html[data-tso2pp-embed] .pp-outpost-tool-head p{
+ margin:0;color:#9199a5;font-size:12px;line-height:1.55;max-width:520px;
+}
+html[data-tso2pp-embed] .pp-outpost-tool-tag{
+ flex:0 0 auto;color:var(--pp-broadcast-gold);
+ background:rgba(255,216,77,.055);border:1px solid rgba(255,216,77,.18);
+ font-size:9px;font-weight:950;letter-spacing:.09em;white-space:nowrap;
+ padding:8px 9px;
+}
+html[data-tso2pp-embed] .submit-step{gap:12px;align-items:center;margin:0 0 13px}
+html[data-tso2pp-embed] .submit-step>b{
+ width:29px;height:29px;flex:0 0 29px;
+ background:rgba(255,77,28,.09)!important;
+ color:#ff9b7b!important;border:1px solid rgba(255,77,28,.23)!important;
+ border-radius:2px!important;
+}
+html[data-tso2pp-embed] .submit-step strong{font-size:12px;font-weight:900;color:#f0f2f6}
+html[data-tso2pp-embed] .submit-step span,
+html[data-tso2pp-embed] .submit-step em{color:#939da9;font-size:11px}
+html[data-tso2pp-embed] .dropzone{
+ min-height:174px!important;border:1px dashed rgba(255,255,255,.20)!important;
+ border-radius:3px!important;background:#05080c!important;
+ margin:0 0 13px!important;
+}
+html[data-tso2pp-embed] .dropzone:hover,
+html[data-tso2pp-embed] .dropzone.dragging,
+html[data-tso2pp-embed] .dropzone:focus-within{
+ border-color:var(--pp-broadcast-orange)!important;
+ background:rgba(255,77,28,.045)!important;box-shadow:none!important;
+}
+html[data-tso2pp-embed] .dropzone #dropEmpty strong{font-size:13px;color:#ecedf1}
+html[data-tso2pp-embed] .dropzone #dropEmpty span{color:#8f99a8}
+html[data-tso2pp-embed] .dropzone #replaceImage{
+ background:#161b23!important;border-color:#46454b!important;border-radius:3px!important;
+}
+html[data-tso2pp-embed] .privacy-note{color:#808997;font-size:11px;margin:0 0 23px}
+html[data-tso2pp-embed] .privacy-note strong{color:#adb5c1}
+html[data-tso2pp-embed] .field>span{
+ color:#a9b0bb!important;font-size:10px;font-weight:950;
+}
+html[data-tso2pp-embed] .field input{
+ border:1px solid var(--pp-broadcast-edge)!important;
+ border-radius:3px!important;background:#05080c!important;
+ color:#f0f2f6!important;padding:12px!important;
+}
+html[data-tso2pp-embed] .field input:focus{
+ border-color:var(--pp-broadcast-orange)!important;
+ box-shadow:0 0 0 2px rgba(255,77,28,.12)!important;
+}
+html[data-tso2pp-embed] .account-state{
+ border-radius:3px!important;border:1px solid rgba(255,255,255,.11)!important;
+ background:rgba(255,255,255,.025)!important;
+ color:#b3bac7!important;
+}
+html[data-tso2pp-embed] .account-state a{color:var(--pp-broadcast-gold)!important}
+html[data-tso2pp-embed] .verify-button{
+ background:var(--pp-broadcast-orange)!important;
+ border-color:#ff653c!important;color:#fff!important;
+ border-radius:3px!important;box-shadow:none!important;
+ min-height:43px!important;font-weight:950!important;letter-spacing:.055em;
+ text-transform:uppercase;
+}
+html[data-tso2pp-embed] .verify-button:disabled{
+ opacity:.47;background:#a33e23!important;border-color:#a33e23!important;color:white!important;
+}
+html[data-tso2pp-embed] .verify-button:not(:disabled):hover{
+ filter:brightness(1.13);
+}
+html[data-tso2pp-embed] .submit-explainer{
+ padding:21px 21px!important;
+ position:static!important;top:auto!important;align-self:start;
+}
+html[data-tso2pp-embed] .submit-explainer>.submit-kicker{
+ color:#ff986f!important;font-size:10px;letter-spacing:.15em;margin-bottom:12px;
+}
+html[data-tso2pp-embed] .explain-row{
+ border-color:var(--pp-broadcast-edge)!important;
+ grid-template-columns:27px minmax(0,1fr)!important;
+ padding:15px 0!important;
+}
+html[data-tso2pp-embed] .explain-row>b{
+ color:var(--pp-broadcast-gold)!important;font-size:11px;
+}
+html[data-tso2pp-embed] .explain-row strong{color:#e9edf4;font-size:12px}
+html[data-tso2pp-embed] .explain-row p{color:#8c96a5;font-size:11px;line-height:1.55}
+html[data-tso2pp-embed] .submit-success{
+ border-left:3px solid var(--pp-broadcast-orange)!important;margin-top:13px!important;
+}
+html[data-tso2pp-embed] .verified-mark{color:var(--pp-broadcast-gold);background:rgba(255,216,77,.05)}
+html[data-tso2pp-embed] .success-actions a,
+html[data-tso2pp-embed] .success-actions button{
+ border-radius:3px!important;background:#111820;color:#e7ebf1;
+ border-color:var(--pp-broadcast-edge);
+}
+html[data-tso2pp-embed] .success-actions a:first-child{
+ background:var(--pp-broadcast-orange)!important;border-color:var(--pp-broadcast-orange)!important;
+}
+@media(max-width:970px){
+ html[data-tso2pp-embed] .submit-shell{grid-template-columns:minmax(0,1fr)!important}
+ html[data-tso2pp-embed] .submit-form-card,html[data-tso2pp-embed] .submit-explainer{
+  padding:18px 17px!important;
+ }
+ html[data-tso2pp-embed] .pp-outpost-tool-tag{display:none}
+}
+@media(max-width:510px){
+ html[data-tso2pp-embed] .submit-shell{gap:10px!important}
+ html[data-tso2pp-embed] .pp-outpost-tool-head{padding-bottom:13px}
+ html[data-tso2pp-embed] .pp-outpost-tool-head h2{font-size:20px}
+ html[data-tso2pp-embed] .dropzone{min-height:144px!important}
+}

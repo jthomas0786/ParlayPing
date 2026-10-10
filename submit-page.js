@@ -54,6 +54,13 @@
   }
   async function init(){
     if(tso?.enabled){
+      const card=document.querySelector('.submit-form-card');
+      if(card&&!card.querySelector('.pp-outpost-tool-head')){
+        const toolHead=document.createElement('div');
+        toolHead.className='pp-outpost-tool-head';
+        toolHead.innerHTML='<div><span class="pp-outpost-tool-kicker">PARLAY PING / BETSLIP TOOLS</span><h2>Upload & verify</h2><p>Analyze a screenshot, check each leg and save the verified build to your TSO account.</p></div><span class="pp-outpost-tool-tag">TSO 2.0</span>';
+        card.prepend(toolHead);
+      }
       const headline=document.querySelector('.submit-hero h1');
       if(headline)headline.innerHTML='Submit a betslip. <span>Get it verified.</span>';
       const details=document.querySelector('.submit-hero>div>p');
