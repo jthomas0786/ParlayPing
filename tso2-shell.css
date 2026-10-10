@@ -1,0 +1,111 @@
+/* ParlayPing x The Sports Outpost 2.0
+ * Original approved ParlayPing logo remains untouched. This is a UI shell and
+ * color/layout restyle; real data and functionality come from existing pages.
+ */
+html[data-tso2pp]{--tso2-bg:#05070a;--tso2-surface:#0b1018;--tso2-panel:#0e131d;--tso2-border:rgba(255,255,255,.10);--tso2-blue:#2d7fff;--tso2-muted:#8998ae;scroll-padding-top:112px;color-scheme:dark;background:#05070a}
+html[data-tso2pp] body{
+  --bg:#05070a;--bg2:#0b1018;--panel:rgba(12,18,29,.94);--panel2:rgba(7,11,17,.96);
+  --line:rgba(255,255,255,.10);--muted:#8e9bad;--text:#f5f8fc;--teal:#2d7fff;--cyan:#80b4ff;
+  --shadow:0 16px 42px rgba(0,0,0,.28);
+  background:#05070a!important;color:#f5f8fc;
+  padding-left:232px!important;padding-top:70px!important;min-width:0!important;
+}
+html[data-tso2pp] body:before{content:none!important}
+html[data-tso2pp] body .ambient{opacity:.025}
+html[data-tso2pp] body > header.site-header,html[data-tso2pp] body > header.app-header,
+html[data-tso2pp] body > header.pp-builder-header,html[data-tso2pp] body > header.pp-home-header,
+html[data-tso2pp] body > div > header.site-header,html[data-tso2pp] header[data-pp-app-nav]{display:none!important}
+html[data-tso2pp] .tso2pp-sidebar{
+  position:fixed!important;top:0;bottom:0;left:0;width:232px;z-index:1300;
+  background:linear-gradient(180deg,#07090e,#05080d 75%);
+  display:flex;flex-direction:column;border-right:1px solid var(--tso2-border);
+  box-sizing:border-box;overflow-y:auto;scrollbar-width:thin;
+}
+html[data-tso2pp] .tso2pp-brand{height:128px;flex:0 0 128px;display:flex;align-items:center;padding:14px 14px;border-bottom:1px solid var(--tso2-border)}
+html[data-tso2pp] .tso2pp-brand a{display:block;width:100%;max-width:198px}
+html[data-tso2pp] .tso2pp-brand img{display:block;width:100%;height:auto;max-height:84px;object-fit:contain}
+html[data-tso2pp] .tso2pp-close{display:none;color:white;background:transparent;border:0;font-size:23px}
+html[data-tso2pp] .tso2pp-side-nav{display:grid;gap:2px;padding:12px 9px}
+html[data-tso2pp] .tso2pp-side-item{display:flex;gap:11px;align-items:center;min-height:61px;padding:8px 9px;color:#a2acbb;text-decoration:none;border-left:3px solid transparent;border-radius:1px;background:transparent}
+html[data-tso2pp] .tso2pp-side-item:hover{background:rgba(255,255,255,.03);color:#fff}
+html[data-tso2pp] .tso2pp-side-item.is-current{border-left-color:#2d7fff;background:linear-gradient(100deg,rgba(45,127,255,.13),rgba(45,127,255,.025));color:#fff;box-shadow:inset 0 0 0 1px rgba(45,127,255,.25)}
+html[data-tso2pp] .tso2pp-side-item img,html[data-tso2pp] .tso2pp-side-glyph{width:33px;height:34px;flex:0 0 33px;object-fit:contain;display:grid;place-items:center;border:1px solid rgba(45,127,255,.25);border-radius:6px;background:rgba(45,127,255,.065);color:#8cb6ff;font-size:18px}
+html[data-tso2pp] .tso2pp-side-item img{border:0;background:transparent;border-radius:7px}
+html[data-tso2pp] .tso2pp-side-copy{display:grid;gap:4px;min-width:0}
+html[data-tso2pp] .tso2pp-side-copy strong{font-size:12px;line-height:1.15;font-weight:830;letter-spacing:.045em}
+html[data-tso2pp] .tso2pp-side-copy small{font-size:11px;color:#768597;line-height:1.22}
+html[data-tso2pp] .tso2pp-side-item.is-current small{color:#91a2b9}
+html[data-tso2pp] .tso2pp-sports-label{font-size:11px;letter-spacing:.13em;color:#718097;font-weight:850;border-top:1px solid var(--tso2-border);margin:5px 10px 0;padding:17px 3px 10px}
+html[data-tso2pp] .tso2pp-sports{display:grid;gap:2px;padding:0 10px 18px}
+html[data-tso2pp] .tso2pp-sports a{min-height:37px;display:flex;align-items:center;gap:14px;padding:0 5px;text-decoration:none;color:#8b99ab;font-size:12px}
+html[data-tso2pp] .tso2pp-sports a:hover{color:#fff;background:rgba(255,255,255,.03)}
+html[data-tso2pp] .tso2pp-sports b{width:35px;color:#b9c5d5}
+html[data-tso2pp] .tso2pp-side-footer{margin-top:auto;border-top:1px solid var(--tso2-border);padding:15px 12px;display:flex;align-items:center;gap:9px;color:#8a98ad;font-size:11px;font-weight:800;letter-spacing:.07em}
+html[data-tso2pp] .tso2pp-live-led{display:block;width:8px;height:8px;background:#3fda9a;border-radius:50%;box-shadow:0 0 12px rgba(63,218,154,.4)}
+html[data-tso2pp] .tso2pp-topbar{position:fixed!important;top:0;left:232px;right:0;height:70px;z-index:1270;display:flex;align-items:center;gap:17px;padding:0 21px;background:rgba(5,7,10,.97);border-bottom:1px solid var(--tso2-border);box-sizing:border-box}
+html[data-tso2pp] .tso2pp-context{display:grid;flex:0 0 auto;text-decoration:none;gap:4px}
+html[data-tso2pp] .tso2pp-context span{color:#67778c;font-size:11px;font-weight:850;letter-spacing:.12em}
+html[data-tso2pp] .tso2pp-context strong{color:#f5f7fb;font-size:15px;font-weight:950;letter-spacing:.04em}
+html[data-tso2pp] .tso2pp-tool-nav{display:flex;justify-content:center;gap:2px;flex:1 1 auto;min-width:0;overflow-x:auto;scrollbar-width:none}
+html[data-tso2pp] .tso2pp-tool-nav a{display:flex;align-items:center;justify-content:center;padding:11px 9px;font-size:10px;font-weight:850;letter-spacing:.045em;color:#8b9cae;text-decoration:none;border-radius:5px;white-space:nowrap}
+html[data-tso2pp] .tso2pp-tool-nav a:hover,html[data-tso2pp] .tso2pp-tool-nav a.is-active{background:#0e1723;color:#eaf2ff;border-bottom:2px solid #2d7fff}
+html[data-tso2pp] .tso2pp-actions{display:flex;align-items:center;gap:7px;flex:0 0 auto}
+html[data-tso2pp] .tso2pp-action,html[data-tso2pp] .tso2pp-profile{height:36px;min-width:38px;border:1px solid var(--tso2-border);border-radius:7px;background:#0d141d;display:flex;align-items:center;justify-content:center;text-decoration:none;color:#b7c7df;font-size:17px}
+html[data-tso2pp] .tso2pp-profile{padding:0 10px;gap:6px;font-size:11px;font-weight:820}
+html[data-tso2pp] .tso2pp-profile span{color:#849bb4}
+html[data-tso2pp] .tso2pp-menu-btn{display:none;color:white;background:#0d141d;border:1px solid var(--tso2-border);border-radius:7px;width:37px;height:37px}
+html[data-tso2pp] .tso2pp-product-bar{position:relative;min-height:106px;display:flex;align-items:center;gap:17px;max-width:1540px;margin:15px auto 0;padding:15px 20px;border:1px solid rgba(45,127,255,.20);background:linear-gradient(110deg,#0a101a,#0b111c 62%,rgba(45,127,255,.08));border-radius:9px;box-sizing:border-box}
+html[data-tso2pp] .tso2pp-product-bar img{width:min(275px,33%);max-height:78px;object-fit:contain}
+html[data-tso2pp] .tso2pp-product-bar div{display:grid;gap:6px;min-width:0}
+html[data-tso2pp] .tso2pp-product-bar span{font-size:10px;color:#9dacbf;font-weight:850;letter-spacing:.12em}
+html[data-tso2pp] .tso2pp-product-bar strong{font-size:15px;color:#f2f6fc}
+html[data-tso2pp] .tso2pp-product-bar > a{margin-left:auto;display:flex;align-items:center;justify-content:center;min-height:39px;border-radius:5px;background:#2d7fff;color:#fff;text-decoration:none;font-size:11px;font-weight:850;padding:0 14px;white-space:nowrap}
+html[data-tso2pp] .tso2pp-mobile-shade[hidden]{display:none!important}
+html[data-tso2pp] .tso2pp-mobile-shade{position:fixed;inset:0;background:rgba(0,0,0,.70);z-index:1280}
+/* Original sports/screenshot art is deliberately not substituted. Modernize only surfaces. */
+html[data-tso2pp] .glass-card,html[data-tso2pp] .profile-card,html[data-tso2pp] .settings-card,
+html[data-tso2pp] .panel,html[data-tso2pp] .builder-card{background-color:#0b121d;border-color:var(--tso2-border);box-shadow:0 10px 28px rgba(0,0,0,.25)}
+html[data-tso2pp] .primary-button,html[data-tso2pp] .save-button,html[data-tso2pp] .join-primary{background:linear-gradient(180deg,#3d8cff,#246fdc)!important;color:#fff!important;border-color:#4d95ff}
+html[data-tso2pp] .x-button,html[data-tso2pp] .secondary-button{border-color:var(--tso2-border);color:#d1dced;background:#0d141f}
+html[data-tso2pp] .pulse-dot{background:#3fda9a}
+html[data-tso2pp] .brand-pip{background:rgba(45,127,255,.20);color:#80b4ff}
+html[data-tso2pp] .section-shell{max-width:1340px}
+html[data-tso2pp] .hero{padding-top:55px}
+html[data-tso2pp] .ticker-strip{background:rgba(5,9,15,.95)}
+@media(max-width:1280px){
+ html[data-tso2pp] .tso2pp-tool-nav a{padding:9px 5px;font-size:9px}
+ html[data-tso2pp] .tso2pp-product-bar{margin-left:12px;margin-right:12px}
+}
+@media(max-width:1080px){
+ html[data-tso2pp] .tso2pp-tool-nav{justify-content:flex-start}
+ html[data-tso2pp] .tso2pp-tool-nav a{padding:8px 6px}
+ html[data-tso2pp] .tso2pp-topbar{padding:0 12px;gap:11px}
+ html[data-tso2pp] .tso2pp-profile{font-size:10px;padding:0 7px}
+}
+@media(max-width:900px){
+ html[data-tso2pp] body{padding-left:0!important}
+ html[data-tso2pp] .tso2pp-topbar{left:0}
+ html[data-tso2pp] .tso2pp-menu-btn,html[data-tso2pp] .tso2pp-close{display:block}
+ html[data-tso2pp] .tso2pp-sidebar{transform:translateX(-101%);transition:transform .20s;z-index:1305;box-shadow:15px 0 40px rgba(0,0,0,.35)}
+ html[data-tso2pp] .tso2pp-sidebar.is-open{transform:translateX(0)}
+ html[data-tso2pp] .tso2pp-brand{height:94px;flex-basis:94px}
+ html[data-tso2pp] .tso2pp-brand a{max-width:154px}
+ html[data-tso2pp] .tso2pp-brand .tso2pp-close{margin-left:auto}
+ html[data-tso2pp] .tso2pp-context span{font-size:9px}
+ html[data-tso2pp] .tso2pp-tool-nav{display:none}
+ html[data-tso2pp] .tso2pp-actions{margin-left:auto}
+}
+@media(max-width:600px){
+ html[data-tso2pp] .tso2pp-topbar{height:63px}
+ html[data-tso2pp] body{padding-top:63px!important}
+ html[data-tso2pp] .tso2pp-product-bar{min-height:85px;flex-wrap:wrap;gap:7px;padding:12px;margin-top:8px}
+ html[data-tso2pp] .tso2pp-product-bar img{width:54%;max-width:225px;max-height:65px}
+ html[data-tso2pp] .tso2pp-product-bar div{flex:1}
+ html[data-tso2pp] .tso2pp-product-bar strong{font-size:11px}
+ html[data-tso2pp] .tso2pp-product-bar span{font-size:8px}
+ html[data-tso2pp] .tso2pp-product-bar>a{width:100%;margin-left:0;min-height:32px}
+ html[data-tso2pp] .tso2pp-context strong{font-size:13px}
+ html[data-tso2pp] .tso2pp-action{min-width:31px;height:34px}
+ html[data-tso2pp] .tso2pp-profile{font-size:9px}
+ html[data-tso2pp] .hero{padding-top:35px}
+}
