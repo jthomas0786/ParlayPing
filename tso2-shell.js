@@ -28,8 +28,8 @@
   const sourcePath=String(location.pathname||'/').toLowerCase();
   const selected=sourcePath.includes('profile')?'profile':sourcePath.includes('submit')?'submit':sourcePath.includes('trend')?'trending':sourcePath.includes('account')?'account':'build';
   const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-  const iconLink='https://www.parlayping.net/parlayping-approved-hero.webp';
-  const logo='https://www.parlayping.net/parlayping-approved-wordmark.webp';
+  const iconLink='/parlayping-approved-hero.webp';
+  const logo='/parlayping-approved-wordmark.webp';
   function shell(){
     const nav=dest.map(([key,title,copy,glyph,url])=>`
       <a class="tso2pp-side-item ${key==='parlays'?'is-current':''}" href="${url}" ${url.startsWith('https:')?'':'aria-current="page"'}>
