@@ -7,7 +7,7 @@ const read=name=>fs.readFileSync(path.join(__dirname,'..',name),'utf8');
 test('Render serves in-TSO route controller on static and dynamically created betslips',()=>{
  const server=read('render-server.js');
  assert.match(server,/file\.ext === '\.html'/);
- assert.match(server,/src="\/tso2-shell\.js\?v=20261010a"/);
+ assert.match(server,/src="\/tso2-shell\.js\?v=20261010-theme2"/);
  assert.match(server,/\/text\\\/html\/i\.test\(contentType\)/);
  assert.match(server,/html.*?tso2-shell\.js/s);
 });
