@@ -1,3 +1,4 @@
+const {verifyApiEntitlement}=require('./api-plans');
 const SUPABASE_URL=process.env.SUPABASE_URL||'https://avwqjgiitxqphvmitolw.supabase.co';
 const AUTH_URL=`${SUPABASE_URL}/functions/v1/parlayping-api-auth`;
 
@@ -17,6 +18,14 @@ async function apiAuth({apiKey,endpoint,requestId,action='authenticate',statusCo
   });
   const text=await response.text();let payload={};
   try{payload=text?JSON.parse(text):{};}catch{payload={error:text};}
+  // The private Supabase auth function must verify the license claim against
+  // current paid/owner-approved rows, not customer-controlled request fields.
+  // Until that Edge Function is upgraded, legacy Free keys fail closed here.
+  if(response.ok&&action==='authenticate'){
+    const entitlement=verifyApiEntitlement(payload);
+    if(!entitlement.ok)return{ok:false,payload:{ok:false,error:entitlement.error},status:entitlement.status};
+    return{ok:true,payload:{...payload,brandingMode:entitlement.brandingMode},status:response.status};
+  }
   return{ok:response.ok,payload,status:response.status};
 }
 
