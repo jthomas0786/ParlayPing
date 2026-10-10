@@ -7,7 +7,7 @@ function stripeSecret(){
 }
 
 function priceIdForPlan(plan){
-  const key=plan==='pro'?'STRIPE_PRO_PRICE_ID':plan==='business'?'STRIPE_BUSINESS_PRICE_ID':'';
+  const key=plan==='starter'?'STRIPE_STARTER_PRICE_ID':plan==='pro'?'STRIPE_PRO_PRICE_ID':plan==='business'?'STRIPE_BUSINESS_PRICE_ID':'';
   const id=key?String(process.env[key]||'').trim():'';
   if(!id){const error=new Error(`${plan} pricing is not configured yet.`);error.status=503;throw error;}
   return id;
