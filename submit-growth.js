@@ -1,4 +1,6 @@
 (()=>{
+  // TSO members use the first-party account/usage flow, not PP founding badges or referral signup prompts.
+  if(window.PP_TSO_AUTH?.enabled)return;
   const SUPABASE_URL='https://avwqjgiitxqphvmitolw.supabase.co';
   const SUPABASE_KEY='sb_publishable_7mYXjjkRrQq3iRig7UYHNQ_b6EZZiJA';
   const SESSION_KEY='parlayping_supabase_session_v1';

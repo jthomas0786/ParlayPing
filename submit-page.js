@@ -54,12 +54,18 @@
   }
   async function init(){
     if(tso?.enabled){
-      const intro=document.querySelector('.submit-hero strong');
-      if(intro)intro.textContent='Verify a betslip with your Sports Outpost account.';
-      const details=document.querySelector('.submit-hero p');
-      if(details)details.textContent='TSO members can verify and privately save their submissions here without a separate Parlay Ping login.';
-      const kicker=document.querySelector('.submit-kicker');
-      if(kicker)kicker.textContent='THE SPORTS OUTPOST · PARLAY PING';
+      const headline=document.querySelector('.submit-hero h1');
+      if(headline)headline.innerHTML='Submit a betslip. <span>Get it verified.</span>';
+      const details=document.querySelector('.submit-hero>div>p');
+      if(details)details.textContent='Upload a screenshot to analyze each leg, verify the game status, and create a shareable betslip. Your saved submissions stay with your TSO account.';
+      const kicker=document.querySelector('.submit-hero .submit-kicker');
+      if(kicker)kicker.textContent='THE SPORTS OUTPOST  /  PARLAY PING';
+      const titleLabel=document.querySelector('label.field:has(#submissionTitle)>span');
+      if(titleLabel)titleLabel.innerHTML='Betslip title <small>optional</small>';
+      const step=document.querySelector('.submit-explainer .explain-row:last-child p');
+      if(step)step.textContent='Open the verified Builder link or share it when you are ready. Your saved submission stays private in TSO.';
+      const successFootnote=document.querySelector('#submitSuccess>small');
+      if(successFootnote)successFootnote.textContent='Screenshot discarded · verified submission saved privately to your TSO account';
       $('verifyButton').textContent='Verify & Save to TSO';
     }
     wire();await loadAccount();
