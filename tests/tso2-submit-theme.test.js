@@ -36,3 +36,22 @@ test('functional submit/upload and existing stand-alone experience are preserved
   assert.match(source('submit.html'),/id="betImage"/);
   assert.match(source('submit.html'),/id="verifyButton"/);
 });
+
+
+test('TSO broadcast theme overrides legacy blue with orange and gold, without changing standalone app',()=>{
+  const css=source('tso2-submit-broadcast.css');
+  const shell=source('tso2-shell.js');
+  const js=source('submit-page.js');
+  for(const color of ['#ff4d1c','#ffd84d','#05070a','#090d12'])assert.ok(css.includes(color),color);
+  assert.match(css,/html\[data-tso2pp-embed\]/);
+  assert.match(css,/\.submit-hero\{display:none!important\}/);
+  assert.match(css,/\.pp-outpost-tool-head/);
+  assert.match(css,/\.verify-button/);
+  assert.match(css,/\.dropzone/);
+  assert.match(css,/@media\(max-width:970px\)/);
+  assert.match(shell,/tso2-submit-broadcast\.css\?v=/);
+  assert.match(shell,/tso2-parlayping-size/);
+  assert.match(shell,/ResizeObserver/);
+  assert.match(js,/toolHead\.className='pp-outpost-tool-head'/);
+  assert.doesNotMatch(source('submit.html'),/tso2-submit-broadcast\.css/);
+});
