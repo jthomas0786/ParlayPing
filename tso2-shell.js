@@ -31,6 +31,10 @@
         if(u.protocol!=='http:'&&u.protocol!=='https:')return null;
         if(u.origin!==location.origin&&!legacyHosts.has(u.hostname.toLowerCase()))return null;
         u.protocol=location.protocol;u.host=location.host;
+        // An embedded return-to-home should return to the usable betslip
+        // uploader, not Parlay Ping's standalone marketing landing page.
+        if(u.pathname==='/'&&!u.hash&&[...u.searchParams.keys()].every(k=>k==='tso_embed'))
+          u.pathname='/submit';
         // Preserve the app embedding flag when navigating to a fresh page.
         u.searchParams.set('tso_embed','1');
         return u;
@@ -54,7 +58,7 @@
       const form=event.target;
       if(!(form instanceof HTMLFormElement))return;
       const url=localDestination(form.getAttribute('action')||location.pathname);
-      if(url){form.target='_self';}
+      if(url){form.action=url.href;form.target='_self';}
     },true);
     const openOriginal=window.open.bind(window);
     window.open=function(url,target,features){
