@@ -43,7 +43,7 @@
     try{
       const response=await fetch('/api/community-submit',{method:'POST',headers:{authorization:`Bearer ${session.access_token}`,'content-type':'application/json',...(tso?.enabled?{'x-parlayping-identity':'tso2'}:{})},body:JSON.stringify({imageDataUrl,sourceUrl:String($('sourceUrl').value||'').trim()||null})}),result=await response.json().catch(()=>({}));if(!response.ok)throw new Error(result?.error||`Verification failed (${response.status})`);
       status(tso?.enabled?'Pregame verified. Saving to your TSO account…':'Pregame verified. Adding it to Community…');await saveCommunity(result);showSuccess(result);status(tso?.enabled?'Verified and saved to your TSO account.':'Verified and added to Community.','success');button.textContent='Verified ✓';imageDataUrl=null;
-    }catch(error){status(error.message||'Could not verify this betslip.','error');button.disabled=false;button.textContent='Verify & add to Community';}
+    }catch(error){status(error.message||'Could not verify this betslip.','error');button.disabled=false;button.textContent=tso?.enabled?'Verify & Save to TSO':'Verify & add to Community';}
   }
   async function copyResult(){if(!lastResult)return;try{await navigator.clipboard.writeText(shareCopy(lastResult));status('Share post copied.','success');}catch{status('Could not copy automatically.','error');}}
   async function shareResult(){if(!lastResult)return;const text=shareCopy(lastResult),title=String($('submissionTitle').value||'').trim()||lastResult.title||'ParlayPing verified betslip';try{if(navigator.share){await navigator.share({title,text,url:lastResult.shareUrl});return;}await navigator.clipboard.writeText(text);status('Share post copied.','success');}catch(error){if(error?.name!=='AbortError')status('Could not open sharing.','error');}}
@@ -52,6 +52,17 @@
     ['dragenter','dragover'].forEach(name=>drop.addEventListener(name,event=>{event.preventDefault();drop.classList.add('dragging');}));['dragleave','drop'].forEach(name=>drop.addEventListener(name,event=>{event.preventDefault();drop.classList.remove('dragging');}));drop.addEventListener('drop',event=>choose(event.dataTransfer?.files?.[0]));
     $('verifyButton').addEventListener('click',submit);$('copyResult').addEventListener('click',copyResult);$('shareResult').addEventListener('click',shareResult);
   }
-  async function init(){wire();await loadAccount();}
+  async function init(){
+    if(tso?.enabled){
+      const intro=document.querySelector('.submit-hero strong');
+      if(intro)intro.textContent='Verify a betslip with your Sports Outpost account.';
+      const details=document.querySelector('.submit-hero p');
+      if(details)details.textContent='TSO members can verify and privately save their submissions here without a separate Parlay Ping login.';
+      const kicker=document.querySelector('.submit-kicker');
+      if(kicker)kicker.textContent='THE SPORTS OUTPOST · PARLAY PING';
+      $('verifyButton').textContent='Verify & Save to TSO';
+    }
+    wire();await loadAccount();
+  }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
