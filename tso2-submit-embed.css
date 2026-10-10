@@ -1,0 +1,182 @@
+/* Parlay Ping upload / verification — native TSO 2.0 embedded presentation.
+ * Loaded ONLY in the authenticated TSO workspace iframe on /submit.
+ * Standalone Parlay Ping identity, marketing site and approved logos are untouched.
+ * Source of truth: TSO 2.0 --bg #070b12, --surface #0c121d,
+ * --card #101824, --blue #2d7fff, --muted #8e9bad.
+ */
+html[data-tso2pp-embed]{
+  --pp-outpost-bg:#070b12;
+  --pp-outpost-surface:#0c121d;
+  --pp-outpost-panel:#101824;
+  --pp-outpost-border:rgba(255,255,255,.09);
+  --pp-outpost-border-strong:rgba(255,255,255,.14);
+  --pp-outpost-blue:#2d7fff;
+  --pp-outpost-blue-light:#80b4ff;
+  --pp-outpost-text:#f5f8fc;
+  --pp-outpost-muted:#8e9bad;
+  color-scheme:dark;
+  background:var(--pp-outpost-bg)!important;
+}
+html[data-tso2pp-embed] body{
+  background:radial-gradient(circle at 88% -180px,rgba(45,127,255,.11),transparent 520px),var(--pp-outpost-bg)!important;
+  font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;
+  font-size:14px;color:var(--pp-outpost-text)!important;
+}
+html[data-tso2pp-embed] .submit-page{
+  width:100%;max-width:1480px;min-width:0;margin:0 auto;
+  padding:21px clamp(14px,2.25vw,30px) 45px;
+}
+html[data-tso2pp-embed] .submit-hero{
+  grid-template-columns:minmax(0,1fr);align-items:center;gap:0;
+  padding:4px 1px 19px;margin:0 0 19px;
+  border-bottom:1px solid var(--pp-outpost-border);
+}
+html[data-tso2pp-embed] .submit-kicker,
+html[data-tso2pp-embed] .founding-card>span{
+  font:850 10px/1.4 Inter,system-ui,sans-serif;letter-spacing:.14em;
+  color:var(--pp-outpost-blue-light);margin:0 0 10px;
+}
+html[data-tso2pp-embed] .submit-hero h1{
+  max-width:none;margin:0;letter-spacing:-.035em;
+  font:850 clamp(26px,2.9vw,36px)/1.13 Inter,system-ui,sans-serif;
+  color:var(--pp-outpost-text);text-wrap:balance;
+}
+html[data-tso2pp-embed] .submit-hero h1 span{color:#7eafff}
+html[data-tso2pp-embed] .submit-hero>div>p{
+  max-width:790px;margin:9px 0 0;color:#99a8bc;
+  font:400 13px/1.65 Inter,system-ui,sans-serif;
+}
+html[data-tso2pp-embed] .founding-card{display:none!important}
+html[data-tso2pp-embed] .submit-shell{
+  grid-template-columns:minmax(0,1.55fr) minmax(268px,.72fr);
+  align-items:start;gap:17px;margin:0;
+}
+html[data-tso2pp-embed] .submit-form-card,
+html[data-tso2pp-embed] .submit-explainer,
+html[data-tso2pp-embed] .submit-success{
+  min-width:0;border:1px solid var(--pp-outpost-border);
+  border-radius:16px;background:linear-gradient(155deg,rgba(17,26,40,.98),rgba(12,18,29,.97));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.02),0 12px 28px rgba(0,0,0,.12);
+}
+html[data-tso2pp-embed] .submit-form-card{padding:21px 22px}
+html[data-tso2pp-embed] .submit-explainer{padding:20px 21px;top:14px}
+html[data-tso2pp-embed] .submit-explainer>.submit-kicker{
+  display:block;color:#85b2fa;margin-bottom:10px;
+}
+html[data-tso2pp-embed] .submit-step{gap:11px;align-items:center;margin:1px 0 12px}
+html[data-tso2pp-embed] .submit-step>b{
+  width:30px;height:30px;flex:0 0 30px;
+  background:rgba(45,127,255,.12);border:1px solid rgba(45,127,255,.26);
+  color:#88b8ff;border-radius:9px;font:850 12px/1 Inter,system-ui,sans-serif;
+}
+html[data-tso2pp-embed] .submit-step strong{font:800 13px/1.3 Inter,system-ui,sans-serif;color:#eef4ff}
+html[data-tso2pp-embed] .submit-step span{font-size:11px;line-height:1.5;color:#91a2b7;margin-top:3px}
+html[data-tso2pp-embed] .submit-step em{font-size:10px;color:#839bbd}
+html[data-tso2pp-embed] .dropzone{
+  min-height:166px;margin:0 0 12px;
+  border:1px dashed rgba(101,151,231,.4);border-radius:12px;
+  background:linear-gradient(145deg,rgba(8,14,23,.91),rgba(12,22,37,.65));
+  transition:background .18s,border-color .18s,box-shadow .18s;
+}
+html[data-tso2pp-embed] .dropzone:hover,
+html[data-tso2pp-embed] .dropzone.dragging,
+html[data-tso2pp-embed] .dropzone:focus-within{
+  border-color:var(--pp-outpost-blue);
+  background:rgba(45,127,255,.085);
+  box-shadow:inset 0 0 0 1px rgba(45,127,255,.12);
+}
+html[data-tso2pp-embed] .dropzone #dropEmpty strong{font:800 13px/1.4 Inter,system-ui,sans-serif}
+html[data-tso2pp-embed] .dropzone #dropEmpty span{font-size:11px;color:#8c9db4}
+html[data-tso2pp-embed] .dropzone img{max-height:300px;background:#070b12}
+html[data-tso2pp-embed] .dropzone #replaceImage{
+  border-color:var(--pp-outpost-border-strong);border-radius:9px;background:#121d2e;
+  font-size:11px;color:#edf4ff;
+}
+html[data-tso2pp-embed] .privacy-note{
+  color:#91a0b4;line-height:1.55;font-size:11px;
+  margin:0 0 21px;max-width:720px;
+}
+html[data-tso2pp-embed] .privacy-note strong{color:#b5c5d9}
+html[data-tso2pp-embed] .field{margin-bottom:12px}
+html[data-tso2pp-embed] .field>span{font-size:10px;font-weight:850;letter-spacing:.08em;color:#a6b6cf;margin-bottom:6px}
+html[data-tso2pp-embed] .field small{font-size:10px;color:#8292aa}
+html[data-tso2pp-embed] .field input{
+  min-width:0;width:100%;border:1px solid var(--pp-outpost-border-strong);
+  border-radius:10px;background:#0a121e;color:#eff5ff;
+  font:500 12px/1.35 Inter,system-ui,sans-serif;padding:11px 12px;
+}
+html[data-tso2pp-embed] .field input::placeholder{color:#64758d}
+html[data-tso2pp-embed] .field input:focus{
+  border-color:var(--pp-outpost-blue);
+  box-shadow:0 0 0 3px rgba(45,127,255,.13);
+}
+html[data-tso2pp-embed] .account-state{
+  border:1px solid rgba(45,127,255,.14);
+  border-radius:10px;background:rgba(45,127,255,.065);
+  color:#9caec6;font-size:11px;line-height:1.5;margin:16px 0 11px;padding:11px 12px;
+}
+html[data-tso2pp-embed] .account-state.ready{color:#c4d9fb}
+html[data-tso2pp-embed] .account-state a{color:#89b5ff}
+html[data-tso2pp-embed] .verify-button{
+  display:flex;justify-content:center;align-items:center;
+  min-height:41px;border-radius:10px;
+  background:linear-gradient(180deg,#3d8cff,#246fdc)!important;
+  border:1px solid #4d95ff;color:white!important;
+  box-shadow:0 9px 24px rgba(45,127,255,.19);
+  font:850 12px/1.3 Inter,system-ui,sans-serif;letter-spacing:.02em;
+}
+html[data-tso2pp-embed] .verify-button:not(:disabled):hover{filter:brightness(1.09)}
+html[data-tso2pp-embed] .verify-button:disabled{
+  background:#183152!important;border-color:rgba(74,133,220,.26);
+  color:#859ab8!important;opacity:.72;box-shadow:none;
+}
+html[data-tso2pp-embed] .submit-status{font-size:11px;color:#9faec3}
+html[data-tso2pp-embed] .submit-status.error{color:#ff8291}
+html[data-tso2pp-embed] .submit-status.success{color:#74dfad}
+html[data-tso2pp-embed] .explain-row{
+  grid-template-columns:26px minmax(0,1fr);gap:10px;
+  padding:13px 0;border-color:var(--pp-outpost-border);
+}
+html[data-tso2pp-embed] .explain-row>b{
+  font:900 10px/1.5 Inter,system-ui,sans-serif;color:#6699ed;
+}
+html[data-tso2pp-embed] .explain-row strong{
+  font:800 12px/1.45 Inter,system-ui,sans-serif;color:#eaf1ff;
+}
+html[data-tso2pp-embed] .explain-row p{font-size:11px;line-height:1.55;color:#8e9fb5;margin:4px 0 0}
+html[data-tso2pp-embed] .submit-success{
+  margin-top:17px;padding:21px 22px;
+  border-color:rgba(45,127,255,.33);
+  background:linear-gradient(130deg,rgba(26,47,78,.66),rgba(12,20,32,.96));
+}
+html[data-tso2pp-embed] .verified-mark{
+  background:rgba(63,218,154,.1);color:#79dfae;
+  border:1px solid rgba(63,218,154,.21);
+}
+html[data-tso2pp-embed] .submit-success h2{
+  font:850 23px/1.2 Inter,system-ui,sans-serif;color:#f5f8fc;margin:12px 0 6px;
+}
+html[data-tso2pp-embed] .submit-success p{font-size:12px;color:#a8bad1}
+html[data-tso2pp-embed] .success-actions a,
+html[data-tso2pp-embed] .success-actions button{
+  border:1px solid rgba(45,127,255,.23);background:#152339;
+  color:#dce9ff;border-radius:9px;font:800 11px/1.3 Inter,system-ui,sans-serif;
+}
+html[data-tso2pp-embed] .success-actions a:first-child{
+  background:#2d7fff;color:white;border-color:#4d95ff;
+}
+html[data-tso2pp-embed] .submit-success small{color:#8e9fb5}
+@media(max-width:900px){
+  html[data-tso2pp-embed] .submit-page{padding:19px 16px 36px}
+  html[data-tso2pp-embed] .submit-shell{grid-template-columns:minmax(0,1fr);gap:13px}
+  html[data-tso2pp-embed] .submit-explainer{position:static;top:auto}
+  html[data-tso2pp-embed] .submit-hero{padding-bottom:17px;margin-bottom:16px}
+}
+@media(max-width:520px){
+  html[data-tso2pp-embed] .submit-page{padding:15px 10px 29px}
+  html[data-tso2pp-embed] .submit-hero h1{font-size:clamp(24px,7vw,30px)}
+  html[data-tso2pp-embed] .submit-hero>div>p{font-size:12px}
+  html[data-tso2pp-embed] .submit-form-card,html[data-tso2pp-embed] .submit-explainer,html[data-tso2pp-embed] .submit-success{padding:16px;border-radius:13px}
+  html[data-tso2pp-embed] .dropzone{min-height:156px}
+  html[data-tso2pp-embed] .success-actions{gap:7px}
+}
