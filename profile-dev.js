@@ -1,4 +1,6 @@
 (()=>{
+  // A first-party TSO member is not a separate Parlay Ping developer login.
+  if(window.PP_TSO_AUTH?.enabled)return;
   const SESSION_KEY='parlayping_supabase_session_v1';
   const SUPABASE_URL='https://avwqjgiitxqphvmitolw.supabase.co';
   const SUPABASE_KEY='sb_publishable_7mYXjjkRrQq3iRig7UYHNQ_b6EZZiJA';
