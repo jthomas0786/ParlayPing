@@ -32,7 +32,7 @@ jobs:
               json) node -e 'const fs=require("fs"),o=JSON.parse(fs.readFileSync(process.argv[1]));if(!o.ok||o.runtime!=="render-node")throw Error("Wrong backend or missing Render health")' "$file";;
               html) grep -Eiq "tso2-shell.js|PARLAYPING|ParlayPing" "$file";;
               js) grep -Fq "TSO2_PARLAYPING_SHELL" "$file";;
-              css) grep -Fq "tso2-sidebar" "$file";;
+              css) grep -Fq "tso2pp-sidebar" "$file";;
             esac
             rm "$file"
           }
