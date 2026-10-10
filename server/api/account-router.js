@@ -1,5 +1,6 @@
 const {requireUser,supabaseFetch,accountEdge}=require('./lib/supabase-account');
 const {stripePost,priceIdForPlan}=require('./lib/stripe-billing');
+const {publicPlans,activePaidSubscription,verifyApiEntitlement}=require('./lib/api-plans');
 
 // Canonical ParlayPing owner account. PARLAYPING_DEV_USER_ID may override this in Vercel.
 const DEFAULT_DEV_USER_ID='a08636ec-508e-457d-8e5a-400a0ec39729';
@@ -12,7 +13,26 @@ function parseBody(req){
 
 function developerUserId(){return String(process.env.PARLAYPING_DEV_USER_ID||DEFAULT_DEV_USER_ID).trim();}
 function isDeveloperUser(user){return Boolean(user?.id)&&String(user.id)===developerUserId();}
-function requireDeveloper(user){if(!isDeveloperUser(user)){const error=new Error('Developer access is restricted to the ParlayPing account.');error.status=403;throw error;}}
+// Onboarding is verified server-side: owning a login alone is never a license.
+async function resolveDeveloperAccess(token,user){
+  const owner=isDeveloperUser(user);
+  const rows=await supabaseFetch(`/rest/v1/subscriptions?select=*,plans(*)&user_id=eq.${encodeURIComponent(user.id)}`,{token});
+  const subscription=rows?.[0]||null;
+  const paid=activePaidSubscription(subscription);
+  let partner=false;
+  // Once the private Edge Function is migrated, it reports owner-approved
+  // partner status. A client profile flag never qualifies as approval.
+  if(!owner&&!paid){
+    try{
+      const data=await accountEdge(token,{action:'entitlement'});
+      partner=verifyApiEntitlement(data).ok===true&&data?.licenseType==='partner';
+    }catch(_){partner=false;}
+  }
+  return{allowed:owner||paid||partner,owner,paid,partner,subscription};
+}
+function requireDeveloper(access){
+  if(!access?.allowed){const error=new Error('A paid API subscription or owner-approved partner license is required.');error.status=403;throw error;}
+}
 function errorStatus(error,fallback=500){const status=Number(error?.status)||fallback;return status>=400&&status<600?status:fallback;}
 
 async function account(req,res){
@@ -20,15 +40,14 @@ async function account(req,res){
   res.setHeader('Content-Type','application/json; charset=utf-8');
   try{
     const{token,user}=await requireUser(req);
-    const isDeveloper=isDeveloperUser(user);
+    const access=await resolveDeveloperAccess(token,user);
+    const isDeveloper=access.allowed;
     if(req.method==='GET'){
       const profilePromise=supabaseFetch(`/rest/v1/profiles?select=*&id=eq.${encodeURIComponent(user.id)}`,{token});
-      let subscriptions=[],privateData=null;
+      let privateData=null;
       if(isDeveloper){
-        [subscriptions,privateData]=await Promise.all([
-          supabaseFetch(`/rest/v1/subscriptions?select=*,plans(*)&user_id=eq.${encodeURIComponent(user.id)}`,{token}),
-          accountEdge(token,{action:'bootstrap'}),
-        ]);
+        try{privateData=await accountEdge(token,{action:'bootstrap'});}
+        catch(error){if(access.owner)throw error;}
       }
       const profiles=await profilePromise;
       return res.status(200).json({
@@ -36,7 +55,8 @@ async function account(req,res){
         isDeveloper,
         user:{id:user.id,email:user.email||null,createdAt:user.created_at||null},
         profile:profiles?.[0]||null,
-        subscription:isDeveloper?(subscriptions?.[0]||null):null,
+        subscription:isDeveloper?access.subscription:null,
+        apiAccessType:access.owner?'first_party':access.partner?'partner':access.paid?'paid':null,
         usage:isDeveloper?(privateData?.usage||null):null,
         apiKeys:isDeveloper&&Array.isArray(privateData?.keys)?privateData.keys:[],
       });
@@ -61,7 +81,7 @@ async function apiKeys(req,res){
   res.setHeader('Cache-Control','no-store');
   res.setHeader('Content-Type','application/json; charset=utf-8');
   try{
-    const{token,user}=await requireUser(req);requireDeveloper(user);
+    const{token,user}=await requireUser(req);requireDeveloper(await resolveDeveloperAccess(token,user));
     if(req.method==='GET'){
       const data=await accountEdge(token,{action:'listKeys'});
       return res.status(200).json({ok:true,keys:Array.isArray(data?.keys)?data.keys:[]});
@@ -90,8 +110,9 @@ async function plans(req,res){
   res.setHeader('Content-Type','application/json; charset=utf-8');
   if(req.method!=='GET')return res.status(405).json({ok:false,error:'Use GET.'});
   try{
-    const rows=await supabaseFetch('/rest/v1/plans?select=id,name,description,monthly_request_limit,rate_limit_per_minute,max_api_keys,features,price_monthly_cents&active=eq.true&is_public=eq.true&order=monthly_request_limit.asc');
-    return res.status(200).json({ok:true,plans:Array.isArray(rows)?rows:[]});
+    // This is a public offer preview, never a grant or live price. Do not
+    // leak the legacy Free row while the database is being migrated.
+    return res.status(200).json({ok:true,plans:publicPlans(),pricingStatus:'pending_owner_approval'});
   }catch(error){return res.status(500).json({ok:false,error:error?.message||'Unable to load plans.'});}
 }
 
@@ -100,9 +121,12 @@ async function billingCheckout(req,res){
   res.setHeader('Content-Type','application/json; charset=utf-8');
   if(req.method!=='POST')return res.status(405).json({ok:false,error:'Use POST.'});
   try{
-    const{token,user}=await requireUser(req);requireDeveloper(user);
+    const{token,user}=await requireUser(req);
+    // Do not start legacy Stripe test prices as a commercial checkout.
+    if(process.env.PARLAYPING_ENABLE_PAID_API_CHECKOUT!=='true')
+      return res.status(503).json({ok:false,error:'API plan checkout is not open yet. Prices are awaiting approval.'});
     const body=parseBody(req),plan=String(body.plan||'').toLowerCase();
-    if(!['pro','business'].includes(plan))return res.status(400).json({ok:false,error:'plan must be pro or business.'});
+    if(!['starter','pro','business'].includes(plan))return res.status(400).json({ok:false,error:'plan must be starter, pro or business.'});
     const priceId=priceIdForPlan(plan);
     const rows=await supabaseFetch(`/rest/v1/subscriptions?select=*&user_id=eq.${encodeURIComponent(user.id)}`,{token});
     const sub=rows?.[0]||null;
