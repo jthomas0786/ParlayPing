@@ -10,7 +10,7 @@ test('TSO embed loads identity bridge before original Parlay Ping scripts',()=>{
   const shell=read('tso2-shell.js');
   const bridge=read('tso2-account-bridge.js');
   assert.match(render,/src="\/tso2-account-bridge\.js\?v=20261010sso"/);
-  assert.ok(render.indexOf('tso2-account-bridge.js')<render.indexOf('tso2-shell.js?v=20261010-inline'));
+  assert.ok(render.indexOf('tso2-account-bridge.js')<render.indexOf('tso2-shell.js?v=20261010-theme2-inline'));
   assert.match(shell,/tso2-parlayping-open-profile/);
   assert.match(bridge,/allowedParents=new Set/);
   assert.match(bridge,/event\.source!==window\.parent/);
