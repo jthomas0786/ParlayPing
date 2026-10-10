@@ -1,5 +1,7 @@
 # ParlayPing Developer API
 
+> **Licensing transition — product decision (2026-10-10):** Parlay Ping will have **no publicly available Free developer API tier**. All public API subscriptions must be paid and metered; complimentary Affiliate/Partner access requires explicit owner approval, usage caps, and expiry. See [API_BRANDING_TIERS.md](./API_BRANDING_TIERS.md) for the planned Starter / Pro / Business / Enterprise + private Partner model. **This document below still describes the legacy implementation, including old Free limits and test-mode Stripe pricing; those are not an approved public offer.** Supabase/Stripe and API enforcement have not yet been migrated. Do not interpret existing Free-plan data as authorization to issue new complimentary commercial API keys.
+
 ## Account and authentication
 
 ParlayPing developer accounts use the dedicated Supabase project `avwqjgiitxqphvmitolw`.
