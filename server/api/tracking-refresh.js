@@ -1,4 +1,4 @@
-const { requireUser } = require('./lib/supabase-account');
+const {requireHostUser}=require('./lib/tso-auth');
 const { canonicalSlip } = require('./lib/share-slip');
 const { hydrateSharedSlip } = require('./lib/share-hydrate');
 
@@ -69,7 +69,7 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    await requireUser(req);
+    await requireHostUser(req);
     const tracks = Array.isArray(req.body?.tracks) ? req.body.tracks : [];
     if (!tracks.length) return res.status(400).json({ ok:false, error:'At least one tracked parlay is required.' });
     if (tracks.length > MAX_TRACKS_PER_REFRESH) return res.status(400).json({ ok:false, error:`Refresh supports at most ${MAX_TRACKS_PER_REFRESH} tracked parlays at once.` });
