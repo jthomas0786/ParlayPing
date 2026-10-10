@@ -235,3 +235,11 @@ html[data-tso2pp-embed] .toast{
   html[data-tso2pp-embed] .card-stat:last-child{grid-column:auto!important}
   html[data-tso2pp-embed] .card-footer{display:flex;flex-wrap:wrap}
 }
+
+
+/* Author styles must never override HTML hidden state for signed-out or
+   inactive member sections (including before SSO finishes loading). */
+html[data-tso2pp-embed] #signedOut[hidden],
+html[data-tso2pp-embed] #profileApp[hidden],
+html[data-tso2pp-embed] #trackingSection[hidden],
+html[data-tso2pp-embed] [hidden]{display:none!important}
