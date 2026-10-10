@@ -1,5 +1,5 @@
 /* Parlay Ping powered by TSO 2.0: shared navigation shell.
- * Visual integration only: no account/session migration, no speculative live data.
+ * Embedded TSO login handled by a separately verified account bridge.
  * Existing Render API, builder, tracker, billing, X and developer endpoints stay intact.
  */
 (()=>{
@@ -48,6 +48,12 @@
       if(href?.startsWith('#')||href?.startsWith('blob:'))return;
       const target=localDestination(href);
       if(!target)return;
+      if(target.pathname==='/account.html'||target.pathname==='/account'){
+        event.preventDefault();
+        const intent=anchor.id==='signInLink'?'tso2-parlayping-signin-request':'tso2-parlayping-open-profile';
+        window.parent.postMessage({type:intent},'https://thesportsoutpost.com');
+        return;
+      }
       event.preventDefault();
       // replace _blank/_top/_parent site jumps with same-frame navigation
       // so tracking, builder, slip, and sharing pages stay inside TSO.

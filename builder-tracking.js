@@ -4,6 +4,7 @@
   const legs=Array.isArray(slip.legs)?slip.legs:[];
   const q=(s,r=document)=>r.querySelector(s);
   const qa=(s,r=document)=>[...r.querySelectorAll(s)];
+  const tso=window.PP_TSO_AUTH;
   const SESSION_KEY='parlayping_supabase_session_v1';
   const SUPABASE_URL='https://avwqjgiitxqphvmitolw.supabase.co';
   const SUPABASE_KEY='sb_publishable_7mYXjjkRrQq3iRig7UYHNQ_b6EZZiJA';
@@ -13,9 +14,9 @@
   function toast(message){const node=q('#toast');if(!node)return;node.textContent=message;node.classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>node.classList.remove('show'),2600);}
   function getSession(){try{return JSON.parse(localStorage.getItem(SESSION_KEY)||'null');}catch{return null;}}
   function setSession(value){try{if(value)localStorage.setItem(SESSION_KEY,JSON.stringify(value));else localStorage.removeItem(SESSION_KEY);}catch{}}
-  async function supabase(path,{method='GET',body,token,prefer}={}){const headers={apikey:SUPABASE_KEY,'content-type':'application/json'};if(token)headers.authorization=`Bearer ${token}`;if(prefer)headers.Prefer=prefer;const response=await fetch(`${SUPABASE_URL}${path}`,{method,headers,body:body===undefined?undefined:JSON.stringify(body)});const text=await response.text();let payload=null;try{payload=text?JSON.parse(text):null;}catch{payload={message:text};}if(!response.ok)throw new Error(payload?.message||payload?.error_description||payload?.error||`Tracking request failed (${response.status})`);return payload;}
-  async function validSession(){let session=getSession();if(!session)return null;const exp=Number(session.expires_at||0)*1000;if(exp&&exp-Date.now()>=60000)return session;if(!session.refresh_token)return session;try{session=await supabase('/auth/v1/token?grant_type=refresh_token',{method:'POST',body:{refresh_token:session.refresh_token}});setSession(session);return session;}catch{setSession(null);return null;}}
-  async function sessionUser(session){if(!session?.access_token)return null;if(currentUser)return currentUser;try{currentUser=await supabase('/auth/v1/user',{token:session.access_token});return currentUser;}catch{return null;}}
+  async function supabase(path,{method='GET',body,token,prefer}={}){if(tso?.enabled)return tso.sb(path,{method,body,token,prefer});const headers={apikey:SUPABASE_KEY,'content-type':'application/json'};if(token)headers.authorization=`Bearer ${token}`;if(prefer)headers.Prefer=prefer;const response=await fetch(`${SUPABASE_URL}${path}`,{method,headers,body:body===undefined?undefined:JSON.stringify(body)});const text=await response.text();let payload=null;try{payload=text?JSON.parse(text):null;}catch{payload={message:text};}if(!response.ok)throw new Error(payload?.message||payload?.error_description||payload?.error||`Tracking request failed (${response.status})`);return payload;}
+  async function validSession(){if(tso?.enabled)return tso.whenReady();let session=getSession();if(!session)return null;const exp=Number(session.expires_at||0)*1000;if(exp&&exp-Date.now()>=60000)return session;if(!session.refresh_token)return session;try{session=await supabase('/auth/v1/token?grant_type=refresh_token',{method:'POST',body:{refresh_token:session.refresh_token}});setSession(session);return session;}catch{setSession(null);return null;}}
+  async function sessionUser(session){if(tso?.enabled)return (await tso.whenReady())?.user||null;if(!session?.access_token)return null;if(currentUser)return currentUser;try{currentUser=await supabase('/auth/v1/user',{token:session.access_token});return currentUser;}catch{return null;}}
   function currentBook(){return String(q('.sportsbook-grid .book-card.active')?.dataset?.book||slip.sportsbook||'').trim()||null;}
   function currentTitle(){const node=q('#myParlayTitle');const text=String(node?.childNodes?.[0]?.textContent||'').trim();return (text&&text!=='My Parlay'?text:`${legs.length}-Leg Parlay`).slice(0,120);}
   function americanToDecimal(value){const n=Number(value);if(!Number.isFinite(n)||n===0)return null;return n>0?1+n/100:1+100/Math.abs(n);}
@@ -38,7 +39,7 @@
     return copy;
   }
   function trackingUrl(){const token=String(state.token||'').trim();return token?`https://parlayping.net/build/${encodeURIComponent(token)}`:null;}
-  function signIn(){const next=`${location.pathname}${location.search}${location.hash}`;location.assign(`/account.html?next=${encodeURIComponent(next)}`);}
+  function signIn(){if(tso?.enabled){tso.requestSignIn();return;}const next=`${location.pathname}${location.search}${location.hash}`;location.assign(`/account.html?next=${encodeURIComponent(next)}`);}
 
   function ensureModal(){
     let modal=q('#ppTrackModal');if(modal)return modal;

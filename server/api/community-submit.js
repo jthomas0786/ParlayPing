@@ -2,7 +2,7 @@ const {parseSlip}=require('../../lib/slip-parser-wrapper');
 const {analyzeMultiSport}=require('./lib/sport-router-live');
 const {encodeShareSlip,mergeAnalysisIntoSlip,buildShareUrl,buildCardUrl}=require('./lib/share-slip');
 const {builderUrl}=require('./builder-page');
-const {requireUser}=require('./lib/supabase-account');
+const {requireHostUser}=require('./lib/tso-auth');
 
 const START_BUFFER_MS=60_000;
 const MAX_IMAGE_CHARS=3_300_000;
@@ -44,7 +44,7 @@ module.exports=async function handler(req,res){
   res.setHeader('Cache-Control','no-store');
   if(req.method!=='POST')return res.status(405).json({ok:false,error:'Use POST.'});
   try{
-    await requireUser(req);
+    await requireHostUser(req);
     const imageDataUrl=String(req.body?.imageDataUrl||'');
     if(!validImageDataUrl(imageDataUrl))return res.status(400).json({ok:false,error:'Upload a JPG, PNG, or WebP screenshot under the size limit.'});
     const suppliedSource=clean(req.body?.sourceUrl,1200),sourceUrl=cleanSourceUrl(suppliedSource);
