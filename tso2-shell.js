@@ -6,6 +6,29 @@
   if(window.__TSO2_PARLAYPING_SHELL__)return;
   window.__TSO2_PARLAYPING_SHELL__=true;
   document.documentElement.dataset.tso2pp='true';
+  // When shown inside the actual TSO 2.0 Parlay Ping tab, use the PARENT
+  // site's sidebar and tabs: never nest a second TSO navigation / link hub.
+  const inFrame=window.self!==window.top;
+  let inTsoWorkspace=false;
+  if(inFrame){
+    try{
+      const params=new URLSearchParams(location.search);
+      if(params.get('tso_embed')==='1')sessionStorage.setItem('pp_tso2_embedded','1');
+      inTsoWorkspace=sessionStorage.getItem('pp_tso2_embedded')==='1';
+    }catch{inTsoWorkspace=new URLSearchParams(location.search).get('tso_embed')==='1';}
+  }
+  if(inTsoWorkspace){
+    document.documentElement.dataset.tso2ppEmbed='true';
+    const embeddedStyles=document.createElement('link');
+    embeddedStyles.rel='stylesheet';embeddedStyles.href='/tso2-shell.css?v=20261010-embed';
+    document.head.append(embeddedStyles);
+    try{
+      window.parent.postMessage({type:'tso2-parlayping-route',pathname:location.pathname,search:location.search},
+        'https://thesportsoutpost.com');
+    }catch{}
+    return;
+  }
+
   const tso='https://thesportsoutpost.com';
   const dest=[
     ['live','LIVE','Games & scores','📈',tso+'/#live'],
