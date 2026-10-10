@@ -50,7 +50,8 @@
       if(!target)return;
       if(target.pathname==='/account.html'||target.pathname==='/account'){
         event.preventDefault();
-        window.parent.postMessage({type:'tso2-parlayping-open-profile'},'https://thesportsoutpost.com');
+        const intent=anchor.id==='signInLink'?'tso2-parlayping-signin-request':'tso2-parlayping-open-profile';
+        window.parent.postMessage({type:intent},'https://thesportsoutpost.com');
         return;
       }
       event.preventDefault();
