@@ -43,6 +43,12 @@ jobs:
           check /submit html
           check /tso2-shell.js js
           check /tso2-shell.css css
+          check '/submit?tso_embed=1' html
+          curl --retry 3 --retry-delay 2 --connect-timeout 10 --max-time 35 -fsSL "$base/tso2-shell.js" -o /tmp/pp-route-handler.js
+          grep -Fq "localDestination" /tmp/pp-route-handler.js
+          grep -Fq "document.addEventListener('click',handleLink,true)" /tmp/pp-route-handler.js
+          grep -Fq "window.open=function" /tmp/pp-route-handler.js
+          echo "Parlay Ping internal betslip popout prevention: PASS"
           # Approved original Parlay Ping assets must survive the domain migration.
           for asset in /parlayping-approved-hero.webp /parlayping-approved-wordmark.webp; do
             contentType="$(curl --retry 2 --retry-delay 2 --connect-timeout 10 --max-time 35 -fsSL -o /tmp/tso-pp-approved-logo -w '%{content_type}' "$base$asset")"
