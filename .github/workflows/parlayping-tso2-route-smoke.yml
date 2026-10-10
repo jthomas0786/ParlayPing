@@ -1,0 +1,46 @@
+name: Parlay Ping × TSO 2.0 Public Smoke
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/parlayping-tso2-route-smoke.yml'
+      - 'tso2-shell.js'
+      - 'tso2-shell.css'
+      - 'render-server.js'
+      - 'app-nav.js'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Confirm Render is healthy on TSO subdomain
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://parlayping.thesportsoutpost.com"
+          function check() {
+            local route="$1" type="$2" file
+            file="$(mktemp)"
+            local http
+            http="$(curl --retry 3 --retry-delay 3 --connect-timeout 10 --max-time 35 -sS -L -o "$file" -w '%{http_code}' "$base$route")"
+            echo "$route : HTTP $http ($type)"
+            test "$http" = 200
+            case "$type" in
+              json) node -e 'const fs=require("fs"),o=JSON.parse(fs.readFileSync(process.argv[1]));if(!o.ok||o.runtime!=="render-node")throw Error("Wrong backend or missing Render health")' "$file";;
+              html) grep -Eiq "tso2-shell.js|PARLAYPING|ParlayPing" "$file";;
+              js) grep -Fq "TSO2_PARLAYPING_SHELL" "$file";;
+              css) grep -Fq "tso2-sidebar" "$file";;
+            esac
+            rm "$file"
+          }
+          check /healthz json
+          check / html
+          check /account.html html
+          check /profile html
+          check /submit html
+          check /tso2-shell.js js
+          check /tso2-shell.css css
+          echo 'TSO 2.0 branded Parlay Ping routes and Render backend: PASS'
