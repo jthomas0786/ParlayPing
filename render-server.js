@@ -218,7 +218,7 @@ async function handleApi(req, res, url, mapping) {
     if (/text\/html/i.test(contentType) && (typeof chunk === 'string' || Buffer.isBuffer(chunk))) {
       let page = String(chunk);
       if (!page.includes('src="/tso2-shell.js')) {
-        page = page.replace(/<\/head>/i, '<script defer src="/tso2-shell.js?v=20261010-inline"></script></head>');
+        page = page.replace(/<\/head>/i, '<script defer src="/tso2-account-bridge.js?v=20261010sso"></script><script defer src="/tso2-shell.js?v=20261010-inline"></script></head>');
       }
       chunk = page;
       if (!res.headersSent) res.removeHeader('Content-Length');
@@ -281,8 +281,8 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'HEAD') return res.end();
     try {
       const original = await fs.promises.readFile(file.absolute, 'utf8');
-      const injected = original.replace(new RegExp('</head>', 'i'), '<script defer src="/tso2-shell.js?v=20261010a"></script></head>');
-      return res.end(injected === original ? original + '<script defer src="/tso2-shell.js?v=20261010a"></script>' : injected);
+      const injected = original.replace(new RegExp('</head>', 'i'), '<script defer src="/tso2-account-bridge.js?v=20261010sso"></script><script defer src="/tso2-shell.js?v=20261010a"></script></head>');
+      return res.end(injected === original ? original + '<script defer src="/tso2-account-bridge.js?v=20261010sso"></script><script defer src="/tso2-shell.js?v=20261010a"></script>' : injected);
     } catch (error) {
       console.error('ParlayPing HTML read failed', error);
       res.statusCode = 500;
