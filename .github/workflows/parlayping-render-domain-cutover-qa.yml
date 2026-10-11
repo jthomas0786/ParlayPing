@@ -46,4 +46,15 @@ jobs:
           target="$(curl --retry 4 --retry-delay 3 --connect-timeout 10 --max-time 35 -sSL -o /dev/null -w '%{url_effective}:%{http_code}' 'https://www.parlayping.net/')"
           echo "$target"
           case "$target" in https://parlayping.net/*:200) echo 'www redirect and certificate: PASS';; *) echo 'www domain not redirecting to working root';exit 1;;esac
+          # New subscription billing remains a restricted sandbox preview; public callers cannot start Checkout.
+          curl --retry 3 --retry-delay 3 --connect-timeout 10 --max-time 35 -fsSL "$base/profile" -o /tmp/pp-profile.html
+          grep -Fq 'devUpgradeStarter' /tmp/pp-profile.html
+          grep -Fq 'Starter · $20/mo' /tmp/pp-profile.html
+          grep -Fq 'Pro · $70/mo' /tmp/pp-profile.html
+          grep -Fq 'Business · $120/mo' /tmp/pp-profile.html
+          curl --retry 3 --retry-delay 3 --connect-timeout 10 --max-time 35 -fsSL "$base/profile-dev.js" -o /tmp/pp-profile-dev.js
+          grep -Fq "checkout('starter')" /tmp/pp-profile-dev.js
+          code="$(curl --connect-timeout 10 --max-time 35 -sSL -o /tmp/pp-billing-checkout-anon.json -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d '{"plan":"starter"}' "$base/api/billing-checkout")"
+          if [ "$code" != 401 ]; then echo "Billing checkout authentication gate failed ($code)";exit 1;fi
+          echo 'Three-tier sandbox billing UI and unauthenticated checkout denial: PASS'
           echo 'ParlayPing.net HTTPS, standalone frontend, Render backend, upload, developer API and www redirect: VERIFIED'
