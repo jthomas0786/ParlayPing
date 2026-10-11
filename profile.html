@@ -16,7 +16,7 @@
   <link rel="stylesheet" href="/profile.css?v=20260924c">
   <link rel="stylesheet" href="/profile-push.css?v=20260924a">
   <link rel="stylesheet" href="/tracking-branding.css?v=20260924b">
-  <link rel="stylesheet" href="/profile-dev.css?v=20260924b">
+  <link rel="stylesheet" href="/profile-dev.css?v=20261011dev">
   <link rel="stylesheet" href="/profile-growth.css?v=20260926a">
 </head>
 <body>
@@ -55,7 +55,7 @@
         <nav class="profile-tabs" aria-label="Profile sections">
           <button type="button" class="active" data-profile-tab="tracking">Tracking</button>
           <button type="button" data-profile-tab="community">Community</button>
-          <button id="devTab" type="button" data-profile-tab="dev" hidden>Dev</button>
+          <button id="devTab" type="button" data-profile-tab="dev" hidden>Developer API</button>
         </nav>
       </section>
 
@@ -91,8 +91,8 @@
 
       <section id="devSection" class="feed-section dev-section" hidden aria-label="ParlayPing developer settings">
         <div class="tracking-toolbar">
-          <div><span class="eyebrow">PARLAYPING OWNER TOOLS</span><h2>Dev</h2><p>Private developer settings for the @ParlayPing account.</p></div>
-          <span class="dev-private-badge">PRIVATE</span>
+          <div><span class="eyebrow">PARLAYPING DEVELOPER API</span><h2>Developer dashboard</h2><p>Manage your subscription, track usage, and create keys for your own integration.</p></div>
+          <span id="devAccessBadge" class="dev-private-badge">SANDBOX PREVIEW</span>
         </div>
         <div class="dev-grid">
           <article class="dev-card">
@@ -104,14 +104,17 @@
           <article class="dev-card">
             <span class="eyebrow">BILLING</span><h3>Developer plan</h3>
             <p id="devBillingSummary">Loading billing…</p>
-            <p class="dev-sandbox-note">Sandbox preview only · no real charges · Developer API subscriptions are not publicly available yet.</p>
+            <p id="devSandboxNote" class="dev-sandbox-note">Developer API payments are in sandbox testing. No live subscriptions or charges.</p>
+            <p id="devPlanHint" class="dev-plan-hint">Plans start at $20/month. Subscription checkout currently requires tester approval.</p>
             <div id="devBillingFreeActions" class="dev-actions"><button id="devUpgradeStarter" type="button">Starter · $20/mo</button><button id="devUpgradePro" type="button">Pro · $70/mo</button><button id="devUpgradeBusiness" class="secondary" type="button">Business · $120/mo</button></div>
             <div id="devBillingPaidActions" class="dev-actions" hidden><button id="devManageBilling" type="button">Manage billing</button></div>
+            <a class="dev-plans-link" href="/developers">Compare all Developer API plans →</a>
           </article>
 
           <article class="dev-card dev-card-full">
             <div class="dev-card-head"><div><span class="eyebrow">AUTHENTICATION</span><h3>API keys</h3><p>Keys are only shown once when created.</p></div></div>
-            <form id="devKeyForm" class="dev-key-form"><input id="devKeyName" maxlength="80" placeholder="Key name" required><button type="submit">Create API key</button></form>
+            <form id="devKeyForm" class="dev-key-form"><input id="devKeyName" maxlength="80" placeholder="Key name" required aria-label="API key name"><button type="submit">Create API key</button></form>
+            <p id="devKeyHint" class="dev-plan-hint">An active paid Developer API subscription is required to issue keys.</p>
             <div id="devNewKeyBox" class="dev-new-key" hidden><span>Copy this key now:</span><code id="devNewKey"></code></div>
             <div id="devKeysList" class="dev-key-list"></div>
           </article>
@@ -119,6 +122,7 @@
           <article class="dev-card dev-card-full">
             <span class="eyebrow">API QUICK START</span><h3>Analyze a slip</h3>
             <code class="dev-code">POST https://parlayping.net/api/v1/analyze<br>x-api-key: pp_live_…<br>content-type: application/json<br><br>{"legs":[...]}</code>
+            <p class="dev-plan-hint">Keep keys on your server. Keys are shown only once and must never be embedded in browser JavaScript.</p>
           </article>
         </div>
         <div id="devStatus" class="dev-status" hidden role="status"></div>
@@ -132,7 +136,7 @@
   <script src="/profile.js?v=20260924c" defer></script>
   <script src="/tracking-branding.js?v=20260925a" defer></script>
   <script src="/profile-push.js?v=20260924a" defer></script>
-  <script src="/profile-dev.js?v=20260924b" defer></script>
+  <script src="/profile-dev.js?v=20261011dev" defer></script>
   <script src="/profile-growth.js?v=20260926a" defer></script>
 </body>
 </html>

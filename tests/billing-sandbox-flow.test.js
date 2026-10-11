@@ -105,3 +105,17 @@ test('invalid plan never reaches Stripe; completed checkout cannot grant API key
   assert(!source.includes('parlayping_stripe_apply_subscription'));
   assert(!source.includes('SUPABASE_SERVICE_ROLE_KEY'));
 });
+
+test('protected owner internal API license cannot be overwritten by sandbox checkout',async()=>{
+  process.env.PARLAYPING_BILLING_SANDBOX_ENABLED='true';
+  process.env.STRIPE_SECRET_KEY='sk_test_UnitTestKey123456';
+  subscription={provider:'internal',status:'active',plan_id:'free'};
+  global.fetch=()=>{throw Error('Stripe must never be contacted for protected internal account')};
+  const out=res();await router(req('billing-checkout',{plan:'business'}),out);
+  assert.equal(out.statusCode,409);
+  assert.match(out.body.error,/protected first-party API access/i);
+  const account=res();await router({...req('account'),method:'GET'},account);
+  assert.equal(account.statusCode,200);
+  assert.equal(account.body.sandboxCheckoutAllowed,false);
+  subscription=null;
+});
