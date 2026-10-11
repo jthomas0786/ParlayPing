@@ -116,3 +116,34 @@ test('public developers page promotes approved plans with no free entitlement',(
   assert.match(profile,/Developer dashboard/);
   assert.match(profile,/devKeyHint/);
 });
+
+test('approved tester with automatic internal/free signup can enter sandbox checkout, unlike protected owner',async()=>{
+  user={id:CLIENT_ID,email:'developer@example.invalid'};
+  sub={plan_id:'free',provider:'internal',status:'active',provider_subscription_id:null};
+  process.env.PARLAYPING_BILLING_TESTER_USER_IDS=CLIENT_ID;
+  process.env.PARLAYPING_BILLING_SANDBOX_ENABLED='true';
+  process.env.STRIPE_SECRET_KEY='sk_test_UnitTestKey123456';
+  process.env.STRIPE_PRO_PRICE_ID='price_1UPC1CLJU3n7oe0PnBVQIZd0';
+  const calls=[];
+  global.fetch=async(url,opts)=>{
+    calls.push({url,form:Object.fromEntries(new URLSearchParams(opts.body))});
+    return {ok:true,status:200,json:async()=>({id:'cs_test_signup',url:'https://checkout.stripe.com/c/pay/cs_test_signup'})};
+  };
+  const clientState=res();await router(req('account'),clientState);
+  assert.equal(clientState.statusCode,200);
+  assert.equal(clientState.body.sandboxCheckoutAllowed,true);
+  const checkout=res();await router(req('billing-checkout','POST',{plan:'pro'}),checkout);
+  assert.equal(checkout.statusCode,200);
+  assert.equal(calls[0].form['metadata[user_id]'],CLIENT_ID);
+  assert.equal(calls[0].form.customer_email,'developer@example.invalid');
+
+  user={id:OWNER_ID,email:'owner@example.invalid'};
+  const ownerState=res();await router(req('account'),ownerState);
+  assert.equal(ownerState.body.sandboxCheckoutAllowed,false);
+  const blocked=res();await router(req('billing-checkout','POST',{plan:'pro'}),blocked);
+  assert.equal(blocked.statusCode,409);
+  assert.match(blocked.body.error,/protected first-party API access/i);
+  assert.equal(calls.length,1);
+  user={id:CLIENT_ID,email:'developer@example.invalid'};
+  sub=null;
+});
