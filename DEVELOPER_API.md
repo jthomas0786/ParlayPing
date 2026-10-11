@@ -1,6 +1,6 @@
 # ParlayPing Developer API
 
-> **Licensing transition — product decision (2026-10-10):** Parlay Ping will have **no publicly available Free developer API tier**. All public API subscriptions must be paid and metered; complimentary Affiliate/Partner access requires explicit owner approval, usage caps, and expiry. See [API_BRANDING_TIERS.md](./API_BRANDING_TIERS.md) for the planned Starter / Pro / Business / Enterprise + private Partner model. **This document below still describes the legacy implementation, including old Free limits and test-mode Stripe pricing; those are not an approved public offer.** Supabase/Stripe and API enforcement have not yet been migrated. Do not interpret existing Free-plan data as authorization to issue new complimentary commercial API keys.
+> **Licensing transition — product decision (2026-10-10):** Parlay Ping will have **no publicly available Free developer API tier**. All public API subscriptions must be paid and metered; complimentary Affiliate/Partner access requires explicit owner approval, usage caps, and expiry. See [API_BRANDING_TIERS.md](./API_BRANDING_TIERS.md) for the planned Starter / Pro / Business / Enterprise + private Partner model. **This document below still describes the legacy account/quota implementation, including its old Free limits; those are not an approved public offer.** Stripe sandbox products and monthly prices for Starter $20, Pro $70 and Business $120 have now been created; see the exact sandbox-only Price IDs in [API_BRANDING_TIERS.md](./API_BRANDING_TIERS.md). Checkout/entitlement migrations are not finished. Supabase/Stripe and API enforcement have not yet been migrated. Do not interpret existing Free-plan data as authorization to issue new complimentary commercial API keys.
 
 ## Account and authentication
 
@@ -151,7 +151,7 @@ Initial launch defaults:
 | Pro | 25,000 | 120 | 10 |
 | Business | 250,000 | 600 | 50 |
 
-Test-mode Stripe pricing is currently configured at $19/month for Pro and $99/month for Business. These are provisional test prices and may change before live billing is enabled.
+**2026-10-10 sandbox price update:** Stripe products and prices are created for Starter **$20/month**, Pro **$70/month**, Business **$120/month**. The approved target monthly use allowances are respectively **5,000 / 20,000 / 50,000**; this table above describes the **legacy backend** limits only and must be migrated before public paid enrollment. The older $19 Pro / $99 Business test prices are superseded. No live subscriptions, live Price IDs, public paid checkout or subscription webhook migration are asserted by this setup.
 
 ## Security model
 
