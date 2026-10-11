@@ -1,5 +1,5 @@
 const {requireUser,supabaseFetch,accountEdge}=require('./lib/supabase-account');
-const {stripePost,priceIdForPlan,assertSandboxBillingReady}=require('./lib/stripe-billing');
+const {stripePost,priceIdForPlan,assertSandboxBillingReady,sandboxPortalConfigId}=require('./lib/stripe-billing');
 
 // Canonical ParlayPing owner account. Public customer developer access must never grant owner privileges.
 const DEFAULT_DEV_USER_ID='a08636ec-508e-457d-8e5a-400a0ec39729';
@@ -141,7 +141,7 @@ async function billingPortal(req,res){
     if(!sub?.provider_customer_id)return res.status(409).json({ok:false,error:'No Stripe billing profile exists yet.'});
     assertSandboxBillingReady();
     const base=String(process.env.PUBLIC_BASE_URL||'https://parlayping.net').replace(/\/$/,'');
-    const portal=await stripePost('/billing_portal/sessions',{customer:sub.provider_customer_id,return_url:`${base}/profile?tab=dev`});
+    const portal=await stripePost('/billing_portal/sessions',{configuration:sandboxPortalConfigId(),customer:sub.provider_customer_id,return_url:`${base}/profile?tab=dev`});
     return res.status(200).json({ok:true,url:portal.url,id:portal.id});
   }catch(error){return res.status(errorStatus(error)).json({ok:false,error:error?.message||'Unable to open billing portal.'});}
 }
