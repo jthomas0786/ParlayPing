@@ -92,4 +92,8 @@ jobs:
           code="$(curl --connect-timeout 10 --max-time 35 -sSL -o /tmp/pp-dev-checkout-unauth.json -w '%{http_code}' -X POST -H 'Content-Type: application/json' --data '{"plan":"pro"}' "$base/api/billing-checkout")"
           [ "$code" = 401 ] || { echo "Unauthenticated developer checkout not denied: $code"; exit 1; }
           echo 'Public Developer API landing, plans, tool nav and private authentication boundaries: VERIFIED'
+          # Billing portal must be authenticated; never expose test customer sessions publicly.
+          code="$(curl --retry 2 --retry-delay 2 --connect-timeout 10 --max-time 25 -sS -o /tmp/pp-billing-portal-anon.json -w '%{http_code}' -X POST -H 'content-type: application/json' -d '{}' "$base/api/billing-portal")"
+          if [ "$code" != 401 ]; then echo "Billing Portal auth gate failed ($code)"; exit 1; fi
+          echo 'Billing Portal unauthenticated access denied: PASS'
           echo 'ParlayPing.net HTTPS, standalone frontend, Render backend, upload, developer API and www redirect: VERIFIED'
