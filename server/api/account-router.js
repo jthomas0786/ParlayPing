@@ -1,5 +1,5 @@
 const {requireUser,supabaseFetch,accountEdge}=require('./lib/supabase-account');
-const {stripePost,priceIdForPlan}=require('./lib/stripe-billing');
+const {stripePost,priceIdForPlan,assertSandboxBillingReady}=require('./lib/stripe-billing');
 
 // Canonical ParlayPing owner account. PARLAYPING_DEV_USER_ID may override this in Vercel.
 const DEFAULT_DEV_USER_ID='a08636ec-508e-457d-8e5a-400a0ec39729';
@@ -102,7 +102,8 @@ async function billingCheckout(req,res){
   try{
     const{token,user}=await requireUser(req);requireDeveloper(user);
     const body=parseBody(req),plan=String(body.plan||'').toLowerCase();
-    if(!['pro','business'].includes(plan))return res.status(400).json({ok:false,error:'plan must be pro or business.'});
+    if(!['starter','pro','business'].includes(plan))return res.status(400).json({ok:false,error:'plan must be starter, pro, or business.'});
+    assertSandboxBillingReady();
     const priceId=priceIdForPlan(plan);
     const rows=await supabaseFetch(`/rest/v1/subscriptions?select=*&user_id=eq.${encodeURIComponent(user.id)}`,{token});
     const sub=rows?.[0]||null;
@@ -124,6 +125,7 @@ async function billingPortal(req,res){
     const rows=await supabaseFetch(`/rest/v1/subscriptions?select=*&user_id=eq.${encodeURIComponent(user.id)}`,{token});
     const sub=rows?.[0]||null;
     if(!sub?.provider_customer_id)return res.status(409).json({ok:false,error:'No Stripe billing profile exists yet.'});
+    assertSandboxBillingReady();
     const base=String(process.env.PUBLIC_BASE_URL||'https://parlayping.net').replace(/\/$/,'');
     const portal=await stripePost('/billing_portal/sessions',{customer:sub.provider_customer_id,return_url:`${base}/profile?tab=dev`});
     return res.status(200).json({ok:true,url:portal.url,id:portal.id});
