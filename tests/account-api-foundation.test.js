@@ -45,7 +45,8 @@ test('private profile Dev runtime owns Stripe billing and API-key management flo
   assert.match(profile,/Business/);
   assert.match(profile,/Manage billing/);
   assert.match(router,/priceIdForPlan/);
-  assert.match(router,/requireDeveloper\(user\)/);
+  assert.match(router,/requireSandboxTester\(user\)/);
+  assert.match(router,/sandboxCheckoutAllowed/);
 });
 
 test('Vercel account/API source never requires or embeds Supabase service-role credentials',()=>{
