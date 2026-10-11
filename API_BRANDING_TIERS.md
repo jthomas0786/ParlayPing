@@ -1,6 +1,6 @@
 # Parlay Ping — B2B API plans, branding, and invite-only partners
 
-**Product direction confirmed 2026-10-10.** This is the target specification, **not a statement that live billing or access controls have shipped**. The current product still contains legacy Free / Pro / Business API configuration, Pro / Business test-mode Stripe prices, and an owner-only developer console. No live price, Stripe product, Supabase grant, existing key, or user account is changed by this document.
+**Product direction confirmed 2026-10-10; prices approved for sandbox 2026-10-10.** This is the target specification, **not a statement that live billing or access controls have shipped**. Three new Stripe sandbox products and monthly recurring prices exist, but public checkout, paid entitlement enforcement, live Stripe products, and subscription lifecycle webhooks are not yet confirmed ready. No live price, existing Supabase grant, key, or user account was changed.
 
 ## Licensing and user accounts
 
@@ -10,20 +10,30 @@ The **website owner/business** purchases one Parlay Ping developer API subscript
 
 **Every publicly purchasable API tier is paid.** There must be no free public API key plan, automatic free API issuance after signup, or zero-cost checkout bypass. Creating an ordinary account alone never permits API access. Partner access and first-party operation are explicit, private entitlements only; neither is a public Free tier.
 
-### Proposed monthly usage packages (numbers for product planning; prices not yet approved)
+### Approved monthly prices and proposed usage packages (sandbox only; entitlement enforcement pending)
 
-| Tier | Public? | Monthly API uses | Rate cap | Active API keys | Theme / logos | Attribution |
-| --- | --- | ---: | ---: | ---: | --- | --- |
-| Starter (paid) | Yes | **5,000** | 30/min | 2 | **Standard Parlay Ping** design/approved logo used on TSO 2.0 | Full approved Parlay Ping identity |
-| Pro (paid) | Yes | **25,000** | 120/min | 10 | **Standard Parlay Ping** design/approved logo used on TSO 2.0 | Full approved Parlay Ping identity |
-| Business (paid) | Yes | **250,000** | 600/min | 50 | Licensee may use **its own theme and branding** | Visible, legible **Powered by Parlay Ping** badge with approved mark/link |
-| Enterprise (paid) | Contact sales / approved agreement | Contract-specific | Contract-specific | Contract-specific | Extended tenant-controlled branding/integration | Visible, legible **Powered by Parlay Ping** badge with approved mark/link |
-| Affiliate / Partner (complimentary, invitation-only) | **No** | **10,000 initial default**, owner may override | **120/min initial default** | **3 initial default** | **Standard Parlay Ping** unless owner individually approves custom branding | At minimum full approved Parlay Ping identity; customized exceptions still say **Powered by Parlay Ping** |
-| First-party TSO/Parlay Ping internal | **No** | Internal allocation/controls | Internal allocation/controls | Service-scoped | As separately approved for TSO 2.0 | Product-specific attribution; not a commercial API plan |
+| Tier | Public? | Monthly price (USD) | Monthly API uses | Rate cap | Active API keys | Theme / logos | Attribution |
+| --- | --- | ---: | ---: | ---: | ---: | --- | --- |
+| Starter (paid) | Yes | **$20** | **5,000** | 30/min | 2 | **Standard Parlay Ping** design/approved logo used on TSO 2.0 | Full approved Parlay Ping identity |
+| Pro (paid) | Yes | **$70** | **20,000** | 120/min | 10 | **Standard Parlay Ping** design/approved logo used on TSO 2.0 | Full approved Parlay Ping identity |
+| Business (paid) | Yes | **$120** | **50,000** | 600/min | 50 | Licensee may use **its own theme and branding** | Visible, legible **Powered by Parlay Ping** badge with approved mark/link |
+| Enterprise (paid) | Contact sales / approved agreement | Custom | Contract-specific | Contract-specific | Contract-specific | Extended tenant-controlled branding/integration | Visible, legible **Powered by Parlay Ping** badge with approved mark/link |
+| Affiliate / Partner (complimentary, invitation-only) | **No** | $0 (owner approval only) | **10,000 initial default**, owner may override | **120/min initial default** | **3 initial default** | **Standard Parlay Ping** unless owner individually approves custom branding | At minimum full approved Parlay Ping identity; customized exceptions still say **Powered by Parlay Ping** |
+| First-party TSO/Parlay Ping internal | **No** | Internal only | Internal allocation/controls | Internal allocation/controls | Service-scoped | As separately approved for TSO 2.0 | Product-specific attribution; not a commercial API plan |
 
 **A use** is one admitted billable API operation, such as `POST /api/v1/analyze`, `/api/v1/build`, or `/api/v1/share`. It is **not** a unique end user, sportsbook leg, widget view, or login. Replay of an existing `X-Request-Id` for the same key and operation must not charge twice. Clearly define and consistently display how invalid requests, upstream failures, and batch jobs affect metering before launch. Monthly quotas and per-minute caps are enforced server-side across *all keys belonging to the account*; normal customers stop with an actionable quota-exceeded response when exhausted (no surprise overage billing). Show remaining uses and next reset in their developer console. Changing plans must not reset usage to evade limits.
 
-**Prices:** To be determined by the owner after validating real API/data costs. Historical test-only $19 Pro / $99 Business are **not** approved production prices. Do not configure live billing or mark paid access active without owner-approved Stripe prices and verified subscription webhooks.
+**Approved sandbox prices:** Starter **$20/month**, Pro **$70/month**, Business **$120/month**, each a fixed-price monthly subscription. Per-plan allowances are **proposed application-enforced quotas**, not Stripe metered overages or proof that Supabase already enforces these new values. Historical $19 Pro / $99 Business references are superseded. Before live launch, validate data/AI costs, update backend quota tables and entitlements, wire checkout/webhooks, and create separate **live-mode** Stripe products/prices only after explicit go-live approval.
+
+## Stripe sandbox product and Price IDs — created, not live billing
+
+| Plan | Stripe sandbox Product ID | Stripe sandbox monthly Price ID |
+| --- | --- | --- |
+| Starter | `prod_VQ25WPwzuEYqOH` | `price_1UPC14LJU3n7oe0PWXlzXBDx` |
+| Pro | `prod_VQ25p4iscqvaLu` | `price_1UPC1CLJU3n7oe0PnBVQIZd0` |
+| Business | `prod_VQ25kiI9mV6PzA` | `price_1UPC1HLJU3n7oe0Pm1WkA86y` |
+
+Stripe account: **ParlayPing sandbox** (`acct_1UHu5WLJU3n7oe0P`), `livemode=false`. Each product has a USD fixed, monthly recurring default Price; the approved monthly allowances and branding rights are recorded as product metadata. Stripe price objects **do not enforce API quotas**; the Parlay Ping backend and Supabase entitlement records must do that independently. Do not use these test Price IDs alongside a live Stripe secret key; never put a Stripe secret key into GitHub or public client code. `STRIPE_STARTER_PRICE_ID`, `STRIPE_PRO_PRICE_ID`, and `STRIPE_BUSINESS_PRICE_ID` can be wired in a separate, tested sandbox checkout integration. The legacy checkout currently requires Pro/Business and may need a Starter branch.
 
 ## Affiliate / Partner — owner approval only
 
@@ -66,4 +76,4 @@ For an *API-powered hosted widget*, resolve branding from the server's active en
 
 ## Implementation status
 
-This file is a **product specification** only. Current `DEVELOPER_API.md` records the *historical live implementation* (including legacy Free limits and test-mode pricing). The Supabase plan rows, developer signup/key authorization, Stripe prices, owner-only admin tools, partner applications, referral attribution, brand entitlement enforcement, and hosted widget still need coordinated code/database changes and security/live route tests before this licensing model can be advertised as operational.
+This file is a **product specification** only. Current `DEVELOPER_API.md` records the *historical live implementation* (including legacy Free limits and test-mode pricing). Stripe **sandbox** products and prices are now created; the Supabase plan rows, developer signup/key authorization, sandbox checkout mapping, Stripe webhooks, owner-only admin tools, partner applications, referral attribution, brand entitlement enforcement, and hosted widget still need coordinated code/database changes and security/live route tests before this licensing model can be advertised as operational.
