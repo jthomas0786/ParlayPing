@@ -56,8 +56,6 @@
     return sub?.provider==='stripe'&&['active','trialing'].includes(String(sub.status||''))&&['starter','pro','business'].includes(String(data?.usage?.plan||'').toLowerCase());
   }
   async function syncReturnedCheckout(){
-    if(!new URLSearchParams(location.search).has('billing')&&
-       !new URLSearchParams(location.search).has('session_id'))return;
     // A Checkout return URL is not proof of payment. Only verified webhook-backed
     // Supabase subscription and usage data can unlock keys and quota.
     if(verifiedPaidEntitlement(accountData))return;
@@ -79,7 +77,7 @@
     try{const url=new URL(String(value||''));return url.protocol==='https:'&&url.hostname===host?url.href:null;}catch{return null;}
   }
 
-  function setTabUrl(tab){const url=new URL(location.href);if(tab==='tracking')url.searchParams.delete('tab');else url.searchParams.set('tab',tab);url.searchParams.delete('billing');history.replaceState({},'',url.pathname+(url.searchParams.toString()?`?${url.searchParams}`:''));}
+  function setTabUrl(tab){const url=new URL(location.href);if(tab==='tracking')url.searchParams.delete('tab');else url.searchParams.set('tab',tab);url.searchParams.delete('billing');url.searchParams.delete('session_id');history.replaceState({},'',url.pathname+(url.searchParams.toString()?`?${url.searchParams}`:''));}
   function activateDev(){if($('devTab')?.hidden)return;$('trackingSection').hidden=true;$('communitySection').hidden=true;$('devSection').hidden=false;document.querySelectorAll('[data-profile-tab]').forEach(node=>node.classList.toggle('active',node.id==='devTab'));setTabUrl('dev');if(!accountData)loadDeveloper().catch(error=>showStatus(error.message,true));}
   function wireTabs(){document.querySelectorAll('[data-profile-tab]').forEach(button=>button.addEventListener('click',()=>{if(button.dataset.profileTab==='dev'){activateDev();return;}$('devSection').hidden=true;setTabUrl(button.dataset.profileTab==='community'?'community':'tracking');}));}
   function applyRequestedTab(){const requested=new URLSearchParams(location.search).get('tab');if(requested==='dev'&&!$('devTab')?.hidden){activateDev();return;}if(requested==='community')document.querySelector('[data-profile-tab="community"]')?.click();}
