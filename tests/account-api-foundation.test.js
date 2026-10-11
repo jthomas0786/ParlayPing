@@ -30,7 +30,7 @@ test('regular account surface contains user auth and profile settings while deve
   for(const needle of ['Create account','Sign in','Profile details','Open Tracking'])assert.match(account,new RegExp(needle.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
   assert.doesNotMatch(account,/API Keys/i);
   assert.doesNotMatch(account,/>Usage</i);
-  for(const needle of ['>Dev<','API keys','Usage','/api/v1/analyze'])assert.match(profile,new RegExp(needle.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'i'));
+  for(const needle of ['>Developer API<','API keys','Usage','/api/v1/analyze'])assert.match(profile,new RegExp(needle.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'i'));
 });
 
 test('private profile Dev runtime owns Stripe billing and API-key management flows',()=>{
