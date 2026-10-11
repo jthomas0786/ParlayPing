@@ -25,6 +25,7 @@ const apiRoutes = new Map([
   ['/api/landing-create', 'landing-create'],
   ['/api/trending-build', 'trending-build'],
   ['/api/community-submit', 'community-submit'],
+  ['/api/tso-build', 'tso-build'],
   ['/api/community-grade-worker', 'community-grade-worker'],
   ['/api/v1/analyze', 'v1-analyze'],
   ['/api/v1/build', 'v1-build'],
