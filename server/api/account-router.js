@@ -1,7 +1,7 @@
 const {requireUser,supabaseFetch,accountEdge}=require('./lib/supabase-account');
 const {stripePost,priceIdForPlan,assertSandboxBillingReady}=require('./lib/stripe-billing');
 
-// Canonical ParlayPing owner account. PARLAYPING_DEV_USER_ID may override this in Vercel.
+// Canonical ParlayPing owner account. Public customer developer access must never grant owner privileges.
 const DEFAULT_DEV_USER_ID='a08636ec-508e-457d-8e5a-400a0ec39729';
 
 function parseBody(req){
@@ -12,7 +12,21 @@ function parseBody(req){
 
 function developerUserId(){return String(process.env.PARLAYPING_DEV_USER_ID||DEFAULT_DEV_USER_ID).trim();}
 function isDeveloperUser(user){return Boolean(user?.id)&&String(user.id)===developerUserId();}
-function requireDeveloper(user){if(!isDeveloperUser(user)){const error=new Error('Developer access is restricted to the ParlayPing account.');error.status=403;throw error;}}
+function isSandboxTester(user){
+  const id=String(user?.id||'');
+  if(!id)return false;
+  const approved=new Set(String(process.env.PARLAYPING_BILLING_TESTER_USER_IDS||'').split(',').map(v=>v.trim()).filter(Boolean));
+  return isDeveloperUser(user)||approved.has(id);
+}
+function sandboxCheckoutEnabled(){
+  return String(process.env.PARLAYPING_BILLING_SANDBOX_ENABLED||'').toLowerCase()==='true';
+}
+function requireSandboxTester(user){
+  if(!isSandboxTester(user)){
+    const error=new Error('Sandbox checkout is limited to approved test accounts. Real subscriptions are not on sale yet.');
+    error.status=403;throw error;
+  }
+}
 function errorStatus(error,fallback=500){const status=Number(error?.status)||fallback;return status>=400&&status<600?status:fallback;}
 
 async function account(req,res){
@@ -20,36 +34,35 @@ async function account(req,res){
   res.setHeader('Content-Type','application/json; charset=utf-8');
   try{
     const{token,user}=await requireUser(req);
-    const isDeveloper=isDeveloperUser(user);
+    const isOwner=isDeveloperUser(user);
     if(req.method==='GET'){
       const profilePromise=supabaseFetch(`/rest/v1/profiles?select=*&id=eq.${encodeURIComponent(user.id)}`,{token});
-      let subscriptions=[],privateData=null;
-      if(isDeveloper){
-        [subscriptions,privateData]=await Promise.all([
-          supabaseFetch(`/rest/v1/subscriptions?select=*,plans(*)&user_id=eq.${encodeURIComponent(user.id)}`,{token}),
-          accountEdge(token,{action:'bootstrap'}),
-        ]);
-      }
+      const [subscriptions,privateData]=await Promise.all([
+        supabaseFetch(`/rest/v1/subscriptions?select=*,plans(*)&user_id=eq.${encodeURIComponent(user.id)}`,{token}),
+        accountEdge(token,{action:'bootstrap'}),
+      ]);
       const profiles=await profilePromise;
       return res.status(200).json({
         ok:true,
-        isDeveloper,
+        isDeveloper:true, // Developer dashboard is accessible to signed-in ParlayPing customers.
+        isOwner,
+        sandboxCheckoutAllowed:sandboxCheckoutEnabled()&&isSandboxTester(user),
         user:{id:user.id,email:user.email||null,createdAt:user.created_at||null},
         profile:profiles?.[0]||null,
-        subscription:isDeveloper?(subscriptions?.[0]||null):null,
-        usage:isDeveloper?(privateData?.usage||null):null,
-        apiKeys:isDeveloper&&Array.isArray(privateData?.keys)?privateData.keys:[],
+        subscription:subscriptions?.[0]||null,
+        usage:privateData?.usage||null,
+        apiKeys:Array.isArray(privateData?.keys)?privateData.keys:[],
       });
     }
     if(req.method==='PATCH'){
       const body=parseBody(req);
       const allowed=['display_name','x_username','avatar_url','website_url'];
-      if(isDeveloper)allowed.push('developer_name','company_name');
+      allowed.push('developer_name','company_name');
       const patch={};
       for(const key of allowed)if(Object.prototype.hasOwnProperty.call(body,key))patch[key]=body[key]===null?null:String(body[key]).trim().slice(0,300);
       if(!Object.keys(patch).length)return res.status(400).json({ok:false,error:'No supported profile fields supplied.'});
       const rows=await supabaseFetch(`/rest/v1/profiles?id=eq.${encodeURIComponent(user.id)}`,{method:'PATCH',token,body:patch,headers:{Prefer:'return=representation'}});
-      return res.status(200).json({ok:true,isDeveloper,profile:rows?.[0]||null});
+      return res.status(200).json({ok:true,isDeveloper:true,isOwner,profile:rows?.[0]||null});
     }
     return res.status(405).json({ok:false,error:'Use GET or PATCH.'});
   }catch(error){
@@ -61,7 +74,7 @@ async function apiKeys(req,res){
   res.setHeader('Cache-Control','no-store');
   res.setHeader('Content-Type','application/json; charset=utf-8');
   try{
-    const{token,user}=await requireUser(req);requireDeveloper(user);
+    const{token}=await requireUser(req);
     if(req.method==='GET'){
       const data=await accountEdge(token,{action:'listKeys'});
       return res.status(200).json({ok:true,keys:Array.isArray(data?.keys)?data.keys:[]});
@@ -80,7 +93,7 @@ async function apiKeys(req,res){
     }
     return res.status(405).json({ok:false,error:'Use GET, POST, or DELETE.'});
   }catch(error){
-    const status=/limit reached/i.test(error?.message||'')?409:errorStatus(error);
+    const status=/limit reached/i.test(error?.message||'')?409:/active paid subscription required/i.test(error?.message||'')?403:errorStatus(error);
     return res.status(status).json({ok:false,error:error?.message||'API key request failed.'});
   }
 }
@@ -100,7 +113,7 @@ async function billingCheckout(req,res){
   res.setHeader('Content-Type','application/json; charset=utf-8');
   if(req.method!=='POST')return res.status(405).json({ok:false,error:'Use POST.'});
   try{
-    const{token,user}=await requireUser(req);requireDeveloper(user);
+    const{token,user}=await requireUser(req);requireSandboxTester(user);
     const body=parseBody(req),plan=String(body.plan||'').toLowerCase();
     if(!['starter','pro','business'].includes(plan))return res.status(400).json({ok:false,error:'plan must be starter, pro, or business.'});
     assertSandboxBillingReady();
@@ -121,7 +134,7 @@ async function billingPortal(req,res){
   res.setHeader('Content-Type','application/json; charset=utf-8');
   if(req.method!=='POST')return res.status(405).json({ok:false,error:'Use POST.'});
   try{
-    const{token,user}=await requireUser(req);requireDeveloper(user);
+    const{token,user}=await requireUser(req);requireSandboxTester(user);
     const rows=await supabaseFetch(`/rest/v1/subscriptions?select=*&user_id=eq.${encodeURIComponent(user.id)}`,{token});
     const sub=rows?.[0]||null;
     if(!sub?.provider_customer_id)return res.status(409).json({ok:false,error:'No Stripe billing profile exists yet.'});
@@ -141,3 +154,4 @@ module.exports=async function handler(req,res){
 };
 
 module.exports.isDeveloperUser=isDeveloperUser;
+module.exports.isSandboxTester=isSandboxTester;
