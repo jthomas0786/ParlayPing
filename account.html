@@ -20,7 +20,7 @@
         <a href="/">Build</a>
         <a href="/#similar">Explore</a>
         <a href="/profile?tab=community">Community</a>
-        <a href="/#insights">Insights</a>
+        <a href="/#insights">Insights</a><a href="/developers">Developer API</a>
       </nav>
       <a class="track-nav" href="/profile">Tracking</a>
     </div>
@@ -57,7 +57,7 @@
       <section class="account-hero">
         <div class="avatar-shell"><div id="accountAvatar" class="account-avatar">PP</div></div>
         <div class="account-copy"><span class="eyebrow">PROFILE SETTINGS</span><h1 id="accountName">ParlayPing User</h1><p id="accountEmail" class="muted"></p></div>
-        <div class="account-actions"><a href="/profile" class="secondary-button">Open Tracking</a><button id="signOutBtn" class="ghost-button" type="button">Sign out</button></div>
+        <div class="account-actions"><a href="/profile?tab=dev" class="secondary-button">Developer dashboard</a><a href="/profile" class="secondary-button">Open Tracking</a><button id="signOutBtn" class="ghost-button" type="button">Sign out</button></div>
       </section>
 
       <section class="settings-grid">
@@ -87,14 +87,14 @@
           <h2>Built around Tracking.</h2>
           <div class="benefit"><span>◎</span><div><strong>Placed + Watching</strong><p>Keep bets from every sportsbook together on one Tracking page.</p></div></div>
           <div class="benefit"><span>↗</span><div><strong>Movement alerts</strong><p>Get push notifications when tracked player or team stats move.</p></div></div>
-          <div class="benefit"><span>◇</span><div><strong>Community sharing</strong><p>Share branded live Tracking Cards without exposing private slips by default.</p></div></div>
+          <div class="benefit"><span>◇</span><div><strong>Community sharing</strong><p>Share branded live Tracking Cards without exposing private slips by default.</p></div></div><div class="benefit"><span>⌘</span><div><strong>Developer API</strong><p>Use your ParlayPing account to view API plans, check your allowance, and manage keys when subscribed. <a href="/developers">Explore plans</a>.</p></div></div>
         </aside>
       </section>
       <div id="accountStatus" class="status hidden" role="status"></div>
     </section>
   </main>
   <script src="/app-nav.js?v=20260926b" defer data-pp-app-nav></script>
-  <script src="/account.js?v=20260924c" defer></script>
+  <script src="/account.js?v=20261011dev" defer></script>
   <script src="/referral-capture.js?v=20260926a" defer></script>
 </body>
 </html>
