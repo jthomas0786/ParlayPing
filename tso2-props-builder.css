@@ -1,0 +1,74 @@
+/* Exact TSO 2.0 broadcast look for the member-authenticated props draft.
+   Loaded in TSO embed only; does not affect standalone Parlay Ping. */
+html[data-tso2pp-embed] .pp-tso-selection-panel{
+  display:block;margin:0 0 14px;padding:20px 23px;
+  border:1px solid rgba(255,255,255,.11);border-left:3px solid #ff4d1c;
+  background:#090d12;color:#e9edf4;
+}
+html[data-tso2pp-embed] .pp-tso-selection-heading{
+ display:flex;align-items:center;justify-content:space-between;gap:15px;
+ padding-bottom:15px;border-bottom:1px solid rgba(255,255,255,.1);
+}
+html[data-tso2pp-embed] .pp-tso-selection-heading span{
+ color:#ff986f;letter-spacing:.13em;font-size:10px;font-weight:900;
+}
+html[data-tso2pp-embed] .pp-tso-selection-heading h2{
+ margin:5px 0 4px;font-size:clamp(19px,2vw,25px);font-weight:950;
+ color:#fff;letter-spacing:-.02em;
+}
+html[data-tso2pp-embed] .pp-tso-selection-heading p{font-size:12px;margin:0;color:#94a1b1}
+html[data-tso2pp-embed] .pp-tso-selection-heading p strong{color:#e7edf6}
+html[data-tso2pp-embed] #ppTsoDraftCount{
+ border:1px solid rgba(255,216,77,.19);color:#ffd84d;
+ padding:8px 10px;font-size:10px;white-space:nowrap;
+}
+html[data-tso2pp-embed] .pp-tso-draft-rows{padding:6px 0;min-width:0}
+html[data-tso2pp-embed] .pp-tso-draft-empty{
+ display:flex;flex-direction:column;align-items:center;justify-content:center;
+ gap:6px;min-height:110px;text-align:center;color:#bbc6d3;font-size:12px;
+}
+html[data-tso2pp-embed] .pp-tso-draft-empty span{color:#8793a1;font-size:11px}
+html[data-tso2pp-embed] .pp-tso-draft-row{
+ display:grid;grid-template-columns:26px minmax(120px,1fr) minmax(68px,auto) minmax(66px,auto) 28px;
+ align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.065);
+}
+html[data-tso2pp-embed] .pp-tso-draft-row>b{font-size:11px;color:#ffd84d}
+html[data-tso2pp-embed] .pp-tso-draft-row>div strong{display:block;color:#f1f4f7;font-size:13px}
+html[data-tso2pp-embed] .pp-tso-draft-row>div small{
+ display:block;color:#8e9baa;font-size:11px;margin-top:3px;line-height:1.35;
+}
+html[data-tso2pp-embed] .pp-tso-draft-row>span{text-align:right}
+html[data-tso2pp-embed] .pp-tso-draft-row>span strong{
+ display:block;color:#f7f7fa;font-weight:850;font-size:12px;
+}
+html[data-tso2pp-embed] .pp-tso-draft-row>span small{
+ display:block;color:#8793a1;font-size:9px;letter-spacing:.04em;margin-top:3px;
+}
+html[data-tso2pp-embed] .pp-tso-draft-row>button{
+ border:1px solid rgba(255,255,255,.16);border-radius:2px;
+ background:transparent;color:#d9e0eb;font-size:19px;cursor:pointer;
+}
+html[data-tso2pp-embed] .pp-tso-draft-actions{
+ display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:9px;
+ margin:15px 0 0;
+}
+html[data-tso2pp-embed] .pp-tso-draft-actions button{
+ padding:11px 12px;border:1px solid rgba(255,255,255,.15);
+ border-radius:2px;background:#151a22;color:#e8edf5;
+ font-size:11px;font-weight:950;cursor:pointer;
+}
+html[data-tso2pp-embed] .pp-tso-draft-actions .pp-tso-primary{
+ background:#ff4d1c;border-color:#ff4d1c;color:#fff;min-width:190px;
+}
+html[data-tso2pp-embed] .pp-tso-draft-actions button:disabled{opacity:.4;cursor:not-allowed}
+html[data-tso2pp-embed] .pp-tso-draft-status{
+ margin:12px 0 0;color:#8b9baa;font-size:11px;line-height:1.5;
+}
+@media(max-width:600px){
+ html[data-tso2pp-embed] .pp-tso-selection-panel{padding:14px 12px}
+ html[data-tso2pp-embed] .pp-tso-selection-heading{align-items:flex-start}
+ html[data-tso2pp-embed] .pp-tso-selection-heading p{max-width:250px}
+ html[data-tso2pp-embed] .pp-tso-draft-row{grid-template-columns:20px minmax(100px,1fr) minmax(54px,auto) 26px;gap:7px}
+ html[data-tso2pp-embed] .pp-tso-draft-row>span:nth-of-type(2){display:none}
+ html[data-tso2pp-embed] .pp-tso-draft-actions button{flex:1 1 auto}
+}
