@@ -123,7 +123,7 @@ async function billingCheckout(req,res){
     if(isDeveloperUser(user)&&sub?.provider==='internal'&&sub?.status==='active')return res.status(409).json({ok:false,error:'This account has protected first-party API access. Use a separate approved sandbox test account.'});
     if(sub?.provider==='stripe'&&sub?.provider_subscription_id&&['active','trialing','past_due','unpaid'].includes(sub.status))return res.status(409).json({ok:false,error:'You already have a Stripe subscription. Use Manage billing to change or cancel it.'});
     const base=String(process.env.PUBLIC_BASE_URL||'https://parlayping.net').replace(/\/$/,'');
-    const fields={mode:'subscription',success_url:`${base}/profile?tab=dev&billing=success&session_id={CHECKOUT_SESSION_ID}`,cancel_url:`${base}/profile?tab=dev&billing=cancelled`,'line_items[0][price]':priceId,'line_items[0][quantity]':1,client_reference_id:user.id,'metadata[user_id]':user.id,'metadata[plan_id]':plan,'subscription_data[metadata][user_id]':user.id,'subscription_data[metadata][plan_id]':plan,allow_promotion_codes:'true'};
+    const fields={mode:'subscription',success_url:`${base}/profile?tab=dev&billing=success&session_id={CHECKOUT_SESSION_ID}`,cancel_url:`${base}/profile?tab=dev&billing=cancelled`,'line_items[0][price]':priceId,'line_items[0][quantity]':1,client_reference_id:user.id,'metadata[user_id]':user.id,'metadata[plan_id]':plan,'subscription_data[metadata][user_id]':user.id,'subscription_data[metadata][plan_id]':plan};
     if(sub?.provider_customer_id)fields.customer=sub.provider_customer_id;else fields.customer_email=user.email||'';
     const checkout=await stripePost('/checkout/sessions',fields);
     return res.status(200).json({ok:true,url:checkout.url,id:checkout.id});
