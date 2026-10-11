@@ -57,4 +57,38 @@ jobs:
           code="$(curl --connect-timeout 10 --max-time 35 -sSL -o /tmp/pp-billing-checkout-anon.json -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d '{"plan":"starter"}' "$base/api/billing-checkout")"
           if [ "$code" != 401 ]; then echo "Billing checkout authentication gate failed ($code)";exit 1;fi
           echo 'Three-tier sandbox billing UI and unauthenticated checkout denial: PASS'
+          # Customer Developer API onboarding — public pricing, dashboard and auth gates.
+          curl --retry 3 --retry-delay 2 --connect-timeout 10 --max-time 35 -fsSL "$base/developers" -o /tmp/pp-developers.html
+          for plan in starter pro business; do
+            grep -Fq "data-api-plan=\"$plan\"" /tmp/pp-developers.html
+          done
+          for amount in '$20' '$70' '$120'; do
+            grep -Fq "$amount" /tmp/pp-developers.html
+          done
+          grep -Fq 'Public paid checkout is not open yet' /tmp/pp-developers.html
+          curl --retry 2 --connect-timeout 10 --max-time 35 -fsSL "$base/developers.css" -o /tmp/pp-developers.css
+          curl --retry 2 --connect-timeout 10 --max-time 35 -fsSL "$base/developers.js" -o /tmp/pp-developers.js
+          grep -Fq 'account.searchParams.set' /tmp/pp-developers.js
+          curl --retry 2 --connect-timeout 10 --max-time 35 -fsSL "$base/profile-dev.js" -o /tmp/pp-profile-dev-new.js
+          grep -Fq 'sandboxCheckoutAllowed' /tmp/pp-profile-dev-new.js
+          grep -Fq 'devUpgradeStarter' /tmp/pp-profile-dev-new.js
+          curl --retry 2 --connect-timeout 10 --max-time 35 -fsSL "$base/tso2-shell.js" -o /tmp/pp-tso2-shell-new.js
+          grep -Fq "'DEVELOPER API','/developers'" /tmp/pp-tso2-shell-new.js
+          curl --retry 2 --connect-timeout 10 --max-time 35 -fsSL "$base/api/plans" -o /tmp/pp-dev-plans.json
+          node - <<'NODE'
+          const f=require('fs');
+          const d=JSON.parse(f.readFileSync('/tmp/pp-dev-plans.json','utf8'));
+          if(!d.ok||!Array.isArray(d.plans))throw Error('Developer plan list missing');
+          const expected={starter:[2000,5000],pro:[7000,20000],business:[12000,50000]};
+          if(d.plans.length!==3)throw Error('Plan list must have exactly three public paid tiers');
+          for(const p of d.plans){const e=expected[p.id];if(!e||p.price_monthly_cents!==e[0]||p.monthly_request_limit!==e[1])throw Error('Incorrect approved plan pricing or allowance: '+p.id)}
+          console.log('Three paid plans and exact dollar amounts: PASS');
+          NODE
+          code="$(curl --connect-timeout 10 --max-time 35 -sSL -o /tmp/pp-dev-account-unauth.json -w '%{http_code}' "$base/api/account")"
+          [ "$code" = 401 ] || { echo "Unauthenticated developer account endpoint not denied: $code"; exit 1; }
+          code="$(curl --connect-timeout 10 --max-time 35 -sSL -o /tmp/pp-dev-keys-unauth.json -w '%{http_code}' "$base/api/api-keys")"
+          [ "$code" = 401 ] || { echo "Unauthenticated API keys endpoint not denied: $code"; exit 1; }
+          code="$(curl --connect-timeout 10 --max-time 35 -sSL -o /tmp/pp-dev-checkout-unauth.json -w '%{http_code}' -X POST -H 'Content-Type: application/json' --data '{"plan":"pro"}' "$base/api/billing-checkout")"
+          [ "$code" = 401 ] || { echo "Unauthenticated developer checkout not denied: $code"; exit 1; }
+          echo 'Public Developer API landing, plans, tool nav and private authentication boundaries: VERIFIED'
           echo 'ParlayPing.net HTTPS, standalone frontend, Render backend, upload, developer API and www redirect: VERIFIED'
