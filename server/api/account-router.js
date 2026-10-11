@@ -46,7 +46,7 @@ async function account(req,res){
         ok:true,
         isDeveloper:true, // Developer dashboard is accessible to signed-in ParlayPing customers.
         isOwner,
-        sandboxCheckoutAllowed:sandboxCheckoutEnabled()&&isSandboxTester(user)&&!(subscriptions?.[0]?.provider==='internal'&&subscriptions?.[0]?.status==='active'),
+        sandboxCheckoutAllowed:sandboxCheckoutEnabled()&&isSandboxTester(user)&&!(isOwner&&subscriptions?.[0]?.provider==='internal'&&subscriptions?.[0]?.status==='active'),
         user:{id:user.id,email:user.email||null,createdAt:user.created_at||null},
         profile:profiles?.[0]||null,
         subscription:subscriptions?.[0]||null,
@@ -120,7 +120,7 @@ async function billingCheckout(req,res){
     const priceId=priceIdForPlan(plan);
     const rows=await supabaseFetch(`/rest/v1/subscriptions?select=*&user_id=eq.${encodeURIComponent(user.id)}`,{token});
     const sub=rows?.[0]||null;
-    if(sub?.provider==='internal'&&sub?.status==='active')return res.status(409).json({ok:false,error:'This account has protected first-party API access. Use a separate approved sandbox test account.'});
+    if(isDeveloperUser(user)&&sub?.provider==='internal'&&sub?.status==='active')return res.status(409).json({ok:false,error:'This account has protected first-party API access. Use a separate approved sandbox test account.'});
     if(sub?.provider==='stripe'&&sub?.provider_subscription_id&&['active','trialing','past_due','unpaid'].includes(sub.status))return res.status(409).json({ok:false,error:'You already have a Stripe subscription. Use Manage billing to change or cancel it.'});
     const base=String(process.env.PUBLIC_BASE_URL||'https://parlayping.net').replace(/\/$/,'');
     const fields={mode:'subscription',success_url:`${base}/profile?tab=dev&billing=success&session_id={CHECKOUT_SESSION_ID}`,cancel_url:`${base}/profile?tab=dev&billing=cancelled`,'line_items[0][price]':priceId,'line_items[0][quantity]':1,client_reference_id:user.id,'metadata[user_id]':user.id,'metadata[plan_id]':plan,'subscription_data[metadata][user_id]':user.id,'subscription_data[metadata][plan_id]':plan,allow_promotion_codes:'true'};
