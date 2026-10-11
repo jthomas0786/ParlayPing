@@ -34,7 +34,8 @@ jobs:
           if(status.x?.configured!==true)throw Error('Missing one or more @ParlayPing OAuth 1.0 keys in Render.');
           if(status.x?.autoReplyEnabled!==false || status.x?.postingReady!==false)throw Error('Automatic X posting must remain OFF during connection verification.');
           console.log('X OAuth 1.0 environment keys: PRESENT (all four); automatic posting: OFF');
-          console.log('Protected X worker: '+(status.x?.workerProtected?'CONFIGURED':'MISSING — protected OAuth probe requires X_WORKER_SECRET'));
+          if(status.x?.workerProtected!==true)throw Error('Protected X worker token has not been configured on Render.');
+          console.log('Protected X worker: CONFIGURED; posting remains disabled')
           NODE
           code="$(curl --retry 2 --connect-timeout 10 --max-time 35 -sSL -o /tmp/pp-unauth.json -w '%{http_code}' -X POST -H 'Content-Type: application/json' --data '{"legs":[]}' "$base/api/v1/analyze")"
           case "$code" in 401|403) echo "Commercial developer API denies unauthenticated requests: PASS ($code)" ;; *) echo "Unsafe API response to unauthenticated visitor: $code"; exit 1;; esac
