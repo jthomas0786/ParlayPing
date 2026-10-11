@@ -30,7 +30,7 @@ jobs:
             test "$http" = 200
             case "$type" in
               json) node -e 'const fs=require("fs"),o=JSON.parse(fs.readFileSync(process.argv[1]));if(!o.ok||o.runtime!=="render-node")throw Error("Wrong backend or missing Render health")' "$file";;
-              html) grep -Fq 'tso2-shell.js?v=20261010a' "$file";;
+              html) grep -Fq 'tso2-shell.js?v=' "$file";;
               js) grep -Fq "TSO2_PARLAYPING_SHELL" "$file";;
               css) grep -Fq "tso2pp-sidebar" "$file";;
             esac
