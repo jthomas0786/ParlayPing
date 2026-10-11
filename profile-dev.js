@@ -17,6 +17,12 @@
   function clearStatus(){const node=$('devStatus');if(node){node.hidden=true;node.classList.remove('error');}}
   function moneyPlan(data){const sub=data?.subscription,usage=data?.usage||{};if(sub?.provider==='stripe'&&sub?.provider_subscription_id&&['active','trialing','past_due','unpaid'].includes(String(sub.status||'')))return String(sub.plan_id||usage.plan||'free').toLowerCase();return String(usage.plan||'free').toLowerCase();}
   function renderKeys(keys){const list=$('devKeysList');if(!list)return;list.innerHTML='';if(!keys?.length){list.innerHTML='<div class="dev-key-row"><div><strong>No API keys yet</strong><span>Create one when you need external API access.</span></div></div>';return;}for(const key of keys){const row=document.createElement('div');row.className='dev-key-row';const info=document.createElement('div');const title=document.createElement('strong');title.textContent=key.name||'API key';const meta=document.createElement('span');meta.textContent=`${key.key_prefix||'pp_live_'}… · ${key.revoked_at?'revoked':key.last_used_at?'last used '+new Date(key.last_used_at).toLocaleString():'never used'}`;info.append(title,meta);const button=document.createElement('button');button.type='button';button.textContent=key.revoked_at?'Revoked':'Revoke';button.disabled=Boolean(key.revoked_at);button.addEventListener('click',()=>revokeKey(key.id));row.append(info,button);list.append(row);}}
+  function friendlyPeriodEnd(value){
+    if(!value)return '';
+    const date=new Date(value);
+    return Number.isFinite(date.getTime())?date.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}):'';
+  }
+
   function renderDev(data){
     accountData=data;
     const usage=data.usage||{},sub=data.subscription||null;
@@ -32,7 +38,15 @@
     const manageExisting=Boolean(sub?.provider==='stripe'&&sub?.provider_subscription_id&&['active','trialing','past_due','unpaid'].includes(status));
     const allowed=Boolean(data.sandboxCheckoutAllowed);
     const badge=$('devAccessBadge');if(badge)badge.textContent=data.isOwner?'OWNER · SANDBOX':'SANDBOX PREVIEW';
-    $('devBillingSummary').textContent=manageExisting?`${({starter:'Starter',pro:'Pro',business:'Business'}[String(sub.plan_id||'').toLowerCase()]||'Developer')} · ${status.replaceAll('_',' ')}`:activePlan==='free'?'Internal first-party API access':'No active Developer API subscription';
+    const paidLabel=({starter:'Starter',pro:'Pro',business:'Business'}[String(sub?.plan_id||'').toLowerCase()]||'Developer');
+    const periodDate=friendlyPeriodEnd(sub?.current_period_end);
+    let billingSummary=activePlan==='free'?'Internal first-party API access':'No active Developer API subscription';
+    if(manageExisting){
+      if(sub.cancel_at_period_end)billingSummary=`${paidLabel} · cancellation scheduled${periodDate?' for '+periodDate+' (access until then)':''}`;
+      else if(status==='past_due'||status==='unpaid')billingSummary=`${paidLabel} · payment needs attention. Open Manage billing to update payment details.`;
+      else billingSummary=`${paidLabel} · ${status.replaceAll('_',' ')}${periodDate?' · next billing '+periodDate:''}`;
+    }
+    $('devBillingSummary').textContent=billingSummary;
     $('devBillingFreeActions').hidden=manageExisting;
     $('devBillingPaidActions').hidden=!manageExisting;
     const note=$('devSandboxNote');if(note)note.textContent=allowed?'Stripe TEST MODE only · test cards only · no real charges.':'Developer API subscriptions are in testing. No live payments are available.';
