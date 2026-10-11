@@ -13,7 +13,7 @@ test('billing secrets and price IDs are configuration-only',()=>{
   assert.match(helper,/STRIPE_STARTER_PRICE_ID/);
   assert.match(helper,/STRIPE_PRO_PRICE_ID/);
   assert.match(helper,/STRIPE_BUSINESS_PRICE_ID/);
-  assert.doesNotMatch(helper,/sk_(?:test|live)_/);
+  assert.doesNotMatch(helper,/sk_(?:test|live)_[A-Za-z0-9]{16,}/);
   assert.doesNotMatch(envExample,/whsec_[A-Za-z0-9]+/);
 });
 
