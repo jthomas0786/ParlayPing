@@ -40,7 +40,8 @@ test('private profile Dev runtime owns Stripe billing and API-key management flo
   assert.match(devJs,/\/api\/billing-checkout/);
   assert.match(devJs,/\/api\/billing-portal/);
   assert.match(devJs,/\/api\/api-keys/);
-  assert.match(profile,/Upgrade Pro/);
+  assert.match(profile,/Pro · \$70\/mo/);
+  assert.match(profile,/Starter · \$20\/mo/);
   assert.match(profile,/Business/);
   assert.match(profile,/Manage billing/);
   assert.match(router,/priceIdForPlan/);
