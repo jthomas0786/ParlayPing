@@ -1,0 +1,41 @@
+name: ParlayPing.net Render Domain Cutover QA
+on:
+  push:
+    branches:
+      - qa/render-domain-cutover-smoke-20261011
+    paths:
+      - '.github/workflows/parlayping-render-domain-cutover-qa.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  live-domain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - name: Verify both domains and Render backend
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://parlayping.net"
+          printf 'Checking public site: %s\n' "$base"
+          curl --retry 4 --retry-delay 3 --connect-timeout 10 --max-time 35 -fsSL -D /tmp/pp-root-headers "$base/" -o /tmp/pp-root.html
+          grep -Eiq 'ParlayPing|Parlay Ping' /tmp/pp-root.html || { echo 'Wrong homepage served'; exit 1; }
+          echo 'Root homepage: PASS'
+          curl --retry 4 --retry-delay 3 --connect-timeout 10 --max-time 35 -fsSL "$base/healthz" -o /tmp/pp-health.json
+          node -e 'const j=require("/tmp/pp-health.json");if(j.runtime!=="render-node")throw Error("Custom domain is not serving the Render Node backend");console.log("Custom domain serves Render Node: PASS")'
+          curl --retry 4 --retry-delay 3 --connect-timeout 10 --max-time 35 -fsSL "$base/submit" -o /tmp/pp-submit.html
+          grep -Fq 'id="verifyButton"' /tmp/pp-submit.html || { echo 'Standalone upload form missing'; exit 1; }
+          echo 'Standalone screenshot upload route: PASS'
+          curl --retry 4 --retry-delay 3 --connect-timeout 10 --max-time 35 -fsSL "$base/api/status" -o /tmp/pp-status.json
+          node -e 'const j=require("/tmp/pp-status.json");if(!j.ok||j.service!=="ParlayPing"||!j.engine?.ready)throw Error("Parlay Ping API status failed");console.log("API status: PASS; X OAuth configured="+!!j.x?.configured+"; automatic posting enabled="+!!j.x?.autoReplyEnabled+"; vision="+!!j.parser?.visionConfigured+"; Stripe="+!!j.integrations?.stripeConfigured)'
+          code="$(curl --retry 2 --connect-timeout 10 --max-time 35 -sSL -o /tmp/pp-unauth.json -w '%{http_code}' -X POST -H 'Content-Type: application/json' --data '{"legs":[]}' "$base/api/v1/analyze")"
+          case "$code" in 401|403) echo "Commercial developer API denies unauthenticated requests: PASS ($code)" ;; *) echo "Unsafe API response to unauthenticated visitor: $code"; exit 1;; esac
+          code="$(curl --retry 2 --connect-timeout 10 --max-time 35 -sSL -o /tmp/pp-empty.json -w '%{http_code}' -X POST -H 'Content-Type: application/json' --data '{}' "$base/api/landing-create")"
+          if [ "$code" != 400 ]; then echo "Standalone betslip creation endpoint unexpected response: $code"; exit 1; fi
+          echo 'Standalone betslip creation endpoint accepts route and validates input: PASS'
+          printf 'Checking www redirect: '
+          target="$(curl --retry 4 --retry-delay 3 --connect-timeout 10 --max-time 35 -sSL -o /dev/null -w '%{url_effective}:%{http_code}' 'https://www.parlayping.net/')"
+          echo "$target"
+          case "$target" in https://parlayping.net/*:200) echo 'www redirect and certificate: PASS';; *) echo 'www domain not redirecting to working root';exit 1;;esac
+          echo 'ParlayPing.net HTTPS, standalone frontend, Render backend, upload, developer API and www redirect: VERIFIED'
