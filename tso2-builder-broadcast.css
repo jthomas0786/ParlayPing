@@ -1,0 +1,72 @@
+/* TSO 2.0 native broadcast look for already-supported Parlay Ping Builder.
+   Active only when hosted in TSO: never replace approved standalone branding. */
+html[data-tso2pp-embed]{
+ --bg:#05070a;--bg2:#080b10;--panel:#090d12;--panel2:#0b1017;
+ --line:rgba(255,255,255,.11);--line2:rgba(255,255,255,.16);
+ --cyan:#ff986f;--cyan2:#ff4d1c;--green:#ffd84d;--blue:#ff4d1c;
+ --pp-cyan:#ff986f;--pp-mint:#ffd84d;--pp-deep:#05070a;
+ --pp-panel:#090d12;--pp-panel-2:#0b1017;
+ --pp-line:rgba(255,255,255,.11);
+}
+html[data-tso2pp-embed] body{background:#05070a!important;color:#e9edf4!important;overflow:visible!important;min-height:0!important}
+html[data-tso2pp-embed] .page-glow,
+html[data-tso2pp-embed] .concept-hero,
+html[data-tso2pp-embed] .lower-grid,
+html[data-tso2pp-embed] footer{display:none!important}
+html[data-tso2pp-embed] main.app-shell{
+ width:100%!important;max-width:none!important;margin:0!important;padding:0 0 30px!important;
+}
+html[data-tso2pp-embed] .parlay-panel{
+ background:#090d12!important;border:1px solid rgba(255,255,255,.12)!important;
+ border-left:3px solid #ff4d1c!important;box-shadow:none!important;border-radius:3px!important;
+ padding:22px!important;margin:0!important;
+}
+html[data-tso2pp-embed] .parlay-toolbar{
+ background:none!important;border-color:rgba(255,255,255,.1)!important;
+ border-radius:0!important;padding-bottom:16px!important;margin-bottom:16px!important;
+}
+html[data-tso2pp-embed] .parlay-heading h2,
+html[data-tso2pp-embed] #myParlayTitle{color:#f4f5f7!important;font-weight:950!important}
+html[data-tso2pp-embed] .metric-pill,
+html[data-tso2pp-embed] .pick-card,
+html[data-tso2pp-embed] .sportsbook-section,
+html[data-tso2pp-embed] .book-card,
+html[data-tso2pp-embed] .pp-best-exact-panel,
+html[data-tso2pp-embed] .pp-exact-matrix,
+html[data-tso2pp-embed] .alt-lines{
+ border-radius:3px!important;box-shadow:none!important;
+ border-color:rgba(255,255,255,.12)!important;background:#0d121a!important;
+}
+html[data-tso2pp-embed] .game-bar{background:#111721!important;border-color:rgba(255,255,255,.12)!important}
+html[data-tso2pp-embed] .pick-card,
+html[data-tso2pp-embed] .book-card{overflow:hidden}
+html[data-tso2pp-embed] .pick-probability{color:#ffd84d!important}
+html[data-tso2pp-embed] .probability-meter .meter-track i{
+ background:#ff4d1c!important;box-shadow:none!important;
+}
+html[data-tso2pp-embed] .book-card.active,
+html[data-tso2pp-embed] .pp-best-exact-book:hover,
+html[data-tso2pp-embed] .pp-full-exact{
+ border-color:rgba(255,216,77,.5)!important;outline-color:#ffd84d!important;
+}
+html[data-tso2pp-embed] .open-book-button,
+html[data-tso2pp-embed] .save-button,
+html[data-tso2pp-embed] .tune-button.active{
+ background:#ff4d1c!important;border:1px solid #ff4d1c!important;
+ color:white!important;border-radius:3px!important;box-shadow:none!important;
+}
+html[data-tso2pp-embed] .open-book-button:disabled{background:#1f2328!important;border-color:#363a40!important;color:#9399a1!important}
+html[data-tso2pp-embed] .clear-button,
+html[data-tso2pp-embed] .tune-button,
+html[data-tso2pp-embed] .add-pick-button{
+ border-radius:3px!important;border:1px solid rgba(255,255,255,.18)!important;
+ background:#151a21!important;color:#e9edf4!important;box-shadow:none!important;
+}
+html[data-tso2pp-embed] .pp-best-exact-kicker,
+html[data-tso2pp-embed] .sportsbook-heading h3{color:#ff986f!important}
+html[data-tso2pp-embed] .pp-exact-matrix-best{color:#ffd84d!important}
+@media(max-width:650px){
+ html[data-tso2pp-embed] .parlay-panel{padding:15px 12px!important}
+ html[data-tso2pp-embed] .parlay-toolbar{gap:10px}
+ html[data-tso2pp-embed] .pick-main{gap:8px}
+}
