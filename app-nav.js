@@ -34,6 +34,6 @@
 (()=>{
   if(window.__TSO2_PARLAYPING_SHELL__||document.querySelector('script[data-tso2pp-shell]'))return;
   const script=document.createElement('script');
-  script.src='/tso2-shell.js?v=20261010b';script.defer=true;script.dataset.tso2ppShell='1';
+  script.src='/tso2-shell.js?v=20261011dev';script.defer=true;script.dataset.tso2ppShell='1';
   document.head.append(script);
 })();
