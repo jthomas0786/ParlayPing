@@ -30,6 +30,15 @@ function priceIdForPlan(plan){
   return id;
 }
 
+function sandboxPortalConfigId(){
+  const value=String(process.env.STRIPE_SANDBOX_PORTAL_CONFIG_ID||'').trim();
+  if(!/^bpc_[A-Za-z0-9]+$/.test(value)){
+    const error=new Error('Sandbox Billing Portal configuration is missing.');
+    error.status=503;throw error;
+  }
+  return value;
+}
+
 async function stripePost(path,fields={}){
   const key=assertSandboxBillingReady();
   if(!['/checkout/sessions','/billing_portal/sessions'].includes(path)){
@@ -56,4 +65,4 @@ async function stripePost(path,fields={}){
   return payload;
 }
 
-module.exports={stripePost,priceIdForPlan,assertSandboxBillingReady,PLAN_PRICE_ENVS};
+module.exports={stripePost,priceIdForPlan,assertSandboxBillingReady,sandboxPortalConfigId,PLAN_PRICE_ENVS};

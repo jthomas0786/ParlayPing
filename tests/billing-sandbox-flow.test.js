@@ -12,7 +12,7 @@ const varNames={
   STRIPE_PRO_PRICE_ID:PRICE_IDS.pro,
   STRIPE_BUSINESS_PRICE_ID:PRICE_IDS.business,
 };
-const origEnv=Object.fromEntries(Object.keys({...varNames,STRIPE_SECRET_KEY:1,PARLAYPING_BILLING_SANDBOX_ENABLED:1}).map(k=>[k,process.env[k]]));
+const origEnv=Object.fromEntries(Object.keys({...varNames,STRIPE_SECRET_KEY:1,PARLAYPING_BILLING_SANDBOX_ENABLED:1,STRIPE_SANDBOX_PORTAL_CONFIG_ID:1}).map(k=>[k,process.env[k]]));
 for(const [k,v] of Object.entries(varNames))process.env[k]=v;
 const helper=require('../server/api/lib/stripe-billing');
 const originalFetch=global.fetch;
@@ -79,6 +79,7 @@ test('sandbox checkout creates a Stripe session for each approved tier; never gr
   assert(observedQueries.every(q=>q.includes('/subscriptions?select=')));
 });
 test('existing paid subscription prevents a duplicate checkout; billing portal is used instead',async()=>{
+  process.env.STRIPE_SANDBOX_PORTAL_CONFIG_ID='bpc_1UPNFeLJU3n7oe0PdK88tDIS';
   process.env.PARLAYPING_BILLING_SANDBOX_ENABLED='true';
   process.env.STRIPE_SECRET_KEY='sk_test_UnitTestKey123456';
   const calls=[];stripeFake(calls);
@@ -91,6 +92,7 @@ test('existing paid subscription prevents a duplicate checkout; billing portal i
   assert.equal(manage.statusCode,200);
   assert.equal(calls[0].url,'https://api.stripe.com/v1/billing_portal/sessions');
   assert.equal(calls[0].body.customer,'cus_test_existing');
+  assert.equal(calls[0].body.configuration,'bpc_1UPNFeLJU3n7oe0PdK88tDIS');
   assert(!('subscription' in manage.body),'Portal never fakes a subscription update');
 });
 test('invalid plan never reaches Stripe; completed checkout cannot grant API keys directly',async()=>{
@@ -117,5 +119,20 @@ test('protected owner internal API license cannot be overwritten by sandbox chec
   const account=res();await router({...req('account'),method:'GET'},account);
   assert.equal(account.statusCode,200);
   assert.equal(account.body.sandboxCheckoutAllowed,false);
+  subscription=null;
+});
+
+test('Stripe customer portal fails closed without the dedicated sandbox configuration',async()=>{
+  process.env.PARLAYPING_BILLING_SANDBOX_ENABLED='true';
+  process.env.STRIPE_SECRET_KEY='sk_test_UnitTestKey123456';
+  const oldConfig=process.env.STRIPE_SANDBOX_PORTAL_CONFIG_ID;
+  delete process.env.STRIPE_SANDBOX_PORTAL_CONFIG_ID;
+  subscription={provider:'stripe',provider_subscription_id:'sub_test_existing',provider_customer_id:'cus_test_existing',status:'active',plan_id:'pro'};
+  global.fetch=()=>{throw Error('Stripe must not be contacted')};
+  const out=res();await router(req('billing-portal'),out);
+  assert.equal(out.statusCode,503);
+  assert.match(out.body.error,/Portal configuration is missing/);
+  if(oldConfig===undefined)delete process.env.STRIPE_SANDBOX_PORTAL_CONFIG_ID;
+  else process.env.STRIPE_SANDBOX_PORTAL_CONFIG_ID=oldConfig;
   subscription=null;
 });
