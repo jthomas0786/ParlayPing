@@ -10,6 +10,7 @@ const envExample=fs.readFileSync(path.join(root,'.env.example'),'utf8');
 
 test('billing secrets and price IDs are configuration-only',()=>{
   assert.match(helper,/process\.env\.STRIPE_SECRET_KEY/);
+  assert.match(helper,/STRIPE_STARTER_PRICE_ID/);
   assert.match(helper,/STRIPE_PRO_PRICE_ID/);
   assert.match(helper,/STRIPE_BUSINESS_PRICE_ID/);
   assert.doesNotMatch(helper,/sk_(?:test|live)_/);
@@ -18,7 +19,10 @@ test('billing secrets and price IDs are configuration-only',()=>{
 
 test('checkout is authenticated and cannot directly grant a paid plan',()=>{
   assert.match(router,/requireUser\(req\)/);
-  assert.match(router,/\['pro','business'\]/);
+  assert.match(router,/\['starter','pro','business'\]/);
+  assert.match(helper,/PARLAYPING_BILLING_SANDBOX_ENABLED/);
+  assert.match(helper,/sk_test_/);
+  assert.match(router,/assertSandboxBillingReady/);
   assert.match(router,/mode:'subscription'/);
   assert.match(router,/subscription_data\[metadata\]\[user_id\]/);
   assert.doesNotMatch(router,/parlayping_stripe_apply_subscription/);
