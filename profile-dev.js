@@ -6,6 +6,7 @@
   const SUPABASE_KEY='sb_publishable_7mYXjjkRrQq3iRig7UYHNQ_b6EZZiJA';
   const $=id=>document.getElementById(id);
   let accountData=null;
+  let checkoutInFlight=false,portalInFlight=false;
 
   function getSession(){try{return JSON.parse(localStorage.getItem(SESSION_KEY)||'null');}catch{return null;}}
   function setSession(value){try{if(value)localStorage.setItem(SESSION_KEY,JSON.stringify(value));else localStorage.removeItem(SESSION_KEY);}catch{}}
@@ -46,8 +47,36 @@
     if(submit)submit.disabled=!canUseKey;
     const keyHint=$('devKeyHint');if(keyHint)keyHint.textContent=canUseKey?'API keys are private to this account. Revoke an exposed key immediately.':'An active paid plan is required to create keys. Sandbox-only subscriptions are not public offers.';
     const billing=new URLSearchParams(location.search).get('billing');
-    if(billing==='success')showStatus('Checkout returned successfully. Your plan activates only after a verified Stripe subscription webhook.');
+    if(billing==='success')showStatus(verifiedPaidEntitlement(data)?'Stripe TEST MODE subscription verified. Your paid Developer API allowance is now active.':'Returned from Stripe TEST MODE Checkout. Waiting for the signed subscription webhook before granting API access.');
     if(billing==='cancelled')showStatus('Checkout canceled. No plan was activated.');
+  }
+
+  function verifiedPaidEntitlement(data){
+    const sub=data?.subscription;
+    return sub?.provider==='stripe'&&['active','trialing'].includes(String(sub.status||''))&&['starter','pro','business'].includes(String(data?.usage?.plan||'').toLowerCase());
+  }
+  async function syncReturnedCheckout(){
+    if(!new URLSearchParams(location.search).has('billing')&&
+       !new URLSearchParams(location.search).has('session_id'))return;
+    // A Checkout return URL is not proof of payment. Only verified webhook-backed
+    // Supabase subscription and usage data can unlock keys and quota.
+    if(verifiedPaidEntitlement(accountData))return;
+    for(const delay of [1500,2500,4000]){
+      await new Promise(resolve=>setTimeout(resolve,delay));
+      try{
+        const current=await api('/api/account');
+        if(!current?.isDeveloper)break;
+        renderDev(current);
+        if(verifiedPaidEntitlement(current)){
+          showStatus('Stripe TEST MODE subscription verified. Your Developer API allowance is now active.');
+          return;
+        }
+      }catch{/* Keep all billing entitlements server-authoritative. */}
+    }
+    showStatus('Stripe test Checkout returned, but subscription activation is not confirmed yet. Refresh the dashboard after Stripe finishes processing.',true);
+  }
+  function stripeHostedUrl(value,host){
+    try{const url=new URL(String(value||''));return url.protocol==='https:'&&url.hostname===host?url.href:null;}catch{return null;}
   }
 
   function setTabUrl(tab){const url=new URL(location.href);if(tab==='tracking')url.searchParams.delete('tab');else url.searchParams.set('tab',tab);url.searchParams.delete('billing');history.replaceState({},'',url.pathname+(url.searchParams.toString()?`?${url.searchParams}`:''));}
@@ -59,9 +88,48 @@
   async function refreshDeveloper(){const allowed=await loadDeveloper();if(!allowed)throw new Error('Sign in to your ParlayPing account first.');}
   async function revokeKey(id){if(!id||!confirm('Revoke this API key? This cannot be undone.'))return;clearStatus();try{await api('/api/api-keys',{method:'DELETE',body:{id}});showStatus('API key revoked.');await refreshDeveloper();}catch(error){showStatus(error.message,true);}}
   async function createKey(event){event.preventDefault();clearStatus();const name=String($('devKeyName')?.value||'').trim();if(!name)return;const button=event.submitter,old=button?.textContent;if(button){button.disabled=true;button.textContent='Creating…';}try{const result=await api('/api/api-keys',{method:'POST',body:{name}});$('devNewKey').textContent=result.key?.key||'';$('devNewKeyBox').hidden=false;$('devKeyName').value='';showStatus('API key created. Copy it now; it will not be shown again.');await refreshDeveloper();}catch(error){showStatus(error.message,true);}finally{if(button){button.disabled=false;button.textContent=old;}}}
-  async function checkout(plan){clearStatus();if(!accountData?.sandboxCheckoutAllowed){showStatus('Sandbox checkout requires an approved test account. Live purchases are not open yet.',true);return;}try{const result=await api('/api/billing-checkout',{method:'POST',body:{plan}});if(!result?.url)throw new Error('Checkout URL was not returned.');location.assign(result.url);}catch(error){showStatus(error.message,true);}}
-  async function portal(){clearStatus();try{const result=await api('/api/billing-portal',{method:'POST'});if(!result?.url)throw new Error('Billing portal URL was not returned.');location.assign(result.url);}catch(error){showStatus(error.message,true);}}
+  async function checkout(plan){
+    if(checkoutInFlight)return;
+    clearStatus();
+    if(!accountData?.sandboxCheckoutAllowed){showStatus('Sandbox checkout requires an approved test account. Live purchases are not open yet.',true);return;}
+    checkoutInFlight=true;
+    for(const id of ['devUpgradeStarter','devUpgradePro','devUpgradeBusiness'])if($(id))$(id).disabled=true;
+    try{
+      const result=await api('/api/billing-checkout',{method:'POST',body:{plan}});
+      const url=stripeHostedUrl(result?.url,'checkout.stripe.com');
+      if(!url)throw new Error('Stripe Checkout did not return a verified hosted URL.');
+      location.assign(url);
+    }catch(error){
+      checkoutInFlight=false;
+      for(const id of ['devUpgradeStarter','devUpgradePro','devUpgradeBusiness'])if($(id))$(id).disabled=!accountData?.sandboxCheckoutAllowed;
+      showStatus(error.message,true);
+    }
+  }
+  async function portal(){
+    if(portalInFlight)return;
+    clearStatus();portalInFlight=true;
+    const button=$('devManageBilling');if(button)button.disabled=true;
+    try{
+      const result=await api('/api/billing-portal',{method:'POST'});
+      const url=stripeHostedUrl(result?.url,'billing.stripe.com');
+      if(!url)throw new Error('Stripe Billing Portal did not return a verified hosted URL.');
+      location.assign(url);
+    }catch(error){
+      portalInFlight=false;
+      if(button)button.disabled=!accountData?.sandboxCheckoutAllowed;
+      showStatus(error.message,true);
+    }
+  }
 
-  function init(){wireTabs();$('devKeyForm')?.addEventListener('submit',createKey);$('devUpgradeStarter')?.addEventListener('click',()=>checkout('starter'));$('devUpgradeStarter')?.addEventListener('click',()=>checkout('starter'));$('devUpgradePro')?.addEventListener('click',()=>checkout('pro'));$('devUpgradeBusiness')?.addEventListener('click',()=>checkout('business'));$('devManageBilling')?.addEventListener('click',portal);loadDeveloper().then(()=>applyRequestedTab()).catch(()=>{const tab=$('devTab');if(tab)tab.hidden=true;applyRequestedTab();});}
+  function init(){
+    const checkoutReturned=new URLSearchParams(location.search).get('billing')==='success';
+    wireTabs();
+    $('devKeyForm')?.addEventListener('submit',createKey);
+    $('devUpgradeStarter')?.addEventListener('click',()=>checkout('starter'));
+    $('devUpgradePro')?.addEventListener('click',()=>checkout('pro'));
+    $('devUpgradeBusiness')?.addEventListener('click',()=>checkout('business'));
+    $('devManageBilling')?.addEventListener('click',portal);
+    loadDeveloper().then(()=>{applyRequestedTab();if(checkoutReturned)syncReturnedCheckout();}).catch(()=>{const tab=$('devTab');if(tab)tab.hidden=true;applyRequestedTab();});
+  }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
