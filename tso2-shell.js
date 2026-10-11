@@ -92,6 +92,16 @@
       broadcastStyles.rel='stylesheet';
       broadcastStyles.href='/tso2-submit-broadcast.css?v=20261010-broadcast';
       document.head.append(broadcastStyles);
+      const draftStyles=document.createElement('link');
+      draftStyles.rel='stylesheet';
+      draftStyles.href='/tso2-props-builder.css?v=20261010-props1';
+      document.head.append(draftStyles);
+    }
+    if(/^\\/build\\//.test(location.pathname)){
+      const builderStyles=document.createElement('link');
+      builderStyles.rel='stylesheet';
+      builderStyles.href='/tso2-builder-broadcast.css?v=20261010-props1';
+      document.head.append(builderStyles);
     }
     try{
       window.parent.postMessage({type:'tso2-parlayping-route',pathname:location.pathname,search:location.search},
