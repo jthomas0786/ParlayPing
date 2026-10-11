@@ -42,7 +42,7 @@ test('all sandbox price IDs match three distinct approved monthly plans',()=>{
 });
 test('checkout is disabled by default even when a test key is present',async()=>{
   delete process.env.PARLAYPING_BILLING_SANDBOX_ENABLED;
-  process.env.STRIPE_SECRET_KEY='sk_test_dummy_for_unit_tests';
+  process.env.STRIPE_SECRET_KEY='sk_test_UnitTestKey123456';
   global.fetch=()=>{throw Error('Stripe must never be contacted');};
   const out=res();await router(req('billing-checkout',{plan:'starter'}),out);
   assert.equal(out.statusCode,503);
@@ -50,7 +50,7 @@ test('checkout is disabled by default even when a test key is present',async()=>
 });
 test('explicit sandbox flag never authorizes a live Stripe key',async()=>{
   process.env.PARLAYPING_BILLING_SANDBOX_ENABLED='true';
-  process.env.STRIPE_SECRET_KEY='sk_live_dummy_for_unit_tests';
+  process.env.STRIPE_SECRET_KEY='sk_live_UnitTestKey123456';
   global.fetch=()=>{throw Error('Stripe must never be contacted');};
   const out=res();await router(req('billing-checkout',{plan:'pro'}),out);
   assert.equal(out.statusCode,503);
@@ -58,7 +58,7 @@ test('explicit sandbox flag never authorizes a live Stripe key',async()=>{
 });
 test('sandbox checkout creates a Stripe session for each approved tier; never grants a plan locally',async()=>{
   process.env.PARLAYPING_BILLING_SANDBOX_ENABLED='true';
-  process.env.STRIPE_SECRET_KEY='sk_test_dummy_for_unit_tests';
+  process.env.STRIPE_SECRET_KEY='sk_test_UnitTestKey123456';
   const calls=[];stripeFake(calls);
   subscription=null;observedQueries=[];
   for(const [plan,id]of Object.entries(PRICE_IDS)){
@@ -73,14 +73,14 @@ test('sandbox checkout creates a Stripe session for each approved tier; never gr
     assert.equal(call.body['metadata[plan_id]'],plan);
     assert.equal(call.body['subscription_data[metadata][plan_id]'],plan);
     assert.equal(call.body.client_reference_id,OWNER_ID);
-    assert.equal(call.authorization,'Bearer sk_test_dummy_for_unit_tests');
+    assert.equal(call.authorization,'Bearer sk_test_UnitTestKey123456');
   }
   assert.equal(calls.length,3);
   assert(observedQueries.every(q=>q.includes('/subscriptions?select=')));
 });
 test('existing paid subscription prevents a duplicate checkout; billing portal is used instead',async()=>{
   process.env.PARLAYPING_BILLING_SANDBOX_ENABLED='true';
-  process.env.STRIPE_SECRET_KEY='sk_test_dummy_for_unit_tests';
+  process.env.STRIPE_SECRET_KEY='sk_test_UnitTestKey123456';
   const calls=[];stripeFake(calls);
   subscription={provider:'stripe',provider_subscription_id:'sub_test_existing',provider_customer_id:'cus_test_existing',status:'active',plan_id:'pro'};
   const attempt=res();await router(req('billing-checkout',{plan:'business'}),attempt);
@@ -95,7 +95,7 @@ test('existing paid subscription prevents a duplicate checkout; billing portal i
 });
 test('invalid plan never reaches Stripe; completed checkout cannot grant API keys directly',async()=>{
   process.env.PARLAYPING_BILLING_SANDBOX_ENABLED='true';
-  process.env.STRIPE_SECRET_KEY='sk_test_dummy_for_unit_tests';
+  process.env.STRIPE_SECRET_KEY='sk_test_UnitTestKey123456';
   subscription=null;
   const calls=[];stripeFake(calls);
   const out=res();await router(req('billing-checkout',{plan:'free'}),out);
