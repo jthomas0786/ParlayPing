@@ -151,10 +151,10 @@
     ['TRENDING','/trending','trending'],
     ['MY PARLAYS','/profile','profile'],
     ['COMMUNITY','/profile?tab=community','community'],
-    ['API & ACCOUNT','/account.html','account']
+    ['DEVELOPER API','/developers','developers']
   ];
   const sourcePath=String(location.pathname||'/').toLowerCase();
-  const selected=sourcePath.includes('profile')?'profile':sourcePath.includes('submit')?'submit':sourcePath.includes('trend')?'trending':sourcePath.includes('account')?'account':'build';
+  const selected=sourcePath.includes('profile')?'profile':sourcePath.includes('submit')?'submit':sourcePath.includes('trend')?'trending':sourcePath.includes('developers')?'developers':sourcePath.includes('account')?'account':'build';
   const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const iconLink='/parlayping-approved-hero.webp';
   const logo='/parlayping-approved-wordmark.webp';
