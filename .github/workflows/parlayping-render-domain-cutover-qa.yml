@@ -1,4 +1,5 @@
 name: ParlayPing.net Render Domain Cutover QA
+# Reverify Stripe sandbox prelaunch security fixes and public developer signup 2026-10-11.
 on:
   push:
     branches:
