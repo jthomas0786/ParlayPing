@@ -4,12 +4,13 @@
 (()=>{
   if(!window.PP_TSO_AUTH?.enabled)return;
   const parentOrigin='https://thesportsoutpost.com';
+  const TSO_PP_MAX_LEGS=25;
   const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const host=document.querySelector('.submit-page');
   if(!host)return;
   const section=document.createElement('section');
   section.className='pp-tso-selection-panel';
-  section.innerHTML='<div class="pp-tso-selection-heading"><div><span>TSO 2.0 / PARLAY PING</span><h2>Build from TSO Props</h2><p>Add exact selections using <strong>+ PARLAY</strong> in Props or Research. No screenshot needed.</p></div><strong id="ppTsoDraftCount">0 / 8 LEGS</strong></div><div id="ppTsoDraftRows" class="pp-tso-draft-rows" aria-live="polite">Connecting to your TSO betslip…</div><div class="pp-tso-draft-actions"><button type="button" id="ppTsoOpenProps">+ ADD FROM PROPS</button><button type="button" id="ppTsoClear" disabled>CLEAR</button><button class="pp-tso-primary" type="button" id="ppTsoBuild" disabled>BUILD MY BETSLIP →</button></div><p id="ppTsoDraftStatus" class="pp-tso-draft-status" aria-live="polite">Sportsbook odds and probabilities are checked again when you build.</p>';
+  section.innerHTML='<div class="pp-tso-selection-heading"><div><span>TSO 2.0 / PARLAY PING</span><h2>Build from TSO Props</h2><p>Add exact selections using <strong>+ PARLAY</strong> in Props or Research. No screenshot needed.</p></div><strong id="ppTsoDraftCount">0 / 25 LEGS</strong></div><div id="ppTsoDraftRows" class="pp-tso-draft-rows" aria-live="polite">Connecting to your TSO betslip…</div><div class="pp-tso-draft-actions"><button type="button" id="ppTsoOpenProps">+ ADD FROM PROPS</button><button type="button" id="ppTsoClear" disabled>CLEAR</button><button class="pp-tso-primary" type="button" id="ppTsoBuild" disabled>BUILD MY BETSLIP →</button></div><p id="ppTsoDraftStatus" class="pp-tso-draft-status" aria-live="polite">Sportsbook odds and probabilities are checked again when you build.</p>';
   host.insertBefore(section,host.querySelector('.submit-shell'));
   const rowsEl=section.querySelector('#ppTsoDraftRows');
   const count=section.querySelector('#ppTsoDraftCount');
@@ -22,7 +23,7 @@
   section.querySelector('#ppTsoOpenProps').addEventListener('click',()=>send('tso2-parlayping-open-props'));
   clearBtn.addEventListener('click',()=>{if(!building)send('tso2-parlayping-draft-clear')});
   function draw(){
-    count.textContent=rows.length+' / 8 LEGS';
+    count.textContent=rows.length+' / '+TSO_PP_MAX_LEGS+' LEGS';
     clearBtn.disabled=building||rows.length===0;
     buildBtn.disabled=building||rows.length===0;
     buildBtn.textContent=building?'VERIFYING EXACT PROPS…':'BUILD '+rows.length+'-LEG BETSLIP →';
@@ -36,7 +37,7 @@
   window.addEventListener('message',e=>{
     if(e.origin!==parentOrigin||e.source!==window.parent||e.data?.type!=='tso2-parlayping-draft-sync')return;
     const incoming=Array.isArray(e.data.rows)?e.data.rows:[];
-    rows=incoming.slice(0,8).filter(r=>r&&typeof r.key==='string'&&r.key.length<220);
+    rows=incoming.slice(0,TSO_PP_MAX_LEGS).filter(r=>r&&typeof r.key==='string'&&r.key.length<220);
     draw();
   });
   buildBtn.addEventListener('click',async()=>{

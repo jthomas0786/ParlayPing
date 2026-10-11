@@ -18,11 +18,13 @@ function fakeRes(){
   return{statusCode:200,headers:{},setHeader(k,v){this.headers[k]=v},
     status(v){this.statusCode=v;return this},json(payload){this.body=payload;return this}};
 }
-test('draft API accepts only unique exact TSO keys with 1–8 selections',()=>{
+test('draft API accepts 1–25 unique TSO keys and rejects 26 or duplicates',()=>{
   assert.deepEqual(handler.selectionKeys({selectionKeys:['k1','k2']}),['k1','k2']);
-  assert.throws(()=>handler.selectionKeys({selectionKeys:[]}));
-  assert.throws(()=>handler.selectionKeys({selectionKeys:['x','x']}));
-  assert.throws(()=>handler.selectionKeys({selectionKeys:new Array(9).fill('leg')}));
+  const twentyFive=Array.from({length:25},(_,i)=>'leg-'+(i+1));
+  assert.deepEqual(handler.selectionKeys({selectionKeys:twentyFive}),twentyFive);
+  assert.throws(()=>handler.selectionKeys({selectionKeys:[]}),e=>e.status===400);
+  assert.throws(()=>handler.selectionKeys({selectionKeys:['x','x']}),e=>e.status===400);
+  assert.throws(()=>handler.selectionKeys({selectionKeys:Array.from({length:26},(_,i)=>'leg-'+i)}),e=>e.status===400);
 });
 test('each slip leg uses server-fetched exact price and model; rejects stale or duplicated feed IDs',()=>{
   const slip=handler.assemble([row.key],[row]);
@@ -33,6 +35,21 @@ test('each slip leg uses server-fetched exact price and model; rejects stale or 
   assert.equal(slip.combinedOddsVerified,false);
   assert.throws(()=>handler.assemble(['unknown'],[row]),e=>e.status===409);
   assert.throws(()=>handler.assemble([row.key],[row,{...row}]),e=>e.status===409);
+});
+test('a 25-leg TSO prop slip survives canonicalization and signed encode/decode',()=>{
+  const {encodeShareSlip,decodeShareSlip,MAX_SHARE_LEGS}=require('../server/api/lib/share-slip');
+  assert.equal(MAX_SHARE_LEGS,25);
+  const keys=Array.from({length:25},(_,i)=>'nhl|event-'+i+'|player-'+i+'|shots|over|2.5');
+  const live=keys.map((key,i)=>({...row,key,player:'Test Player '+i,eventId:'event-'+i,playerId:'player-'+i}));
+  const slip=handler.assemble(keys,live);
+  assert.equal(slip.legs.length,25);
+  const token=encodeShareSlip(slip,'test-secret-with-adequate-length-123456789');
+  const restored=decodeShareSlip(token,'test-secret-with-adequate-length-123456789');
+  assert.equal(restored.legs.length,25);
+  assert.deepEqual(restored.legs.map(x=>x.player),live.map(x=>x.player));
+  assert.equal(restored.combinedOddsVerified,false);
+  assert.ok(token.length<20000,'Oversized token may exceed URL limits');
+  assert.throws(()=>handler.selectionKeys({selectionKeys:[...keys,'extra-leg']}),e=>e.status===400);
 });
 test('NFL extreme and disproportionate model probabilities are dropped',()=>{
   assert.equal(handler.modelChance({...row,sport:'nfl',model:{probabilityPct:100}}),null);
@@ -69,6 +86,9 @@ test('frontend only submits exact keys, renders no fabricated combined price',()
   const ui=from('tso2-props-builder.js');
   const shell=from('tso2-shell.js');
   assert.match(ui,/selectionKeys:rows\.map\(r=>r\.key\)/);
+  assert.match(ui,/const TSO_PP_MAX_LEGS=25;/);
+  assert.match(ui,/\.slice\(0,TSO_PP_MAX_LEGS\)/);
+  assert.match(from('server/api/tso-build.js'),/const MAX_LEGS=MAX_SHARE_LEGS/);
   assert.match(ui,/PP_TSO_AUTH\.whenReady\(\)/);
   assert.match(ui,/x-parlayping-identity/);
   assert.match(shell,/tso2-builder-broadcast\.css/);

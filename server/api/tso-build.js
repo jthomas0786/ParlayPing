@@ -3,15 +3,15 @@
 // selection KEYS. Never take price, model probability or sportsbook links
 // from the browser. Re-fetch the current official TSO prop data server-side.
 const {requireHostUser}=require('./lib/tso-auth');
-const {encodeShareSlip}=require('./lib/share-slip');
+const {encodeShareSlip,MAX_SHARE_LEGS}=require('./lib/share-slip');
 const TSO_PROPS_URL='https://thesportsoutpost.com/api/props?league=all';
-const MAX_LEGS=8;
+const MAX_LEGS=MAX_SHARE_LEGS;
 const MAX_RESPONSE_BYTES=9_000_000;
 const clean=(v,n=130)=>String(v==null?'':v).trim().replace(/\s+/g,' ').slice(0,n);
 const finite=v=>v===null||v===undefined||v===''?null:Number.isFinite(Number(v))?Number(v):null;
 function selectionKeys(body){
   const raw=body?.selectionKeys;
-  if(!Array.isArray(raw)||raw.length<1||raw.length>MAX_LEGS)throw Object.assign(new Error('Select 1–8 TSO props to build a betslip.'),{status:400});
+  if(!Array.isArray(raw)||raw.length<1||raw.length>MAX_LEGS)throw Object.assign(new Error('Select 1–'+MAX_LEGS+' TSO props to build a betslip.'),{status:400});
   const keys=raw.map(x=>clean(x,220));
   if(keys.some(x=>!x||x.length>200)||new Set(keys).size!==keys.length)
     throw Object.assign(new Error('Selections must have unique, valid TSO prop IDs.'),{status:400});
