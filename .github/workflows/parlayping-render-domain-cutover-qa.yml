@@ -29,6 +29,13 @@ jobs:
           echo 'Standalone screenshot upload route: PASS'
           curl --retry 4 --retry-delay 3 --connect-timeout 10 --max-time 35 -fsSL "$base/api/status" -o /tmp/pp-status.json
           node -e 'const j=require("/tmp/pp-status.json");if(!j.ok||j.service!=="ParlayPing"||!j.engine?.ready)throw Error("Parlay Ping API status failed");console.log("API status: PASS; X OAuth configured="+!!j.x?.configured+"; automatic posting enabled="+!!j.x?.autoReplyEnabled+"; vision="+!!j.parser?.visionConfigured+"; Stripe="+!!j.integrations?.stripeConfigured+"; Supabase="+!!j.developerApi?.supabaseConfigured+"; shareSecret="+!!j.developerApi?.shareSecretConfigured+"; oddsProvider="+!!j.integrations?.oddsConfigured)'
+          node - <<'NODE'
+          const status=require('/tmp/pp-status.json');
+          if(status.x?.configured!==true)throw Error('Missing one or more @ParlayPing OAuth 1.0 keys in Render.');
+          if(status.x?.autoReplyEnabled!==false || status.x?.postingReady!==false)throw Error('Automatic X posting must remain OFF during connection verification.');
+          console.log('X OAuth 1.0 environment keys: PRESENT (all four); automatic posting: OFF');
+          console.log('Protected X worker: '+(status.x?.workerProtected?'CONFIGURED':'MISSING — protected OAuth probe requires X_WORKER_SECRET'));
+          NODE
           code="$(curl --retry 2 --connect-timeout 10 --max-time 35 -sSL -o /tmp/pp-unauth.json -w '%{http_code}' -X POST -H 'Content-Type: application/json' --data '{"legs":[]}' "$base/api/v1/analyze")"
           case "$code" in 401|403) echo "Commercial developer API denies unauthenticated requests: PASS ($code)" ;; *) echo "Unsafe API response to unauthenticated visitor: $code"; exit 1;; esac
           code="$(curl --retry 2 --connect-timeout 10 --max-time 35 -sSL -o /tmp/pp-empty.json -w '%{http_code}' -X POST -H 'Content-Type: application/json' --data '{}' "$base/api/landing-create")"
