@@ -70,6 +70,7 @@ test('sandbox checkout creates a Stripe session for each approved tier; never gr
     assert.equal(call.url,'https://api.stripe.com/v1/checkout/sessions');
     assert.equal(call.body.mode,'subscription');
     assert.equal(call.body['line_items[0][price]'],id);
+    assert.equal(call.body.allow_promotion_codes,undefined,'Exact approved sandbox prices must not offer unapproved promo-code discounts');
     assert.equal(call.body['metadata[plan_id]'],plan);
     assert.equal(call.body['subscription_data[metadata][plan_id]'],plan);
     assert.equal(call.body.client_reference_id,OWNER_ID);
