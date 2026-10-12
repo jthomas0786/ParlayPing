@@ -37,6 +37,7 @@
     const status=String(sub?.status||'').toLowerCase();
     const manageExisting=Boolean(sub?.provider==='stripe'&&sub?.provider_subscription_id&&['active','trialing','past_due','unpaid'].includes(status));
     const allowed=Boolean(data.sandboxCheckoutAllowed);
+    const hasBillingHistory=Boolean(sub?.provider==='stripe'&&sub?.provider_subscription_id&&sub?.provider_customer_id);
     const badge=$('devAccessBadge');if(badge)badge.textContent=data.isOwner?'OWNER · SANDBOX':'SANDBOX PREVIEW';
     const paidLabel=({starter:'Starter',pro:'Pro',business:'Business'}[String(sub?.plan_id||'').toLowerCase()]||'Developer');
     const periodDate=friendlyPeriodEnd(sub?.current_period_end);
@@ -48,13 +49,17 @@
     }
     $('devBillingSummary').textContent=billingSummary;
     $('devBillingFreeActions').hidden=manageExisting;
-    $('devBillingPaidActions').hidden=!manageExisting;
+    $('devBillingPaidActions').hidden=!hasBillingHistory;
     const note=$('devSandboxNote');if(note)note.textContent=allowed?'Stripe TEST MODE only · test cards only · no real charges.':'Developer API subscriptions are in testing. No live payments are available.';
     const chosen=new URLSearchParams(location.search).get('plan')?.toLowerCase();
     const requested={starter:'Starter · $20/month',pro:'Pro · $70/month',business:'Business · $120/month'}[chosen];
     const hint=$('devPlanHint');if(hint)hint.textContent=allowed?(requested?`Selected: ${requested}. Choose a plan to open sandbox checkout.`:'Select a plan below to test Stripe sandbox checkout.'):(requested?`Selected: ${requested}. Public paid enrollment is not yet open; no payment will be collected.`:'Approved subscription prices. Sandbox checkout is limited to authorized testers until live billing launches.');
     for(const id of ['devUpgradeStarter','devUpgradePro','devUpgradeBusiness']){const button=$(id);if(button){button.disabled=!allowed;button.title=allowed?'Open Stripe test-mode checkout':'Sandbox checkout is restricted to approved testers';}}
-    if($('devManageBilling'))$('devManageBilling').disabled=!allowed;
+    const manageButton=$('devManageBilling');
+    if(manageButton){
+      manageButton.disabled=!(allowed||hasBillingHistory);
+      manageButton.textContent=manageExisting?'Manage billing':'View invoices & billing history';
+    }
     const canUseKey=['starter','pro','business','free'].includes(activePlan);
     const name=$('devKeyName'),submit=$('devKeyForm')?.querySelector('button[type="submit"]');
     if(name)name.disabled=!canUseKey;
@@ -128,7 +133,7 @@
       location.assign(url);
     }catch(error){
       portalInFlight=false;
-      if(button)button.disabled=!accountData?.sandboxCheckoutAllowed;
+      if(button)button.disabled=!(accountData?.sandboxCheckoutAllowed||(accountData?.subscription?.provider==='stripe'&&accountData?.subscription?.provider_customer_id));
       showStatus(error.message,true);
     }
   }
