@@ -1,0 +1,39 @@
+name: ParlayPing Browser Billing QA
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/billing-browser-qa.cjs'
+      - '.github/workflows/parlayping-browser-billing-qa.yml'
+      - 'profile-dev.js'
+      - 'account.html'
+      - 'developers.html'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  chromium-browser-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Playwright without persisting a production dependency
+        run: npm install --no-save --no-audit --no-fund playwright@1.55.0
+      - name: Install Chromium for headless browser testing
+        run: npx playwright install --with-deps chromium
+      - name: Check public website and mocked billing interactions in Chromium
+        run: node scripts/billing-browser-qa.cjs
+      - name: Upload page evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: parlayping-billing-browser-evidence
+          path: artifacts/billing-browser/*.png
+          if-no-files-found: ignore
+          retention-days: 5
