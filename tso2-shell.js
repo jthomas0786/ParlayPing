@@ -13,8 +13,9 @@
   if(inFrame){
     try{
       const params=new URLSearchParams(location.search);
-      if(params.get('tso_embed')==='1')sessionStorage.setItem('pp_tso2_embedded','1');
-      inTsoWorkspace=sessionStorage.getItem('pp_tso2_embedded')==='1';
+      if(params.get('tso_embed')==='1'||document.documentElement.hasAttribute('data-tso2pp-embed'))
+        sessionStorage.setItem('pp_tso2_embedded','1');
+      inTsoWorkspace=sessionStorage.getItem('pp_tso2_embedded')==='1'||document.documentElement.hasAttribute('data-tso2pp-embed');
     }catch{inTsoWorkspace=new URLSearchParams(location.search).get('tso_embed')==='1';}
   }
   if(inTsoWorkspace){
