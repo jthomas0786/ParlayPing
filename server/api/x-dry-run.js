@@ -19,6 +19,11 @@ async function hydrateMissingParents(mentions,includesTweets,mediaByKey){const m
 module.exports = async function handler(req,res){
   res.setHeader('Cache-Control','no-store');
   if(req.method!=='GET')return res.status(405).json({ok:false,error:'Use GET.'});
+  // Mention analysis can consume paid X/vision requests and return private
+  // mention context. Diagnostics are strictly internal, never public.
+  const workerSecret=process.env.X_WORKER_SECRET;
+  if(!workerSecret||req.headers?.['x-parlayping-secret']!==workerSecret)
+    return res.status(401).json({ok:false,error:'Unauthorized.'});
   try{
     const autoReplyEnabled=String(process.env.X_AUTOREPLY_ENABLED||'').toLowerCase()==='true';
     if(autoReplyEnabled)return res.status(409).json({ok:false,error:'Dry-run endpoint disables itself when auto-replies are enabled.'});
