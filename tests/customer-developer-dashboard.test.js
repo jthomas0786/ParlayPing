@@ -7,7 +7,7 @@ const OWNER_ID='a08636ec-508e-457d-8e5a-400a0ec39729';
 const authPath=require.resolve('../server/api/lib/supabase-account');
 const original= require.cache[authPath];
 const originalFetch=global.fetch;
-const keys=['STRIPE_SECRET_KEY','PARLAYPING_BILLING_SANDBOX_ENABLED','PARLAYPING_BILLING_TESTER_USER_IDS','STRIPE_PRO_PRICE_ID'];
+const keys=['STRIPE_SECRET_KEY','PARLAYPING_BILLING_SANDBOX_ENABLED','PARLAYPING_BILLING_TESTER_USER_IDS','STRIPE_PRO_PRICE_ID','STRIPE_SANDBOX_PORTAL_CONFIG_ID'];
 const originalVars=Object.fromEntries(keys.map(k=>[k,process.env[k]]));
 let user={id:CLIENT_ID,email:'developer@example.invalid'}, sub=null, usage={plan:'none',monthlyLimit:0,rateLimitPerMinute:0,maxApiKeys:0}, seenPaths=[],actions=[],responseForEdge={};
 require.cache[authPath]={id:authPath,filename:authPath,loaded:true,exports:{
@@ -146,4 +146,38 @@ test('approved tester with automatic internal/free signup can enter sandbox chec
   assert.equal(calls.length,1);
   user={id:CLIENT_ID,email:'developer@example.invalid'};
   sub=null;
+});
+
+test('former sandbox subscriber may see own invoices but cannot start new checkout after tester access is revoked',async()=>{
+  user={id:CLIENT_ID,email:'developer@example.invalid'};
+  sub={plan_id:'starter',provider:'stripe',provider_customer_id:'cus_test_former',provider_subscription_id:'sub_test_former',status:'canceled'};
+  process.env.PARLAYPING_BILLING_SANDBOX_ENABLED='true';
+  process.env.STRIPE_SECRET_KEY='sk_test_UnitTestKey123456';
+  process.env.STRIPE_SANDBOX_PORTAL_CONFIG_ID='bpc_1UPNFeLJU3n7oe0PdK88tDIS';
+  delete process.env.PARLAYPING_BILLING_TESTER_USER_IDS;
+  const calls=[];
+  global.fetch=async(url,opts)=>{
+    calls.push({url,form:Object.fromEntries(new URLSearchParams(opts.body))});
+    return {ok:true,status:200,json:async()=>({id:'bps_test_former',url:'https://billing.stripe.com/p/session/test'})};
+  };
+  const account=res();await router(req('account'),account);
+  assert.equal(account.statusCode,200);
+  assert.equal(account.body.sandboxCheckoutAllowed,false);
+  const portal=res();await router(req('billing-portal','POST'),portal);
+  assert.equal(portal.statusCode,200);
+  assert.match(portal.body.url,/^https:\/\/billing\.stripe\.com\//);
+  assert.equal(calls.length,1);
+  assert.equal(calls[0].form.customer,'cus_test_former');
+  assert.equal(calls[0].form.configuration,'bpc_1UPNFeLJU3n7oe0PdK88tDIS');
+  const checkout=res();await router(req('billing-checkout','POST',{plan:'starter'}),checkout);
+  assert.equal(checkout.statusCode,403);
+  assert.equal(calls.length,1,'No new Checkout Session may be created for unapproved former tester');
+  sub=null;
+});
+test('developer dashboard retains history button after cancellation',()=>{
+  const ui=fs.readFileSync(path.join(__dirname,'../profile-dev.js'),'utf8');
+  assert.match(ui,/hasBillingHistory=Boolean\(sub\?\.provider==='stripe'/);
+  assert.match(ui,/devBillingPaidActions'\)\.hidden=!hasBillingHistory/);
+  assert.match(ui,/View invoices & billing history/);
+  assert.match(ui,/manageButton\.disabled=!\(allowed\|\|hasBillingHistory\)/);
 });
