@@ -1,0 +1,26 @@
+name: Parlay Ping Public Billing Smoke
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/parlayping-public-billing-smoke.yml'
+      - 'scripts/billing-public-smoke.cjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sandbox-gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify production public billing surfaces without creating subscriptions
+        env:
+          PARLAYPING_SMOKE_BASE_URL: https://parlayping.net
+        run: node scripts/billing-public-smoke.cjs
