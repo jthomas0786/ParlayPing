@@ -2,6 +2,12 @@ name: ParlayPing Launch Readiness
 
 on:
   workflow_dispatch:
+  # Safe one-time audit on workflow changes: this job only checks status and
+  # authenticated X user identity. It never posts or enables activation gates.
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/parlayping-x-readiness.yml'
 
 permissions:
   contents: read
