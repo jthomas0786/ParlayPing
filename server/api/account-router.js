@@ -135,10 +135,15 @@ async function billingPortal(req,res){
   res.setHeader('Content-Type','application/json; charset=utf-8');
   if(req.method!=='POST')return res.status(405).json({ok:false,error:'Use POST.'});
   try{
-    const{token,user}=await requireUser(req);requireSandboxTester(user);
+    const{token,user}=await requireUser(req);
     const rows=await supabaseFetch(`/rest/v1/subscriptions?select=*&user_id=eq.${encodeURIComponent(user.id)}`,{token});
     const sub=rows?.[0]||null;
-    if(!sub?.provider_customer_id)return res.status(409).json({ok:false,error:'No Stripe billing profile exists yet.'});
+    // Former sandbox testers must retain access to invoices and cancellation
+    // after tester approval is revoked. The Stripe customer ID is read from
+    // their own RLS-protected subscription, never from a request parameter.
+    const ownsStripeBilling=Boolean(sub?.provider==='stripe'&&sub?.provider_subscription_id&&sub?.provider_customer_id);
+    if(!ownsStripeBilling)requireSandboxTester(user);
+    if(!ownsStripeBilling)return res.status(409).json({ok:false,error:'No Stripe billing profile exists yet.'});
     assertSandboxBillingReady();
     const base=String(process.env.PUBLIC_BASE_URL||'https://parlayping.net').replace(/\/$/,'');
     const portal=await stripePost('/billing_portal/sessions',{configuration:sandboxPortalConfigId(),customer:sub.provider_customer_id,return_url:`${base}/profile?tab=dev`});
