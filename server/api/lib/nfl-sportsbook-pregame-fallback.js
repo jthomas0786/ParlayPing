@@ -1,7 +1,12 @@
 const SNAPSHOT_BASE=String(process.env.SPORTS_OUTPOST_BASE_URL||'https://thesportsoutpost.com').replace(/\/$/,'');
 const SNAPSHOT_PATH='/slates/nfl-odds.json';
-const CACHE_MS=30_000;
-let cached=null;
+// The TSO public site occasionally rewrites the JSON snapshot to an HTML
+// application shell. Use only the published TSO source repository as fallback.
+const BACKUP_SNAPSHOT_URL='https://raw.githubusercontent.com/jthomas0786/The-Sports-Outpost/main/slates/nfl-odds.json';
+const CACHE_MS=60_000;
+const BACKUP_MAX_AGE_MS=6*60*60*1000;
+const WARNING_INTERVAL_MS=10*60*1000;
+let cached=null,lastWarningAt=0;
 
 const finite=value=>value===null||value===undefined||value===''?null:(Number.isFinite(Number(value))?Number(value):null);
 const norm=value=>String(value||'').toLowerCase().normalize('NFKD').replace(/[.'’]/g,'').replace(/\b(jr|sr|ii|iii|iv|v)\b/g,'').replace(/[^a-z0-9]+/g,' ').trim().replace(/\s+/g,' ');
@@ -103,17 +108,53 @@ function rescueNflPregameRows(results,legs,snapshot,{now=Date.now()}={}){
     };
   });
 }
+async function fetchSnapshot(url,{backup=false}={}){
+  const response=await fetch(url,{
+    headers:{accept:'application/json','user-agent':'ParlayPing/1.3'},
+    cache:'no-store',signal:AbortSignal.timeout(6500)
+  });
+  if(!response.ok)throw new Error(`NFL odds source HTTP ${response.status}`);
+  const type=String(response.headers?.get?.('content-type')||'').toLowerCase();
+  if(type.includes('text/html'))throw new Error('NFL odds source returned HTML instead of JSON');
+  let value;
+  try{value=await response.json()}catch{throw new Error('NFL odds source returned invalid JSON');}
+  if(!value||!Array.isArray(value.games))throw new Error('NFL odds source has no games array');
+  if(backup){
+    const fetched=Date.parse(value.meta?.fetchedAt||'');
+    if(value.meta?.source!=='parlayapi'||value.meta?.sample!==false)
+      throw new Error('NFL backup is not a published ParlayAPI snapshot');
+    if(!Number.isFinite(fetched)||fetched>Date.now()+60_000||Date.now()-fetched>BACKUP_MAX_AGE_MS)
+      throw new Error('NFL backup odds snapshot is stale');
+  }
+  return value;
+}
+function warnOnce(message){
+  if(Date.now()-lastWarningAt<WARNING_INTERVAL_MS)return;
+  lastWarningAt=Date.now();
+  console.warn('ParlayPing NFL odds snapshot fallback',message);
+}
 async function loadNflOddsSnapshot(){
   if(cached&&Date.now()-cached.ts<CACHE_MS)return cached.value;
-  const response=await fetch(`${SNAPSHOT_BASE}${SNAPSHOT_PATH}`,{headers:{accept:'application/json','user-agent':'ParlayPing/1.3'},cache:'no-store',signal:AbortSignal.timeout(5000)});
-  if(!response.ok)throw new Error(`NFL sportsbook snapshot request failed (${response.status})`);
-  const value=await response.json();cached={ts:Date.now(),value};return value;
+  try{
+    const value=await fetchSnapshot(`${SNAPSHOT_BASE}${SNAPSHOT_PATH}`);
+    cached={ts:Date.now(),value};return value;
+  }catch(primaryError){
+    try{
+      const value=await fetchSnapshot(BACKUP_SNAPSHOT_URL,{backup:true});
+      cached={ts:Date.now(),value};
+      warnOnce('TSO website JSON unavailable; using recent official TSO published snapshot.');
+      return value;
+    }catch(backupError){
+      warnOnce(`No verified NFL odds source: primary ${primaryError.message}; backup ${backupError.message}`);
+      throw new Error('A fresh verified NFL sportsbook odds snapshot is unavailable.');
+    }
+  }
 }
 async function rescueNflPregameAnalysis(analysis,legs,options={}){
   const rows=Array.isArray(analysis?.results)?analysis.results:[];
   if(!rows.some(row=>String(row?.resolutionReason||'')==='nfl-player-or-team-not-found-in-current-simulation'))return analysis;
   let snapshot=options.snapshot||null;
-  if(!snapshot){try{snapshot=await loadNflOddsSnapshot();}catch(error){console.warn('ParlayPing NFL sportsbook-only pregame fallback',error?.message||error);return analysis;}}
+  if(!snapshot){try{snapshot=await loadNflOddsSnapshot();}catch(error){warnOnce(error?.message||'NFL odds source unavailable');return analysis;}}
   const results=rescueNflPregameRows(rows,legs,snapshot,{now:options.now??Date.now()});
   const pending=results.filter(row=>row.status==='PENDING');
   return {
@@ -131,4 +172,4 @@ async function rescueNflPregameAnalysis(analysis,legs,options={}){
   };
 }
 
-module.exports={marketKey,sportsbookLineForLeg,exactMarketAvailable,rescueNflPregameRows,rescueNflPregameAnalysis};
+module.exports={marketKey,sportsbookLineForLeg,exactMarketAvailable,rescueNflPregameRows,rescueNflPregameAnalysis,loadNflOddsSnapshot,fetchSnapshot};
