@@ -21,6 +21,14 @@ Developer API subscriptions are for third parties; approved TSO first-party inte
 - Stripe **sandbox customer portal** configuration `bpc_1UPNFeLJU3n7oe0PdK88tDIS` was created with invoice history, payment-method updating, the three exact sandbox plan prices, and end-of-period cancellation. API portal-session creation succeeded for a sandbox QA customer and returned a test-mode URL.
 - The Parlay Ping /api/billing-portal server route uses this configuration explicitly and is gated by authenticated test-only access.
 
+## Chromium browser QA — 2026-10-11
+
+- Added `scripts/billing-browser-qa.cjs` and `.github/workflows/parlayping-browser-billing-qa.yml`, executing Chromium from GitHub Actions. The first successful run is [ParlayPing Browser Billing QA #38194578659](https://github.com/jthomas0786/ParlayPing/actions/runs/38194578659).
+- **Actual browser and actual public site:** `/developers` and `/account` loaded successfully on `https://parlayping.net`; the Developer API prices were visible and screenshots were captured at desktop and mobile sizes. Screenshot artifact `parlayping-billing-browser-evidence` belongs to that workflow run.
+- **Actual browser but mocked Stripe HTTP responses:** Starter/Pro/Business initiate one authorized redirect after a double-click; untrusted checkout URLs are rejected; public non-testers cannot start checkout; canceled customers can open their invoice-history link; success callbacks wait for server-authoritative subscription data before enabling key creation.
+- The test's fake `checkout.stripe.com` and `billing.stripe.com` pages verify only navigation, **not** Stripe-hosted payment collection or completed portal interaction. No credentials, credit cards, payments, API keys, or Stripe sessions were created by this browser test. The hosted authenticated checkout and actual portal confirmation remain **open** launch acceptance items.
+- Browser QA uses Playwright installed only on CI runners; it does not add a Playwright runtime dependency to the Render production service.
+
 ## Additional sandbox lifecycle and portal verification — 2026-10-11
 
 - Reconfirmed the exact active monthly sandbox Price IDs and Supabase quota mappings: Starter $20 / 5,000, Pro $70 / 20,000, Business $120 / 50,000.
