@@ -26,7 +26,22 @@
   function markup(){return `<header class="pp-builder-header" data-pp-app-nav><div class="pp-builder-shell pp-builder-header-inner"><a class="pp-builder-brand" href="/" aria-label="ParlayPing home"><img src="/parlayping-approved-wordmark.webp" alt="ParlayPing"></a><nav class="pp-builder-main-nav" aria-label="Primary navigation">${LINKS.map(linkHtml).join('')}</nav><div class="pp-builder-header-actions"><button class="pp-builder-round-button pp-builder-search-button" type="button" aria-label="Search" title="Search">⌕</button><a class="pp-builder-round-button pp-builder-notification-button" href="/profile" aria-label="Notifications and Tracking" title="Notifications and Tracking">♧<span class="pp-builder-notification-badge">3</span></a><a class="pp-builder-profile-button" href="/account.html" aria-label="Sign in or open account" title="Account">${accountGlyph()}</a></div></div></header>`;}
   function syncActive(){const active=activeKey();document.querySelectorAll('[data-pp-route]').forEach(node=>{const on=Boolean(active)&&node.dataset.ppRoute===active;node.classList.toggle('active',on);if(on)node.setAttribute('aria-current','page');else node.removeAttribute('aria-current');});const path=String(location.pathname||'/').toLowerCase();document.querySelector('.pp-builder-notification-button')?.classList.toggle('active',path==='/profile'||path==='/profile.html');document.querySelector('.pp-builder-profile-button')?.classList.toggle('active',path==='/account'||path==='/account.html');}
   function wireActions(){document.querySelector('.pp-builder-search-button')?.addEventListener('click',()=>{const searchTarget=document.querySelector('[data-pp-search],#searchInput,input[type="search"]');if(searchTarget&&typeof searchTarget.focus==='function'){searchTarget.focus();return;}location.assign('/trending');});}
-  function init(){injectCss();const existing=document.querySelector('header[data-pp-app-nav]');if(existing&&existing.classList.contains('pp-builder-header')){syncActive();return;}const current=document.querySelector('header.app-header, header.site-header, header.pp-home-header, header[data-pp-app-nav]');if(current)current.outerHTML=markup();else if(document.body)document.body.insertAdjacentHTML('afterbegin',markup());else return;wireActions();window.addEventListener('hashchange',syncActive);window.addEventListener('popstate',syncActive);syncActive();document.documentElement.dataset.ppUnifiedNav='builder';}
+  function insideTsoHost(){
+    if(window.self===window.top)return false;
+    try{
+      return document.documentElement.hasAttribute('data-tso2pp-embed') ||
+        new URLSearchParams(location.search).get('tso_embed')==='1' ||
+        sessionStorage.getItem('pp_tso2_embedded')==='1';
+    }catch{return document.documentElement.hasAttribute('data-tso2pp-embed');}
+  }
+  function init(){
+    // A real TSO tab uses the parent's navigation, not Parlay Ping's header.
+    // Never inject the standalone header even briefly before embed CSS loads.
+    if(insideTsoHost()){
+      document.querySelectorAll('header[data-pp-app-nav],header.pp-builder-header').forEach(node=>node.remove());
+      return;
+    }
+    injectCss();const existing=document.querySelector('header[data-pp-app-nav]');if(existing&&existing.classList.contains('pp-builder-header')){syncActive();return;}const current=document.querySelector('header.app-header, header.site-header, header.pp-home-header, header[data-pp-app-nav]');if(current)current.outerHTML=markup();else if(document.body)document.body.insertAdjacentHTML('afterbegin',markup());else return;wireActions();window.addEventListener('hashchange',syncActive);window.addEventListener('popstate',syncActive);syncActive();document.documentElement.dataset.ppUnifiedNav='builder';}
   if(document.body)init();else document.addEventListener('DOMContentLoaded',init,{once:true});
 })();
 
