@@ -25,7 +25,15 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
   await locator.locator('#dropzone').waitFor({state:'attached',timeout:45000});
   let frame=page.frames().find(f=>f.url().startsWith(PP+'/submit'));
   assert.ok(frame,'Embedded submit frame is missing');
-  await frame.waitForFunction(()=>document.documentElement.hasAttribute('data-tso2pp-embed'),{timeout:18000});
+  const diagnosis=await frame.evaluate(()=>({
+    href:location.href,html:document.documentElement.outerHTML.slice(0,250),
+    marker:document.documentElement.hasAttribute('data-tso2pp-embed'),
+    scriptSources:[...document.scripts].map(s=>s.src).filter(s=>s.includes('tso2-shell')),
+    stylesheetUrls:[...document.querySelectorAll('link[rel="stylesheet"]')].map(x=>x.href).filter(x=>x.includes('tso2')),
+    frameWindow:window.self!==window.top
+  }));
+  console.log('Precheck embedded frame:',JSON.stringify(diagnosis));
+  await frame.waitForFunction(()=>document.documentElement.hasAttribute('data-tso2pp-embed'),null,{timeout:7500});
   await frame.waitForFunction(()=>getComputedStyle(document.querySelector('.submit-hero')).display==='none',{timeout:18000});
   let info=await frame.evaluate(()=>{
     const display=s=>{const e=document.querySelector(s);return e?getComputedStyle(e).display:'absent'};
