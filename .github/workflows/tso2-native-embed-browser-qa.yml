@@ -1,0 +1,36 @@
+name: TSO2 Native Parlay Ping Browser QA
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/tso2-native-embed-browser-qa.cjs'
+      - '.github/workflows/tso2-native-embed-browser-qa.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  embedded-native-layout:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install browser test tools
+        run: npm install --no-save --no-audit --no-fund playwright@1.55.0
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Validate embedded Builder and My Parlays with live TSO origin
+        run: node scripts/tso2-native-embed-browser-qa.cjs
+      - name: Save visual evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tso2-native-parlayping-evidence
+          path: artifacts/tso2-native-embed/*.png
+          if-no-files-found: ignore
+          retention-days: 5
