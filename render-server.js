@@ -208,6 +208,39 @@ function resolveStaticPath(pathname) {
   return null;
 }
 
+// Dedicated embedded presentation is decided as HTML is served, not after a
+// deferred header script has drawn the standalone Parlay Ping navigation.
+// The independent parlayping.net site never gets these TSO-only styles.
+function isTsoEmbedRequest(req,url){
+  if(url.searchParams.get('tso_embed')==='1')return true;
+  const dest=String(req.headers['sec-fetch-dest']||'').toLowerCase();
+  if(dest!=='iframe')return false;
+  try{
+    const origin=new URL(String(req.headers.referer||'')).origin;
+    return origin==='https://thesportsoutpost.com'||origin==='https://staging.thesportsoutpost.com';
+  }catch{return false;}
+}
+function applyTsoEmbeddedHtml(source,req,url){
+  let page=String(source);
+  if(!isTsoEmbedRequest(req,url))return page;
+  if(!/data-tso2pp-embed(?:\s|=)/i.test(page))
+    page=page.replace(/<html(?=[\s>])/i,'<html data-tso2pp-embed="true"');
+  let css='<link rel="stylesheet" href="/tso2-shell.css?v=20261012-native">';
+  if(/^\/submit(?:\.html)?$/.test(url.pathname)){
+    css+='<link rel="stylesheet" href="/tso2-submit-embed.css?v=20261012-native">';
+    css+='<link rel="stylesheet" href="/tso2-submit-broadcast.css?v=20261012-native">';
+    css+='<link rel="stylesheet" href="/tso2-props-builder.css?v=20261012-native">';
+  }else if(/^\/profile(?:\.html)?$/.test(url.pathname)){
+    css+='<link rel="stylesheet" href="/tso2-profile-broadcast.css?v=20261012-native">';
+  }else if(/^\/build\//.test(url.pathname)){
+    css+='<link rel="stylesheet" href="/tso2-builder-broadcast.css?v=20261012-native">';
+  }
+  // Explicit CSS fallback removes nested navigation before first paint even
+  // if the browser delays stylesheets or a later standalone header is injected.
+  css+='<style>html[data-tso2pp-embed] header[data-pp-app-nav],html[data-tso2pp-embed] header.pp-builder-header,html[data-tso2pp-embed] header.site-header,html[data-tso2pp-embed] .submit-hero,html[data-tso2pp-embed] .profile-cover{display:none!important}</style>';
+  return page.replace(/<\/head>/i,css+'</head>');
+}
+
 async function handleApi(req, res, url, mapping) {
   attachResponseHelpers(res);
   // Dynamic /build/:slip, /slip/:slip, and /share/:slip HTML must run the
@@ -221,7 +254,7 @@ async function handleApi(req, res, url, mapping) {
       if (!page.includes('src="/tso2-shell.js')) {
         page = page.replace(/<\/head>/i, '<script src="/tso2-account-bridge.js?v=20261010sso"></script><script defer src="/tso2-shell.js?v=20261010-theme2-inline"></script></head>');
       }
-      chunk = page;
+      chunk = applyTsoEmbeddedHtml(page,req,url);
       if (!res.headersSent) res.removeHeader('Content-Length');
     }
     return originalEnd(chunk, ...args);
@@ -283,7 +316,8 @@ const server = http.createServer(async (req, res) => {
     try {
       const original = await fs.promises.readFile(file.absolute, 'utf8');
       const injected = original.replace(new RegExp('</head>', 'i'), '<script src="/tso2-account-bridge.js?v=20261010sso"></script><script defer src="/tso2-shell.js?v=20261010-theme2"></script></head>');
-      return res.end(injected === original ? original + '<script src="/tso2-account-bridge.js?v=20261010sso"></script><script defer src="/tso2-shell.js?v=20261010-theme2"></script>' : injected);
+      const page=injected === original ? original + '<script src="/tso2-account-bridge.js?v=20261010sso"></script><script defer src="/tso2-shell.js?v=20261010-theme2"></script>' : injected;
+      return res.end(applyTsoEmbeddedHtml(page,req,url));
     } catch (error) {
       console.error('ParlayPing HTML read failed', error);
       res.statusCode = 500;
