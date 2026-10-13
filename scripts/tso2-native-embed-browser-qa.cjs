@@ -91,12 +91,32 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
   await integrated.frameLocator('[data-parlayping-frame]').locator('#dropzone').waitFor({state:'attached',timeout:45000});
   const embeddedPage=integrated.frames().find(f=>f.url().startsWith(PP+'/submit'));
   assert.ok(embeddedPage,'The real TSO Parlay Ping iframe must load');
+  await integrated.evaluate(()=>{
+    window.__ppQaMessages=[];
+    window.addEventListener('message',e=>{
+      if(e.data?.type?.startsWith('tso2-parlayping-'))
+        window.__ppQaMessages.push({type:e.data.type,origin:e.origin,height:e.data.height});
+    });
+  });
   await embeddedPage.evaluate(()=>{
     const test=document.createElement('section');
     test.id='qa-long-betslip';
     test.style.cssText='height:3200px;display:block;pointer-events:none';
     document.body.appendChild(test);
   });
+  await wait(1800);
+  const embeddedDiagnosis=await embeddedPage.evaluate(()=>({
+    referrer:document.referrer,rootHeight:document.documentElement.scrollHeight,
+    bodyHeight:document.body.scrollHeight,
+    booted:window.__TSO2_PARLAYPING_SHELL__,
+    scripts:[...document.scripts].map(s=>s.src).filter(s=>s.includes('tso2-shell'))
+  }));
+  const parentDiagnosis=await integrated.evaluate(()=>{
+    const f=document.querySelector('[data-parlayping-frame]');
+    return {styleHeight:f.style.height,computedHeight:f.getBoundingClientRect().height,
+      messages:window.__ppQaMessages,scrollAttribute:f.getAttribute('scrolling')};
+  });
+  console.log('Long-slip resize diagnostics '+JSON.stringify({embeddedDiagnosis,parentDiagnosis}));
   await integrated.waitForFunction(()=>{
     const iframe=document.querySelector('[data-parlayping-frame]');
     return iframe&&Number.parseFloat(iframe.style.height)>=3200;
