@@ -238,6 +238,10 @@ function applyTsoEmbeddedHtml(source,req,url){
   // Explicit CSS fallback removes nested navigation before first paint even
   // if the browser delays stylesheets or a later standalone header is injected.
   css+='<style>html[data-tso2pp-embed] header[data-pp-app-nav],html[data-tso2pp-embed] header.pp-builder-header,html[data-tso2pp-embed] header.site-header,html[data-tso2pp-embed] .submit-hero,html[data-tso2pp-embed] .profile-cover{display:none!important}</style>';
+  // Refresh stale embedded shell tags: old cached copies could not initialize
+  // the frame-height bridge and trapped long betslips inside fixed frames.
+  page=page.replace(/tso2-shell\.js\?v=[^"'\s<>]+/g,
+    'tso2-shell.js?v=20261013-betslip-scroll-v2');
   return page.replace(/<\/head>/i,css+'</head>');
 }
 
@@ -323,6 +327,9 @@ const server = http.createServer(async (req, res) => {
       res.statusCode = 500;
       return res.end('Page temporarily unavailable');
     }
+  }
+  if(pathname==='/tso2-shell.js'){
+    res.setHeader('Cache-Control','no-store, must-revalidate');
   }
   const stream = fs.createReadStream(file.absolute);
   stream.on('error', () => {
