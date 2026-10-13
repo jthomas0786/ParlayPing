@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - 'scripts/tso2-native-embed-browser-qa.cjs'
+      - 'tso2-shell.js'
+      - 'tests/tso2-embed-scroll.test.js'
       - '.github/workflows/tso2-native-embed-browser-qa.yml'
   workflow_dispatch:
 
@@ -20,6 +22,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Verify long-betslip iframe sizing
+        run: node tests/tso2-embed-scroll.test.js
       - name: Install browser test tools
         run: npm install --no-save --no-audit --no-fund playwright@1.55.0
       - name: Install Chromium
