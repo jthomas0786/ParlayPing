@@ -19,6 +19,16 @@
     }catch{inTsoWorkspace=new URLSearchParams(location.search).get('tso_embed')==='1';}
   }
   if(inTsoWorkspace){
+    // Only send iframe navigation/resize messages to a trusted TSO parent.
+    const allowedParents=new Set([
+      'https://thesportsoutpost.com','https://www.thesportsoutpost.com',
+      'https://staging.thesportsoutpost.com','https://release.thesportsoutpost.com'
+    ]);
+    let parentOrigin='https://thesportsoutpost.com';
+    try{
+      const referrerOrigin=new URL(document.referrer).origin;
+      if(allowedParents.has(referrerOrigin))parentOrigin=referrerOrigin;
+    }catch{}
     // Contain Parlay Ping's own routes, dynamically created betslip links, and
     // legacy absolute parlayping.net links in the TSO 2.0 workspace iframe.
     // External sportsbooks, payment processors and social shares keep their
@@ -52,7 +62,7 @@
       if(target.pathname==='/account.html'||target.pathname==='/account'){
         event.preventDefault();
         const intent=anchor.id==='signInLink'?'tso2-parlayping-signin-request':'tso2-parlayping-open-profile';
-        window.parent.postMessage({type:intent},'https://thesportsoutpost.com');
+        window.parent.postMessage({type:intent},parentOrigin);
         return;
       }
       event.preventDefault();
@@ -98,7 +108,7 @@
       draftStyles.href='/tso2-props-builder.css?v=20261010-props1';
       document.head.append(draftStyles);
     }
-    if(/^\\/build\\//.test(location.pathname)){
+    if(/^\/build\//.test(location.pathname)){
       const builderStyles=document.createElement('link');
       builderStyles.rel='stylesheet';
       builderStyles.href='/tso2-builder-broadcast.css?v=20261010-props1';
@@ -106,7 +116,7 @@
     }
     try{
       window.parent.postMessage({type:'tso2-parlayping-route',pathname:location.pathname,search:location.search},
-        'https://thesportsoutpost.com');
+        parentOrigin);
     }catch{}
     // Parent TSO 2.0 owns the page scroll. Report rendered height so there is
     // never a second browser scrollbar trapped inside the Parlay Ping iframe.
@@ -115,12 +125,21 @@
       if(heightTick)return;
       heightTick=requestAnimationFrame(()=>{
         heightTick=0;
-        const body=document.body;
-        if(!body)return;
-        const height=Math.max(400,Math.ceil(body.scrollHeight||0));
+        const body=document.body,root=document.documentElement;
+        if(!body||!root)return;
+        // Long betslips can grow under the document root after the first
+        // render. Observe root, body and the visible bottom of their children.
+        const top=body.getBoundingClientRect().top;
+        const bottom=[...body.children].reduce((height,node)=>{
+          const style=getComputedStyle(node);
+          if(style.display==='none'||style.position==='fixed')return height;
+          return Math.max(height,node.getBoundingClientRect().bottom-top);
+        },0);
+        const height=Math.max(400,Math.ceil(body.scrollHeight||0),
+          Math.ceil(root.scrollHeight||0),Math.ceil(bottom));
         if(Math.abs(height-lastReported)<2)return;
         lastReported=height;
-        window.parent.postMessage({type:'tso2-parlayping-size',height},'https://thesportsoutpost.com');
+        window.parent.postMessage({type:'tso2-parlayping-size',height},parentOrigin);
       });
     };
     window.addEventListener('load',reportHeight);
