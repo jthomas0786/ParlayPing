@@ -117,6 +117,9 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
       messages:window.__ppQaMessages,scrollAttribute:f.getAttribute('scrolling')};
   });
   console.log('Long-slip resize diagnostics '+JSON.stringify({embeddedDiagnosis,parentDiagnosis}));
+  assert.equal(embeddedDiagnosis.booted,true,'Corrected Parlay Ping embed shell must execute, not fail on a stale cached script');
+  assert.ok(embeddedDiagnosis.scripts.some(src=>src.includes('20261013-betslip-scroll-v2')),
+    'TSO betslip must use the cache-busted scroll runtime');
   await integrated.waitForFunction(()=>{
     const iframe=document.querySelector('[data-parlayping-frame]');
     return iframe&&Number.parseFloat(iframe.style.height)>=3200;
