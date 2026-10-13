@@ -83,6 +83,34 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
   assert.ok(mobile.scrollWidth<=mobile.screenWidth+6,'Embedded mobile content overflows horizontally');
   await page.screenshot({path:path.join(output,'tso2-embed-submit-mobile.png'),fullPage:false});
   console.log('PASS embedded mobile view does not overflow or display standalone chrome');
+  // Real production TSO parent must scroll after a dynamically long betslip.
+  const integrated=await context.newPage();
+  await integrated.goto(TSO+'/#parlays',{waitUntil:'domcontentloaded',timeout:45000});
+  const embeddedFrame=integrated.locator('[data-parlayping-frame]');
+  await embeddedFrame.waitFor({state:'attached',timeout:45000});
+  await integrated.frameLocator('[data-parlayping-frame]').locator('#dropzone').waitFor({state:'attached',timeout:45000});
+  const embeddedPage=integrated.frames().find(f=>f.url().startsWith(PP+'/submit'));
+  assert.ok(embeddedPage,'The real TSO Parlay Ping iframe must load');
+  await embeddedPage.evaluate(()=>{
+    const test=document.createElement('section');
+    test.id='qa-long-betslip';
+    test.style.cssText='height:3200px;display:block;pointer-events:none';
+    document.body.appendChild(test);
+  });
+  await integrated.waitForFunction(()=>{
+    const iframe=document.querySelector('[data-parlayping-frame]');
+    return iframe&&Number.parseFloat(iframe.style.height)>=3200;
+  },null,{timeout:16000});
+  const size=await embeddedFrame.evaluate(el=>({iframeHeight:el.getBoundingClientRect().height,
+    reportedHeight:el.style.height,scrollAttribute:el.getAttribute('scrolling')}));
+  assert.equal(size.scrollAttribute,'auto','Native iframe scrolling must remain enabled');
+  assert.ok(size.iframeHeight>=3200,'TSO iframe grows for a long betslip');
+  await integrated.evaluate(()=>window.scrollTo(0,document.documentElement.scrollHeight));
+  const scrolled=await integrated.evaluate(()=>({scrollY:window.scrollY,
+    scrollHeight:document.documentElement.scrollHeight,innerHeight:window.innerHeight}));
+  assert.ok(scrolled.scrollY>500,'Outer TSO page must scroll to long betslip content');
+  console.log('PASS live TSO embedded long betslip scroll: '+JSON.stringify({size,scrolled}));
+  await integrated.screenshot({path:path.join(output,'tso2-long-betslip-scroll.png'),fullPage:false});
   const solo=await context.newPage();
   await solo.goto('https://parlayping.net/submit',{waitUntil:'domcontentloaded',timeout:45000});
   const standalone=await solo.evaluate(()=>({
