@@ -29,7 +29,8 @@ function scenario(origin){
   addEventListener:(name,fn)=>{handlers[name]=fn},
   open:()=>{}
  };
- const session={getItem:()=>null,setItem:()=>{}};
+ const store=new Map();
+ const session={getItem:key=>store.get(key)??null,setItem:(key,value)=>store.set(key,value)};
  const sandbox={window,document,location:{
   href:'https://parlayping.thesportsoutpost.com/submit?tso_embed=1',
   pathname:'/submit',search:'?tso_embed=1',protocol:'https:',host:'parlayping.thesportsoutpost.com'
